@@ -102,10 +102,12 @@
           </aside>
         </section>
 
-        <p id="resultsSummary" class="results-summary"></p>
-        <div id="publicResults" class="results-list"></div>
-        <div class="pagination-row">
-          <button id="loadMoreBtn" class="button button-secondary hidden" type="button">Load More</button>
+        <div class="search-results-shell">
+          <p id="resultsSummary" class="results-summary"></p>
+          <div id="publicResults" class="results-list"></div>
+          <div class="pagination-row">
+            <button id="loadMoreBtn" class="button button-secondary hidden" type="button">Load More</button>
+          </div>
         </div>
         <p id="emptyState" class="empty-state hidden">No records match your search. Try broadening your filters or searching by keyword.</p>
         </section>
@@ -131,8 +133,17 @@
 
         <p id="adminMessage" class="status-message" aria-live="polite"></p>
 
-        <section class="admin-block">
-          <h3>Add / Edit Record</h3>
+        <nav class="admin-tab-nav" aria-label="Admin sections">
+          <button class="button button-secondary admin-tab-btn is-active" data-admin-tab="catalog" type="button">Catalog</button>
+          <button class="button button-secondary admin-tab-btn" data-admin-tab="record-tools" type="button">Record management tools</button>
+          <button class="button button-secondary admin-tab-btn" data-admin-tab="utilities" type="button">Utilities</button>
+          <button class="button button-secondary admin-tab-btn" data-admin-tab="discovery" type="button">Discovery</button>
+          <button class="button button-secondary admin-tab-btn" data-admin-tab="system" type="button">System</button>
+        </nav>
+
+        <section class="admin-tab-panel" data-admin-panel="catalog">
+          <section class="admin-block">
+            <h3>Add record</h3>
           <form id="recordForm" class="catalog-form">
           <input id="recordId" type="hidden" />
 
@@ -170,7 +181,8 @@
               </label>
               <label>Series Name <input id="seriesName" /></label>
               <label>Series Number <input id="seriesNumber" type="number" min="0" /></label>
-              <label>Curated Shelf <input id="curatedShelf" placeholder="e.g. Experimental fiction" /></label>
+              <label>Curated shelf <select id="curatedShelf"></select></label>
+              <label>Page count <input id="pageCount" type="number" min="1" step="1" /></label>
               <label>Subjects / Tags <input id="subjects" placeholder="Comma-separated" /></label>
             </div>
           </fieldset>
@@ -209,54 +221,91 @@
             <button id="cancelEditBtn" class="button button-secondary" type="button">Cancel Edit</button>
           </div>
           </form>
+          </section>
+
+          <section class="admin-table-wrap admin-block">
+            <h3>Edit/search records</h3>
+            <div class="admin-tools">
+              <input id="adminSearch" type="search" placeholder="Search records in admin table" />
+            </div>
+            <table id="adminTable">
+              <thead>
+                <tr>
+                  <th><input id="selectAllRows" type="checkbox" aria-label="Select all records" /></th>
+                  <th>Title</th>
+                  <th>Creator</th>
+                  <th>Format</th>
+                  <th>Year</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="adminTableBody"></tbody>
+            </table>
+          </section>
         </section>
 
-        
-        <section class="location-manager admin-block">
-          <h3>Utilities</h3>
-          <div class="admin-tools">
-            <input id="newLocationInput" placeholder="Add location" />
-            <button id="addLocationBtn" class="button button-secondary" type="button">Add Location</button>
-          </div>
-          <ul id="locationList" class="location-list"></ul>
-          <div class="admin-tools top-space">
-            <input id="newGenreInput" placeholder="Add genre" />
-            <button id="addGenreBtn" class="button button-secondary" type="button">Add Genre</button>
-          </div>
-          <ul id="genreList" class="location-list"></ul>
+        <section class="admin-tab-panel hidden" data-admin-panel="record-tools">
+          <section class="admin-block">
+            <h3>Record management tools</h3>
+            <div class="admin-tools">
+              <select id="bulkStatusSelect">
+                <option value="">Bulk status…</option>
+                <option value="Available">Available</option>
+                <option value="Checked In">Checked In</option>
+                <option value="On Loan">On Loan</option>
+                <option value="On Order">On Order</option>
+                <option value="Reference Only">Reference Only</option>
+                <option value="Missing">Missing</option>
+              </select>
+              <select id="bulkGenreSelect" multiple size="4"></select>
+              <button id="applyBulkBtn" class="button button-secondary" type="button">Apply to selected</button>
+              <button id="bulkGenreAddBtn" class="button button-secondary" type="button">Add Genres to selected</button>
+            </div>
+          </section>
         </section>
 
-        <section class="admin-table-wrap admin-block">
-          <h3>Search Records</h3>
-          <div class="admin-tools">
-            <input id="adminSearch" type="search" placeholder="Search records in admin table" />
-            <select id="bulkStatusSelect">
-              <option value="">Bulk status…</option>
-              <option value="Available">Available</option>
-              <option value="Checked In">Checked In</option>
-              <option value="On Loan">On Loan</option>
-              <option value="On Order">On Order</option>
-              <option value="Reference Only">Reference Only</option>
-              <option value="Missing">Missing</option>
-            </select>
-            <select id="bulkGenreSelect" multiple size="4"></select>
-            <button id="applyBulkBtn" class="button button-secondary" type="button">Apply to selected</button>
-            <button id="bulkGenreAddBtn" class="button button-secondary" type="button">Add Genres to selected</button>
-          </div>
-          <table id="adminTable">
-            <thead>
-              <tr>
-                <th><input id="selectAllRows" type="checkbox" aria-label="Select all records" /></th>
-                <th>Title</th>
-                <th>Creator</th>
-                <th>Format</th>
-                <th>Year</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="adminTableBody"></tbody>
-          </table>
+        <section class="admin-tab-panel hidden" data-admin-panel="utilities">
+          <section class="location-manager admin-block">
+            <h3>Locations</h3>
+            <div class="admin-tools">
+              <input id="newLocationInput" placeholder="Add location" />
+              <button id="addLocationBtn" class="button button-secondary" type="button">Add location</button>
+            </div>
+            <ul id="locationList" class="location-list"></ul>
+          </section>
+
+          <section class="location-manager admin-block">
+            <h3>Genres</h3>
+            <div class="admin-tools">
+              <input id="newGenreInput" placeholder="Add genre" />
+              <button id="addGenreBtn" class="button button-secondary" type="button">Add genre</button>
+            </div>
+            <ul id="genreList" class="location-list"></ul>
+          </section>
+
+          <section class="location-manager admin-block">
+            <h3>Curated shelves</h3>
+            <div class="admin-tools">
+              <input id="newCuratedShelfInput" placeholder="Add curated shelf" />
+              <button id="addCuratedShelfBtn" class="button button-secondary" type="button">Add curated shelf</button>
+            </div>
+            <ul id="curatedShelfList" class="location-list"></ul>
+          </section>
+        </section>
+
+        <section class="admin-tab-panel hidden" data-admin-panel="discovery">
+          <section class="admin-block">
+            <h3>Discovery</h3>
+            <p class="muted">Curated shelf assignments and visual shelf browsing update from the managed lists in Utilities.</p>
+          </section>
+        </section>
+
+        <section class="admin-tab-panel hidden" data-admin-panel="system">
+          <section class="admin-block">
+            <h3>System</h3>
+            <p class="muted">Use export/import controls above for data backup and migration utilities.</p>
+          </section>
         </section>
       </section>
     </main>
