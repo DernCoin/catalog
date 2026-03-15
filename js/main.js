@@ -1,7 +1,6 @@
 import { PAGE_SIZE, PLACEHOLDER_COVER } from "./config.js";
 import { loadRecords, saveRecords, exportRecords, importRecords, normalizeRecord, loadSettings, saveSettings } from "./storage.js";
 import { login, logout, isAdminSessionActive } from "./auth.js";
-import { sampleRecords } from "./seed.js";
 import { buildFacets, queryRecords, getStats, duplicateCandidates, getRelated, PRELOADED_GENRES, didYouMean, asArray, normalizeAuthor } from "./catalog.js";
 
 const state = {
@@ -17,17 +16,17 @@ const state = {
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const els = {
-  adminToggleBtn: $("#adminToggleBtn"), adminSection: $("#adminSection"), loginModal: $("#loginModal"), closeLoginBtn: $("#closeLoginBtn"), loginForm: $("#loginForm"), loginError: $("#loginError"),
+  adminToggleBtn: $("#adminToggleBtn"), adminPageBtn: $("#adminPageBtn"), adminSection: $("#adminSection"), loginModal: $("#loginModal"), closeLoginBtn: $("#closeLoginBtn"), loginForm: $("#loginForm"), loginError: $("#loginError"),
   keywordSearch: $("#keywordSearch"), searchSuggestions: $("#searchSuggestions"), didYouMean: $("#didYouMean"),
   toggleAdvancedBtn: $("#toggleAdvancedBtn"), advancedSearch: $("#advancedSearch"), sortFilter: $("#sortFilter"), resultsSummary: $("#resultsSummary"), publicResults: $("#publicResults"), emptyState: $("#emptyState"),
   loadMoreBtn: $("#loadMoreBtn"), template: $("#recordTemplate"), catalogStats: $("#catalogStats"), newArrivals: $("#newArrivals"), arrivalsPrevBtn: $("#arrivalsPrevBtn"), arrivalsNextBtn: $("#arrivalsNextBtn"), randomItemBtn: $("#randomItemBtn"),
   facets: { format: $("#facetFormat"), genre: $("#facetGenre"), year: $("#facetYear"), status: $("#facetStatus"), location: $("#facetLocation"), binding: $("#facetBinding") },
   clearFiltersBtn: $("#clearFiltersBtn"), adminSearch: $("#adminSearch"), adminTableBody: $("#adminTableBody"), selectAllRows: $("#selectAllRows"), applyBulkBtn: $("#applyBulkBtn"), bulkStatusSelect: $("#bulkStatusSelect"),
   bulkGenreSelect: $("#bulkGenreSelect"), bulkGenreAddBtn: $("#bulkGenreAddBtn"),
-  recordForm: $("#recordForm"), cancelEditBtn: $("#cancelEditBtn"), duplicateWarning: $("#duplicateWarning"), adminMessage: $("#adminMessage"), exportBtn: $("#exportBtn"), importInput: $("#importInput"), seedDataBtn: $("#seedDataBtn"),
+  recordForm: $("#recordForm"), cancelEditBtn: $("#cancelEditBtn"), duplicateWarning: $("#duplicateWarning"), adminMessage: $("#adminMessage"), exportBtn: $("#exportBtn"), importInput: $("#importInput"),
   recordDetailsModal: $("#recordDetailsModal"), closeRecordDetailsBtn: $("#closeRecordDetailsBtn"), recordDetailsBody: $("#recordDetailsBody"), copyCitationBtn: $("#copyCitationBtn"),
   fetchMetadataBtn: $("#fetchMetadataBtn"), genres: $("#genres"), coverUpload: $("#coverUpload"), locationSelect: $("#location"),
-  newLocationInput: $("#newLocationInput"), addLocationBtn: $("#addLocationBtn"), locationList: $("#locationList"),
+  newLocationInput: $("#newLocationInput"), addLocationBtn: $("#addLocationBtn"), locationList: $("#locationList"), newGenreInput: $("#newGenreInput"), addGenreBtn: $("#addGenreBtn"), genreList: $("#genreList"),
   recentBuckets: $("#recentBuckets"), coverWall: $("#coverWall"), statsPage: $("#statsPage"), shelfPages: $("#shelfPages"),
 };
 
@@ -44,9 +43,10 @@ function q() {
 
 function bindEvents() {
   $$(".nav-btn").forEach((btn) => btn.addEventListener("click", () => switchView(btn.dataset.view)));
-  els.adminToggleBtn.addEventListener("click", () => { if (state.isAdmin) { state.isAdmin = false; logout(); render(); return; } els.loginModal.classList.remove("hidden"); $("#username").focus(); });
+  els.adminToggleBtn.addEventListener("click", () => { if (state.isAdmin) { state.isAdmin = false; logout(); if (state.view === "admin") switchView("search"); render(); return; } els.loginModal.classList.remove("hidden"); $("#username").focus(); });
+  els.adminPageBtn.addEventListener("click", () => { if (!state.isAdmin) { els.loginModal.classList.remove("hidden"); $("#username").focus(); return; } switchView("admin"); });
   els.closeLoginBtn.addEventListener("click", () => els.loginModal.classList.add("hidden"));
-  els.loginForm.addEventListener("submit", (e) => { e.preventDefault(); const ok = login($("#username").value.trim(), $("#password").value); if (!ok) { els.loginError.textContent = "Login failed."; return; } els.loginError.textContent = ""; els.loginModal.classList.add("hidden"); els.loginForm.reset(); state.isAdmin = true; render(); });
+  els.loginForm.addEventListener("submit", (e) => { e.preventDefault(); const ok = login($("#username").value.trim(), $("#password").value); if (!ok) { els.loginError.textContent = "Login failed."; return; } els.loginError.textContent = ""; els.loginModal.classList.add("hidden"); els.loginForm.reset(); state.isAdmin = true; render(); if (location.hash === "#admin") switchView("admin"); });
 
   [els.keywordSearch, els.sortFilter, $("#advTitle"), $("#advCreator"), $("#advSubject"), $("#advKeyword"), $("#advYear"), $("#advFormat")].forEach((el) => el.addEventListener("input", () => { state.shown = PAGE_SIZE; renderPublic(); }));
   els.keywordSearch.addEventListener("input", renderSuggestions);
@@ -72,24 +72,34 @@ function bindEvents() {
   els.bulkGenreAddBtn.addEventListener("click", bulkAddGenres);
 
   els.addLocationBtn.addEventListener("click", addLocation);
+  els.addGenreBtn.addEventListener("click", addGenre);
   els.exportBtn.addEventListener("click", () => exportRecords(state.records));
   els.importInput.addEventListener("change", async (e) => { if (!e.target.files?.[0]) return; state.records = await importRecords(e.target.files[0]); saveRecords(state.records); render(); });
-  els.seedDataBtn.addEventListener("click", () => { state.records = sampleRecords.map(normalizeRecord); saveRecords(state.records); render(); });
   els.closeRecordDetailsBtn.addEventListener("click", () => els.recordDetailsModal.classList.add("hidden"));
 }
 
 function switchView(view) {
   state.view = view;
+  if (view === "admin") history.replaceState(null, "", "#admin");
   ["Search", "Recent", "Covers", "Stats", "Shelves"].forEach((v) => $(`#view${v}`).classList.toggle("hidden", view !== v.toLowerCase()));
+  if (view === "admin" && !state.isAdmin) { location.hash = "#admin"; els.loginModal.classList.remove("hidden"); $("#username").focus(); state.view = "search"; view = "search"; }
+  els.adminSection.classList.toggle("hidden", view !== "admin" || !state.isAdmin);
+  if (view !== "admin" && location.hash === "#admin") history.replaceState(null, "", "#search");
   if (view === "recent") renderRecentPage();
   if (view === "covers") renderCoverWall();
   if (view === "stats") renderStatsPage();
   if (view === "shelves") renderShelfPages();
 }
 
+function getManagedGenres() {
+  return [...new Set([...(state.settings.genres || []), ...PRELOADED_GENRES, ...state.records.flatMap((r) => asArray(r.genres?.length ? r.genres : r.genre))])].filter(Boolean).sort((a,b)=>a.localeCompare(b));
+}
+
 function fillGenres() {
-  els.genres.innerHTML = PRELOADED_GENRES.map((g) => `<option value="${g}">${g}</option>`).join("");
-  els.bulkGenreSelect.innerHTML = PRELOADED_GENRES.map((g) => `<option value="${g}">${g}</option>`).join("");
+  const managed = getManagedGenres();
+  els.genres.innerHTML = managed.map((g) => `<option value="${g}">${g}</option>`).join("");
+  els.bulkGenreSelect.innerHTML = managed.map((g) => `<option value="${g}">${g}</option>`).join("");
+  renderGenreList(managed);
 }
 
 function fillLocations() {
@@ -108,6 +118,59 @@ function renderLocationList(locations) {
   });
 }
 
+
+function renderGenreList(genres) {
+  els.genreList.innerHTML = "";
+  genres.forEach((genre) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span>${genre}</span><div><button class="button button-secondary" data-act="rename" type="button">Edit</button> <button class="button button-secondary" data-act="delete" type="button">Delete</button></div>`;
+    li.querySelector('[data-act="rename"]').addEventListener("click", () => {
+      const next = window.prompt("Rename genre", genre);
+      if (!next || next.trim() === genre) return;
+      renameGenre(genre, next.trim());
+    });
+    li.querySelector('[data-act="delete"]').addEventListener("click", () => {
+      deleteGenre(genre);
+    });
+    els.genreList.appendChild(li);
+  });
+}
+
+function addGenre() {
+  const value = els.newGenreInput.value.trim();
+  if (!value) return;
+  const set = new Set(state.settings.genres || []);
+  set.add(value);
+  state.settings.genres = [...set].sort((a,b)=>a.localeCompare(b));
+  saveSettings(state.settings);
+  els.newGenreInput.value = "";
+  fillGenres();
+}
+
+function renameGenre(prev, next) {
+  const replace = (record) => {
+    const genres = asArray(record.genres?.length ? record.genres : record.genre).map((g) => (g === prev ? next : g));
+    const unique = [...new Set(genres)];
+    return { ...record, genres: unique, genre: unique.join(", ") };
+  };
+  state.records = state.records.map(replace);
+  const set = new Set((state.settings.genres || []).map((g) => (g === prev ? next : g)));
+  state.settings.genres = [...set].sort((a,b)=>a.localeCompare(b));
+  saveSettings(state.settings);
+  saveRecords(state.records);
+  render();
+}
+
+function deleteGenre(target) {
+  state.records = state.records.map((record) => {
+    const genres = asArray(record.genres?.length ? record.genres : record.genre).filter((g) => g !== target);
+    return { ...record, genres, genre: genres.join(", ") };
+  });
+  state.settings.genres = (state.settings.genres || []).filter((g) => g !== target);
+  saveSettings(state.settings);
+  saveRecords(state.records);
+  render();
+}
 function addLocation() {
   const value = els.newLocationInput.value.trim();
   if (!value) return;
@@ -126,6 +189,20 @@ async function fetchMetadata() {
     const data = await res.json();
     const map = { title: "#title", publishers: "#publisher", publish_date: "#year", notes: "#description" };
     Object.entries(map).forEach(([k, id]) => { if (!$(id).value && data[k]) $(id).value = Array.isArray(data[k]) ? data[k][0] : String(data[k]).slice(0, 300); });
+    if (!$("#creator").value && Array.isArray(data.authors) && data.authors.length) {
+      const authorNames = await Promise.all(data.authors.map(async (authorRef) => {
+        try {
+          const resAuthor = await fetch(`https://openlibrary.org${authorRef.key}.json`);
+          if (!resAuthor.ok) return "";
+          const authorData = await resAuthor.json();
+          return String(authorData.name || "").trim();
+        } catch {
+          return "";
+        }
+      }));
+      const normalized = authorNames.filter(Boolean);
+      if (normalized.length) $("#creator").value = normalized.join(", ");
+    }
     if (!$("#coverUrl").value) $("#coverUrl").value = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
     flash("Metadata fetched.");
   } catch (error) {
@@ -186,8 +263,8 @@ function checkDuplicateDraft() {
 }
 
 function render() {
-  els.adminSection.classList.toggle("hidden", !state.isAdmin);
   els.adminToggleBtn.textContent = state.isAdmin ? "Logout Admin" : "Admin Login";
+  els.adminPageBtn.classList.toggle("hidden", !state.isAdmin);
   fillGenres();
   fillLocations();
   renderPublic();
@@ -230,7 +307,7 @@ function renderArrivals() {
   const recent = getRecentArrivals(); const perPage = 5; const pages = Math.max(Math.ceil(recent.length / perPage), 1); state.arrivalsPage = Math.min(state.arrivalsPage, pages - 1);
   const pageItems = recent.slice(state.arrivalsPage * perPage, state.arrivalsPage * perPage + perPage);
   els.newArrivals.innerHTML = "";
-  pageItems.forEach((r) => { const b = document.createElement("button"); b.className = "arrival-item"; b.type = "button"; b.innerHTML = `<img class="arrival-cover" src="${r.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${r.title}"><span class="arrival-title">${r.title}</span>`; b.addEventListener("click", () => openDetail(r)); els.newArrivals.appendChild(b); });
+  pageItems.forEach((r) => { const b = document.createElement("button"); b.className = "arrival-item"; b.type = "button"; b.innerHTML = `<img class="arrival-cover" src="${r.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${r.title}"><span class="arrival-title">${r.title}</span>`; b.classList.toggle("status-on-order", String(r.status||"").toLowerCase()==="on order"); b.addEventListener("click", () => openDetail(r)); els.newArrivals.appendChild(b); });
   els.arrivalsPrevBtn.disabled = state.arrivalsPage === 0; els.arrivalsNextBtn.disabled = state.arrivalsPage >= pages - 1;
 }
 
@@ -240,8 +317,13 @@ function facetCount(id, value) { if (value === "all") return state.records.lengt
 function highlight(text, term) { if (!term) return text; const re = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "ig"); return String(text||"").replace(re, "<mark>$1</mark>"); }
 function renderCard(r, term) {
   const node = els.template.content.firstElementChild.cloneNode(true);
+  node.classList.toggle("status-on-order", String(r.status || "").toLowerCase() === "on order");
   node.querySelector(".cover").src = r.coverUrl || PLACEHOLDER_COVER; node.querySelector(".cover").alt = `Cover for ${r.title}`;
-  node.querySelector(".badge-format").textContent = r.format; node.querySelector(".badge-status").textContent = r.status;
+  const formatBadge = node.querySelector(".badge-format");
+  const statusBadge = node.querySelector(".badge-status");
+  formatBadge.textContent = r.format; statusBadge.textContent = r.status;
+  formatBadge.dataset.format = String(r.format || "other").toLowerCase().replace(/\s+/g, "-");
+  statusBadge.dataset.status = String(r.status || "").toLowerCase().replace(/\s+/g, "-");
   node.querySelector(".record-title").innerHTML = highlight(r.title, term);
   node.querySelector(".record-meta").innerHTML = highlight(`${r.creator}${r.year ? ` • ${r.year}` : ""}${r.binding ? ` • ${r.binding}` : ""}`, term);
   node.querySelector(".record-location").textContent = `${r.callNumber || "No call number"} • ${r.location || "No location"}`;
@@ -259,7 +341,7 @@ function openDetail(record) {
   const related = getRelated(state.records, record);
   const genres = asArray(record.genres?.length ? record.genres : record.genre);
   const decade = record.year ? `${Math.floor(Number(record.year) / 10) * 10}s` : "";
-  els.recordDetailsBody.innerHTML = `<article class="opac-record-layout"><div class="record-columns"><div class="record-image-column"><img src="${record.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${record.title}" class="details-cover" /></div><section class="record-main-column"><h4>${record.title}</h4><p class="muted">${record.subtitle || ""}</p><dl class="metadata-grid"><dt>Author / Creator</dt><dd><button class="subject-link" id="authorPageBtn" type="button">${record.creator}</button></dd><dt>Publisher</dt><dd>${record.publisher || "Unknown"}</dd><dt>Published</dt><dd>${record.year || "n.d."}</dd><dt>Genres</dt><dd>${genres.join(", ") || "n/a"}</dd><dt>Binding</dt><dd>${record.binding || "n/a"}</dd><dt>Series</dt><dd>${record.seriesName ? `${record.seriesName}${record.seriesNumber ? ` #${record.seriesNumber}` : ""}` : "n/a"}</dd><dt>Identifier</dt><dd>${record.identifier || "n/a"}</dd><dt>Date acquired</dt><dd>${record.dateAcquired || "n/a"} ${record.source ? ` • ${record.source}` : ""} ${record.pricePaid ? ` • $${record.pricePaid}` : ""}</dd></dl></section><aside class="record-availability-column"><div class="availability-card"><h5>Availability</h5><p><strong>Status:</strong> ${record.status}</p><p><strong>Location:</strong> ${record.location || "n/a"}</p><p><strong>Call Number:</strong> ${record.callNumber || "n/a"}</p><p><strong>Format:</strong> ${record.format}</p></div></aside></div><section class="detail-section"><h5>Description</h5><p>${record.description || "No description"}</p></section><section class="detail-section"><h5>Collection Pathways</h5><p class="muted"><button class="subject-link" id="decadeBtn" type="button">More from ${decade || "this era"}</button> <button class="subject-link" id="genreBtn" type="button">More ${genres[0] || "in this category"}</button></p></section><section class="detail-section"><h5>Series & Related</h5><p class="muted">Series items: ${related.bySeries.map((r)=>r.title).join(", ") || "None"}</p><p class="muted">By creator: ${related.byCreator.map((r)=>r.title).join(", ") || "None"}</p></section><section class="detail-section nearby-section"><h5>Browse a Shelf</h5><div class="nearby-spines" role="list">${related.virtualShelf.map((item)=>`<button class="book-spine ${item.id===record.id?"selected":""}" data-record-id="${item.id}" type="button"><span class="spine-call">${item.callNumber || "No call #"}</span><span class="spine-title">${item.title}</span></button>`).join("")}</div></section></article>`;
+  els.recordDetailsBody.innerHTML = `<article class="opac-record-layout"><div class="record-columns"><div class="record-image-column"><img src="${record.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${record.title}" class="details-cover" /></div><section class="record-main-column"><h4>${record.title}</h4><p class="muted">${record.subtitle || ""}</p><dl class="metadata-grid"><dt>Author / Creator</dt><dd><button class="subject-link" id="authorPageBtn" type="button">${record.creator}</button></dd><dt>Publisher</dt><dd>${record.publisher || "Unknown"}</dd><dt>Published</dt><dd>${record.year || "n.d."}</dd><dt>Genres</dt><dd>${genres.join(", ") || "n/a"}</dd><dt>Binding</dt><dd>${record.binding || "n/a"}</dd><dt>Series</dt><dd>${record.seriesName ? `${record.seriesName}${record.seriesNumber ? ` #${record.seriesNumber}` : ""}` : "n/a"}</dd><dt>Identifier</dt><dd>${record.identifier || "n/a"}</dd><dt>Date acquired</dt><dd>${record.dateAcquired || "n/a"} ${record.source ? ` • ${record.source}` : ""} ${record.pricePaid ? ` • $${record.pricePaid}` : ""}</dd></dl></section><aside class="record-availability-column"><div class="availability-card ${String(record.status||"").toLowerCase()==="on order"?"status-on-order":""}"><h5>Availability</h5><p><strong>Status:</strong> ${record.status}</p><p><strong>Location:</strong> ${record.location || "n/a"}</p><p><strong>Call Number:</strong> ${record.callNumber || "n/a"}</p><p><strong>Format:</strong> ${record.format}</p></div></aside></div><section class="detail-section"><h5>Description</h5><p>${record.description || "No description"}</p></section><section class="detail-section"><h5>Collection Pathways</h5><p class="muted"><button class="subject-link" id="decadeBtn" type="button">More from ${decade || "this era"}</button> <button class="subject-link" id="genreBtn" type="button">More ${genres[0] || "in this category"}</button></p></section><section class="detail-section"><h5>Series & Related</h5><p class="muted">Series items: ${related.bySeries.map((r)=>r.title).join(", ") || "None"}</p><p class="muted">By creator: ${related.byCreator.map((r)=>r.title).join(", ") || "None"}</p></section><section class="detail-section nearby-section"><h5>Browse a Shelf</h5><div class="nearby-spines" role="list">${related.virtualShelf.map((item)=>`<button class="book-spine ${item.id===record.id?"selected":""}" data-record-id="${item.id}" type="button"><span class="spine-title">${item.title} • ${item.creator || "Unknown"}</span><span class="spine-call">${item.callNumber || "No call #"}</span></button>`).join("")}</div></section></article>`;
   els.recordDetailsBody.querySelectorAll(".book-spine").forEach((spine) => spine.addEventListener("click", () => openDetail(state.records.find((r) => r.id === spine.dataset.recordId))));
   $("#authorPageBtn")?.addEventListener("click", ()=>renderAuthorPage(record.creator));
   $("#decadeBtn")?.addEventListener("click", ()=>{els.keywordSearch.value=decade.slice(0,4); switchView('search'); renderPublic();});
@@ -278,12 +360,17 @@ function renderAuthorPage(author) {
 function renderRecentPage() {
   const now = Date.now();
   const week = state.records.filter((r)=>Number(r.addedAt)>now-1000*60*60*24*7);
-  const month = state.records.filter((r)=>Number(r.addedAt)>now-1000*60*60*24*30);
+  const weekIds = new Set(week.map((r)=>r.id));
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0,0,0,0);
+  const month = state.records.filter((r)=>Number(r.addedAt)>=monthStart.getTime() && !weekIds.has(r.id));
   els.recentBuckets.innerHTML = `<h4>This week</h4>${week.map((r)=>`<p><button class="subject-link recent-open" data-id="${r.id}" type="button">${r.title}</button> — ${r.creator}</p>`).join("") || '<p class="muted">No additions.</p>'}<h4>This month</h4>${month.map((r)=>`<p><button class="subject-link recent-open" data-id="${r.id}" type="button">${r.title}</button> — ${r.creator}</p>`).join("")}`;
   els.recentBuckets.querySelectorAll('.recent-open').forEach((b)=>b.addEventListener('click',()=>openDetail(state.records.find((r)=>r.id===b.dataset.id))));
 }
 function renderCoverWall() {
-  els.coverWall.innerHTML = state.records.map((r)=>`<button class="wall-item" data-id="${r.id}" type="button"><img src="${r.coverUrl || PLACEHOLDER_COVER}" alt="${r.title}" /><span>${r.title}</span></button>`).join("");
+  const shuffled = [...state.records].sort(() => Math.random() - 0.5);
+  els.coverWall.innerHTML = shuffled.map((r)=>`<button class="wall-item ${String(r.status||"").toLowerCase()==="on order"?"status-on-order":""}" data-id="${r.id}" type="button"><img src="${r.coverUrl || PLACEHOLDER_COVER}" alt="${r.title}" /><span>${r.title}</span></button>`).join("");
   els.coverWall.querySelectorAll(".wall-item").forEach((b)=>b.addEventListener("click",()=>openDetail(state.records.find((r)=>r.id===b.dataset.id))));
 }
 function renderStatsPage() {
@@ -330,4 +417,5 @@ function flash(msg, isError = false) { els.adminMessage.textContent = msg; els.a
 bindEvents();
 render();
 switchView("search");
+if (location.hash === "#admin") switchView("admin");
 if (location.hash.startsWith("#record-")) { const id = location.hash.replace("#record-", ""); const hit = state.records.find((r) => r.id === id); if (hit) openDetail(hit); }

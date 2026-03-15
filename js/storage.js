@@ -1,5 +1,4 @@
 import { STORAGE_KEY, SETTINGS_KEY } from "./config.js";
-import { sampleRecords } from "./seed.js";
 
 export function normalizeRecord(record) {
   const genres = Array.isArray(record.genres)
@@ -31,13 +30,10 @@ export function normalizeRecord(record) {
 export function loadRecords() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      saveRecords(sampleRecords);
-      return sampleRecords.map(normalizeRecord);
-    }
+    if (!raw) return [];
     return JSON.parse(raw).map(normalizeRecord);
   } catch {
-    return sampleRecords.map(normalizeRecord);
+    return [];
   }
 }
 
@@ -48,11 +44,11 @@ export function saveRecords(records) {
 export function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return { locations: [] };
+    if (!raw) return { locations: [], genres: [] };
     const parsed = JSON.parse(raw);
-    return { locations: parsed.locations || [] };
+    return { locations: parsed.locations || [], genres: parsed.genres || [] };
   } catch {
-    return { locations: [] };
+    return { locations: [], genres: [] };
   }
 }
 

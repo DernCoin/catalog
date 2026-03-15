@@ -15,6 +15,7 @@
       </div>
       <div class="header-actions">
         <button id="randomItemBtn" class="button button-secondary" type="button">Browse something unexpected</button>
+        <button id="adminPageBtn" class="button button-secondary hidden" type="button">Admin Panel</button>
         <button id="adminToggleBtn" class="button" type="button">Admin Login</button>
       </div>
     </header>
@@ -118,11 +119,10 @@
       <section id="adminSection" class="card hidden" aria-label="Catalog admin">
         <div class="admin-header">
           <div>
-            <h2>Catalog Manager</h2>
+            <h2>Admin Panel</h2>
             <p class="muted">Lightweight cataloging workspace for your personal OPAC.</p>
           </div>
           <div class="admin-buttons">
-            <button id="seedDataBtn" type="button" class="button button-secondary">Seed Sample Data</button>
             <button id="exportBtn" type="button" class="button button-secondary">Export JSON</button>
             <label class="file-label button button-secondary" for="importInput">Import JSON</label>
             <input id="importInput" type="file" accept="application/json" class="hidden" />
@@ -131,7 +131,9 @@
 
         <p id="adminMessage" class="status-message" aria-live="polite"></p>
 
-        <form id="recordForm" class="catalog-form">
+        <section class="admin-block">
+          <h3>Add / Edit Record</h3>
+          <form id="recordForm" class="catalog-form">
           <input id="recordId" type="hidden" />
 
           <fieldset>
@@ -206,19 +208,26 @@
             <button class="button" type="submit">Save Record</button>
             <button id="cancelEditBtn" class="button button-secondary" type="button">Cancel Edit</button>
           </div>
-        </form>
+          </form>
+        </section>
 
         
-        <section class="location-manager">
-          <h3>Manage Locations</h3>
+        <section class="location-manager admin-block">
+          <h3>Utilities</h3>
           <div class="admin-tools">
             <input id="newLocationInput" placeholder="Add location" />
             <button id="addLocationBtn" class="button button-secondary" type="button">Add Location</button>
           </div>
           <ul id="locationList" class="location-list"></ul>
+          <div class="admin-tools top-space">
+            <input id="newGenreInput" placeholder="Add genre" />
+            <button id="addGenreBtn" class="button button-secondary" type="button">Add Genre</button>
+          </div>
+          <ul id="genreList" class="location-list"></ul>
         </section>
 
-        <section class="admin-table-wrap">
+        <section class="admin-table-wrap admin-block">
+          <h3>Search Records</h3>
           <div class="admin-tools">
             <input id="adminSearch" type="search" placeholder="Search records in admin table" />
             <select id="bulkStatusSelect">
