@@ -81,9 +81,27 @@ export function duplicateCandidates(records, draft) {
 }
 
 export function getRelated(records, record) {
+  const withCallNumbers = records
+    .filter((r) => r.id !== record.id && r.callNumber)
+    .sort((a, b) => normalizeCallNumber(a.callNumber).localeCompare(normalizeCallNumber(b.callNumber), undefined, { numeric: true }));
+
+  const currentCall = normalizeCallNumber(record.callNumber || "");
+  const insertionIndex = withCallNumbers.findIndex((r) => normalizeCallNumber(r.callNumber).localeCompare(currentCall, undefined, { numeric: true }) >= 0);
+  const anchor = insertionIndex >= 0 ? insertionIndex : Math.max(withCallNumbers.length - 1, 0);
+  const start = Math.max(anchor - 2, 0);
+  const virtualShelf = withCallNumbers.slice(start, start + 5);
+
   return {
     byCreator: records.filter((r) => r.id !== record.id && r.creator === record.creator).slice(0, 3),
     byCategory: records.filter((r) => r.id !== record.id && r.genre && r.genre === record.genre).slice(0, 3),
-    nearbyFormat: records.filter((r) => r.id !== record.id && r.format === record.format).slice(0, 3),
+    virtualShelf,
   };
+}
+
+function normalizeCallNumber(callNumber) {
+  return String(callNumber || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9.]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }

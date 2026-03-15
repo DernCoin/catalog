@@ -10,6 +10,7 @@ const state = {
   shown: PAGE_SIZE,
   selectedIds: new Set(),
   currentDetail: null,
+  arrivalsPage: 0,
 };
 
 const $ = (s) => document.querySelector(s);
@@ -119,8 +120,15 @@ function bindEvents() {
   });
 
   els.loadMoreBtn.addEventListener("click", () => { state.shown += PAGE_SIZE; renderPublic(); });
-  els.arrivalsPrevBtn.addEventListener("click", () => els.newArrivals.scrollBy({ left: -400, behavior: "smooth" }));
-  els.arrivalsNextBtn.addEventListener("click", () => els.newArrivals.scrollBy({ left: 400, behavior: "smooth" }));
+  els.arrivalsPrevBtn.addEventListener("click", () => {
+    state.arrivalsPage = Math.max(state.arrivalsPage - 1, 0);
+    renderArrivals();
+  });
+  els.arrivalsNextBtn.addEventListener("click", () => {
+    const maxPage = Math.max(Math.ceil(getRecentArrivals().length / 6) - 1, 0);
+    state.arrivalsPage = Math.min(state.arrivalsPage + 1, maxPage);
+    renderArrivals();
+  });
   els.randomItemBtn.addEventListener("click", () => openDetail(state.records[Math.floor(Math.random() * state.records.length)]));
 
   els.recordForm.addEventListener("input", checkDuplicateDraft);
@@ -244,6 +252,8 @@ function render() {
 }
 
 function renderPublic() {
+  renderArrivals();
+
   const facets = buildFacets(state.records);
   fillFacet(els.facets.format, ["all", ...facets.format]);
   fillFacet(els.facets.genre, ["all", ...facets.genre]);
@@ -251,15 +261,20 @@ function renderPublic() {
   fillFacet(els.facets.status, ["all", ...facets.status]);
   fillFacet(els.facets.location, ["all", ...facets.location]);
 
-  const results = queryRecords(state.records, q());
+  const criteria = q();
+  const hasSearchInput = hasActiveSearch(criteria);
+  const results = hasSearchInput ? queryRecords(state.records, criteria) : [];
   const visible = results.slice(0, state.shown);
 
   els.publicResults.innerHTML = "";
   visible.forEach((r) => els.publicResults.appendChild(renderCard(r)));
 
-  els.resultsSummary.textContent = `${results.length} results`;
-  els.emptyState.classList.toggle("hidden", results.length > 0);
-  els.loadMoreBtn.classList.toggle("hidden", results.length <= visible.length);
+  els.resultsSummary.textContent = hasSearchInput ? `${results.length} results` : "Search to view catalog records.";
+  els.emptyState.textContent = hasSearchInput
+    ? "No records match your search. Try broadening your filters or searching by keyword."
+    : "Start with a keyword, advanced search field, or a filter to explore the catalog.";
+  els.emptyState.classList.toggle("hidden", results.length > 0 && hasSearchInput);
+  els.loadMoreBtn.classList.toggle("hidden", !hasSearchInput || results.length <= visible.length);
 
   const stats = getStats(state.records);
   els.catalogStats.innerHTML = `
@@ -268,9 +283,41 @@ function renderPublic() {
     ${Object.entries(stats.byFormat).map(([k, v]) => `<span>${k}: <strong>${v}</strong></span>`).join("")}
   `;
 
-  const recent = [...state.records].sort((a, b) => Number(b.addedAt) - Number(a.addedAt)).slice(0, 10);
+}
+
+
+function hasActiveSearch(criteria) {
+  return Boolean(
+    criteria.keyword ||
+    criteria.title ||
+    criteria.creator ||
+    criteria.subject ||
+    criteria.advKeyword ||
+    criteria.year ||
+    (criteria.advFormat && criteria.advFormat !== "all") ||
+    criteria.facetFormat !== "all" ||
+    criteria.facetGenre !== "all" ||
+    criteria.facetYear !== "all" ||
+    criteria.facetStatus !== "all" ||
+    criteria.facetLocation !== "all"
+  );
+}
+
+function getRecentArrivals() {
+  return [...state.records].sort((a, b) => Number(b.addedAt) - Number(a.addedAt)).slice(0, 24);
+}
+
+function renderArrivals() {
+  const recent = getRecentArrivals();
+  const perPage = 6;
+  const pages = Math.max(Math.ceil(recent.length / perPage), 1);
+  state.arrivalsPage = Math.min(state.arrivalsPage, pages - 1);
+
+  const start = state.arrivalsPage * perPage;
+  const pageItems = recent.slice(start, start + perPage);
+
   els.newArrivals.innerHTML = "";
-  recent.forEach((r) => {
+  pageItems.forEach((r) => {
     const b = document.createElement("button");
     b.className = "arrival-item";
     b.type = "button";
@@ -278,6 +325,9 @@ function renderPublic() {
     b.addEventListener("click", () => openDetail(r));
     els.newArrivals.appendChild(b);
   });
+
+  els.arrivalsPrevBtn.disabled = state.arrivalsPage === 0;
+  els.arrivalsNextBtn.disabled = state.arrivalsPage >= pages - 1;
 }
 
 function fillFacet(select, values) {
@@ -290,7 +340,9 @@ function renderCard(r) {
   const node = els.template.content.firstElementChild.cloneNode(true);
   node.querySelector(".cover").src = r.coverUrl || PLACEHOLDER_COVER;
   node.querySelector(".cover").alt = `Cover for ${r.title}`;
-  node.querySelector(".badge-format").textContent = r.format;
+  const formatBadge = node.querySelector(".badge-format");
+  formatBadge.textContent = r.format;
+  formatBadge.dataset.format = r.format.toLowerCase().replace(/\s+/g, "-");
   node.querySelector(".badge-status").textContent = r.status;
   node.querySelector(".record-title").textContent = r.title;
   node.querySelector(".record-meta").textContent = `${r.creator}${r.year ? ` • ${r.year}` : ""}`;
@@ -342,7 +394,7 @@ function openDetail(record) {
       <h5>Related Items</h5>
       <p class="muted">More by this creator: ${related.byCreator.map((r) => r.title).join(", ") || "None"}</p>
       <p class="muted">More in this category: ${related.byCategory.map((r) => r.title).join(", ") || "None"}</p>
-      <p class="muted">Nearby items in ${record.format}: ${related.nearbyFormat.map((r) => r.title).join(", ") || "None"}</p>
+      <p class="muted">Virtual shelf (by call number): ${related.virtualShelf.map((r) => `${r.callNumber || "n/a"} — ${r.title}`).join(" • ") || "None"}</p>
     </section>
   `;
 
