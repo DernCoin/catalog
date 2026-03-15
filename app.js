@@ -2,6 +2,13 @@ const STORAGE_KEY = "catalogRecords";
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "catalog123";
 
+const GENRES_BY_FORMAT = {
+  Book: ["Fantasy", "Science Fiction", "Mystery", "Romance", "Nonfiction", "Historical", "Biography", "Poetry", "Other"],
+  Vinyl: ["Jazz", "Rock", "Pop", "Hip-Hop", "Classical", "Soul", "Blues", "Electronic", "Country", "Other"],
+  "Board Game": ["Strategy", "Family", "Party", "Cooperative", "Deck Building", "Abstract", "Thematic", "Other"],
+  Other: ["Collectible", "Reference", "Educational", "Other"],
+};
+
 const starterRecords = [
   {
     id: createId(),
@@ -10,6 +17,8 @@ const starterRecords = [
     format: "Book",
     year: 1937,
     genre: "Fantasy",
+    publisher: "George Allen & Unwin",
+    location: "Living Room Shelf A",
     coverUrl: "https://images-na.ssl-images-amazon.com/images/I/81t2CVWEsUL.jpg",
     notes: "Classic adventure fantasy.",
   },
@@ -20,6 +29,8 @@ const starterRecords = [
     format: "Vinyl",
     year: 1959,
     genre: "Jazz",
+    publisher: "Columbia Records",
+    location: "Media Cabinet 2",
     coverUrl: "https://upload.wikimedia.org/wikipedia/en/9/9c/MilesDavisKindofBlue.jpg",
     notes: "Essential jazz LP.",
   },
@@ -30,6 +41,8 @@ const starterRecords = [
     format: "Board Game",
     year: 1995,
     genre: "Strategy",
+    publisher: "Kosmos",
+    location: "Game Closet",
     coverUrl: "https://upload.wikimedia.org/wikipedia/en/b/b0/Catan-2015-boxart.jpg",
     notes: "Great gateway strategy game.",
   },
@@ -46,7 +59,6 @@ const closeLoginBtn = document.querySelector("#closeLoginBtn");
 const loginForm = document.querySelector("#loginForm");
 const loginError = document.querySelector("#loginError");
 
-const opacSection = document.querySelector("#opacSection");
 const adminSection = document.querySelector("#adminSection");
 const publicResults = document.querySelector("#publicResults");
 const adminResults = document.querySelector("#adminResults");
@@ -57,6 +69,16 @@ const formatFilter = document.querySelector("#formatFilter");
 
 const recordForm = document.querySelector("#recordForm");
 const cancelEditBtn = document.querySelector("#cancelEditBtn");
+const formatField = document.querySelector("#format");
+const genreField = document.querySelector("#genre");
+
+const recordDetailsModal = document.querySelector("#recordDetailsModal");
+const closeRecordDetailsBtn = document.querySelector("#closeRecordDetailsBtn");
+const recordDetailsTitle = document.querySelector("#recordDetailsTitle");
+const recordDetailsMeta = document.querySelector("#recordDetailsMeta");
+const recordDetailsPublisher = document.querySelector("#recordDetailsPublisher");
+const recordDetailsLocation = document.querySelector("#recordDetailsLocation");
+const recordDetailsNotes = document.querySelector("#recordDetailsNotes");
 
 if (adminToggleBtn) {
   adminToggleBtn.addEventListener("click", () => {
@@ -71,9 +93,8 @@ if (adminToggleBtn) {
   });
 }
 
-if (closeLoginBtn) {
-  closeLoginBtn.addEventListener("click", closeLoginModal);
-}
+if (closeLoginBtn) closeLoginBtn.addEventListener("click", closeLoginModal);
+if (closeRecordDetailsBtn) closeRecordDetailsBtn.addEventListener("click", closeRecordDetailsModal);
 
 if (loginForm) {
   loginForm.addEventListener("submit", (event) => {
@@ -96,7 +117,7 @@ if (loginForm) {
 
 if (searchInput) searchInput.addEventListener("input", renderPublicCatalog);
 if (formatFilter) formatFilter.addEventListener("change", renderPublicCatalog);
-
+if (formatField) formatField.addEventListener("change", () => populateGenreOptions(formatField.value));
 
 function attemptAdminLogin(username, password) {
   if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) return false;
@@ -130,40 +151,68 @@ function closeLoginModal() {
   loginModal.classList.add("hidden");
 }
 
+function openRecordDetailsModal(record) {
+  if (!recordDetailsModal) return;
+
+  recordDetailsTitle.textContent = record.title || "Record Details";
+  recordDetailsMeta.textContent = `${record.creator} • ${record.format}${record.year ? ` • ${record.year}` : ""}${record.genre ? ` • ${record.genre}` : ""}`;
+  recordDetailsPublisher.textContent = `Publisher: ${record.publisher || "Not specified"}`;
+  recordDetailsLocation.textContent = `Location: ${record.location || "Not specified"}`;
+  recordDetailsNotes.textContent = record.notes || "No notes provided.";
+
+  recordDetailsModal.classList.remove("hidden");
+}
+
+function closeRecordDetailsModal() {
+  if (!recordDetailsModal) return;
+  recordDetailsModal.classList.add("hidden");
+}
+
 if (loginModal) {
   loginModal.addEventListener("click", (event) => {
     if (event.target === loginModal) closeLoginModal();
   });
 }
 
+if (recordDetailsModal) {
+  recordDetailsModal.addEventListener("click", (event) => {
+    if (event.target === recordDetailsModal) closeRecordDetailsModal();
+  });
+}
+
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && loginModal) closeLoginModal();
+  if (event.key === "Escape") {
+    if (loginModal && !loginModal.classList.contains("hidden")) closeLoginModal();
+    if (recordDetailsModal && !recordDetailsModal.classList.contains("hidden")) closeRecordDetailsModal();
+  }
 });
 
 if (recordForm) {
-recordForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const payload = getFormData();
+  recordForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const payload = getFormData();
 
-  if (!payload.id) {
-    payload.id = createId();
-    state.records.unshift(payload);
-  } else {
-    const idx = state.records.findIndex((item) => item.id === payload.id);
-    if (idx >= 0) state.records[idx] = payload;
-  }
+    if (!payload.id) {
+      payload.id = createId();
+      state.records.unshift(payload);
+    } else {
+      const idx = state.records.findIndex((item) => item.id === payload.id);
+      if (idx >= 0) state.records[idx] = payload;
+    }
 
-  persistRecords();
-  recordForm.reset();
-  document.querySelector("#recordId").value = "";
-  renderAll();
-});
+    persistRecords();
+    recordForm.reset();
+    document.querySelector("#recordId").value = "";
+    populateGenreOptions(formatField ? formatField.value : "Book");
+    renderAll();
+  });
 }
 
 if (cancelEditBtn && recordForm) {
   cancelEditBtn.addEventListener("click", () => {
     recordForm.reset();
     document.querySelector("#recordId").value = "";
+    populateGenreOptions(formatField ? formatField.value : "Book");
   });
 }
 
@@ -187,11 +236,21 @@ function loadRecords() {
   }
 
   try {
-    return JSON.parse(raw);
+    return JSON.parse(raw).map((record) => normalizeRecord(record));
   } catch (error) {
     console.error("Failed to parse catalog records from localStorage:", error);
     return starterRecords;
   }
+}
+
+function normalizeRecord(record) {
+  return {
+    ...record,
+    publisher: record.publisher || "",
+    location: record.location || "",
+    genre: record.genre || "",
+    notes: record.notes || "",
+  };
 }
 
 function persistRecords() {
@@ -220,7 +279,7 @@ function renderPublicCatalog() {
   const format = formatFilter.value;
 
   const filtered = state.records.filter((item) => {
-    const haystack = `${item.title} ${item.creator} ${item.genre} ${item.notes}`.toLowerCase();
+    const haystack = `${item.title} ${item.creator} ${item.genre} ${item.notes} ${item.publisher || ""} ${item.location || ""}`.toLowerCase();
     const matchesTerm = !term || haystack.includes(term);
     const matchesFormat = format === "all" || item.format === format;
     return matchesTerm && matchesFormat;
@@ -243,14 +302,17 @@ function renderRecord(record, withActions) {
   const cover = node.querySelector(".cover");
   const title = node.querySelector(".record-title");
   const meta = node.querySelector(".record-meta");
-  const notes = node.querySelector(".record-notes");
+  const detailsBtn = node.querySelector(".view-details-btn");
   const actions = node.querySelector(".record-actions");
 
   cover.src = record.coverUrl || "https://placehold.co/90x130?text=No+Cover";
   cover.alt = `${record.title} cover`;
   title.textContent = record.title;
-  meta.textContent = `${record.creator} • ${record.format}${record.year ? ` • ${record.year}` : ""}${record.genre ? ` • ${record.genre}` : ""}`;
-  notes.textContent = record.notes || "";
+  meta.textContent = `${record.creator} • ${record.format}${record.year ? ` • ${record.year}` : ""}${record.genre ? ` • ${record.genre}` : ""}${record.location ? ` • ${record.location}` : ""}`;
+
+  if (detailsBtn) {
+    detailsBtn.addEventListener("click", () => openRecordDetailsModal(record));
+  }
 
   if (withActions) {
     actions.classList.remove("hidden");
@@ -275,13 +337,35 @@ function renderRecord(record, withActions) {
   return node;
 }
 
+function populateGenreOptions(formatValue, selectedGenre = "") {
+  if (!genreField) return;
+
+  const options = GENRES_BY_FORMAT[formatValue] || GENRES_BY_FORMAT.Other;
+  genreField.innerHTML = "";
+
+  options.forEach((genre) => {
+    const option = document.createElement("option");
+    option.value = genre;
+    option.textContent = genre;
+    genreField.appendChild(option);
+  });
+
+  if (selectedGenre && options.includes(selectedGenre)) {
+    genreField.value = selectedGenre;
+  } else {
+    genreField.value = options[0];
+  }
+}
+
 function populateForm(record) {
   document.querySelector("#recordId").value = record.id;
   document.querySelector("#title").value = record.title;
   document.querySelector("#creator").value = record.creator;
   document.querySelector("#format").value = record.format;
   document.querySelector("#year").value = record.year || "";
-  document.querySelector("#genre").value = record.genre || "";
+  populateGenreOptions(record.format, record.genre || "");
+  document.querySelector("#publisher").value = record.publisher || "";
+  document.querySelector("#location").value = record.location || "";
   document.querySelector("#coverUrl").value = record.coverUrl || "";
   document.querySelector("#notes").value = record.notes || "";
   adminSection.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -295,14 +379,16 @@ function getFormData() {
     creator: document.querySelector("#creator").value.trim(),
     format: document.querySelector("#format").value,
     year: yearValue ? Number(yearValue) : null,
-    genre: document.querySelector("#genre").value.trim(),
+    genre: document.querySelector("#genre").value,
+    publisher: document.querySelector("#publisher").value.trim(),
+    location: document.querySelector("#location").value.trim(),
     coverUrl: document.querySelector("#coverUrl").value.trim(),
     notes: document.querySelector("#notes").value.trim(),
   };
 }
 
+populateGenreOptions(formatField ? formatField.value : "Book");
 renderAll();
-
 
 function createId() {
   if (

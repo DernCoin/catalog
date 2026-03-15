@@ -65,7 +65,17 @@
 
           <label>
             Genre / Category
-            <input id="genre" />
+            <select id="genre"></select>
+          </label>
+
+          <label>
+            Publisher
+            <input id="publisher" />
+          </label>
+
+          <label>
+            Location
+            <input id="location" placeholder="Shelf, room, bin, etc." />
           </label>
 
           <label>
@@ -113,13 +123,27 @@
       </form>
     </div>
 
+    <div id="recordDetailsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="recordDetailsTitle">
+      <div class="modal-content record-details-content">
+        <div class="record-details-header">
+          <h3 id="recordDetailsTitle">Record Details</h3>
+          <button class="button button-secondary" id="closeRecordDetailsBtn" type="button">Close</button>
+        </div>
+        <p id="recordDetailsMeta" class="record-meta"></p>
+        <p id="recordDetailsPublisher" class="record-meta"></p>
+        <p id="recordDetailsLocation" class="record-meta"></p>
+        <h4>Notes</h4>
+        <p id="recordDetailsNotes" class="record-notes"></p>
+      </div>
+    </div>
+
     <template id="recordTemplate">
       <article class="record-card">
         <img class="cover" alt="" loading="lazy" />
         <div>
           <h4 class="record-title"></h4>
           <p class="record-meta"></p>
-          <p class="record-notes"></p>
+          <button class="button button-secondary view-details-btn" type="button">View Details</button>
           <div class="record-actions hidden"></div>
         </div>
       </article>

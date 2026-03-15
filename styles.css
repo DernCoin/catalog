@@ -140,6 +140,10 @@ label {
   color: var(--muted);
 }
 
+.view-details-btn {
+  margin-top: 0.35rem;
+}
+
 .record-actions {
   margin-top: 0.5rem;
   display: flex;
@@ -173,6 +177,21 @@ label {
   background: #fff;
   padding: 1rem;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.record-details-content {
+  max-width: 520px;
+}
+
+.record-details-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.record-details-header h3 {
+  margin: 0;
 }
 
 menu {
