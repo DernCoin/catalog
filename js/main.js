@@ -375,17 +375,10 @@ function openDetail(record) {
   els.recordDetailsBody.innerHTML = `
     <article class="opac-record-layout">
       <div class="record-columns">
-        <aside class="record-left-column">
+        <div class="record-image-column">
           <img src="${record.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${record.title}" class="details-cover" />
-          <div class="availability-card">
-            <h5>Availability</h5>
-            <p><strong>Status:</strong> ${record.status}</p>
-            <p><strong>Location:</strong> ${record.location || "n/a"}</p>
-            <p><strong>Call Number:</strong> ${record.callNumber || "n/a"}</p>
-            <p><strong>Format:</strong> ${record.format}</p>
-          </div>
-        </aside>
-        <section class="record-right-column">
+        </div>
+        <section class="record-main-column">
           <h4>${record.title}</h4>
           <p class="muted">${record.subtitle || ""}</p>
           <dl class="metadata-grid">
@@ -397,6 +390,15 @@ function openDetail(record) {
             <dt>Accession Number</dt><dd>${record.accessionNumber || "n/a"}</dd>
           </dl>
         </section>
+        <aside class="record-availability-column">
+          <div class="availability-card">
+            <h5>Availability</h5>
+            <p><strong>Status:</strong> ${record.status}</p>
+            <p><strong>Location:</strong> ${record.location || "n/a"}</p>
+            <p><strong>Call Number:</strong> ${record.callNumber || "n/a"}</p>
+            <p><strong>Format:</strong> ${record.format}</p>
+          </div>
+        </aside>
       </div>
       <section class="detail-section">
         <h5>Description</h5>
