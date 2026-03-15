@@ -125,7 +125,7 @@ function bindEvents() {
     renderArrivals();
   });
   els.arrivalsNextBtn.addEventListener("click", () => {
-    const maxPage = Math.max(Math.ceil(getRecentArrivals().length / 6) - 1, 0);
+    const maxPage = Math.max(Math.ceil(getRecentArrivals().length / 5) - 1, 0);
     state.arrivalsPage = Math.min(state.arrivalsPage + 1, maxPage);
     renderArrivals();
   });
@@ -309,7 +309,7 @@ function getRecentArrivals() {
 
 function renderArrivals() {
   const recent = getRecentArrivals();
-  const perPage = 6;
+  const perPage = 5;
   const pages = Math.max(Math.ceil(recent.length / perPage), 1);
   state.arrivalsPage = Math.min(state.arrivalsPage, pages - 1);
 
@@ -343,7 +343,10 @@ function renderCard(r) {
   const formatBadge = node.querySelector(".badge-format");
   formatBadge.textContent = r.format;
   formatBadge.dataset.format = r.format.toLowerCase().replace(/\s+/g, "-");
-  node.querySelector(".badge-status").textContent = r.status;
+  const statusBadge = node.querySelector(".badge-status");
+  statusBadge.textContent = r.status;
+  statusBadge.dataset.status = r.status.toLowerCase().replace(/\s+/g, "-");
+  node.classList.toggle("status-on-order", r.status === "On Order");
   node.querySelector(".record-title").textContent = r.title;
   node.querySelector(".record-meta").textContent = `${r.creator}${r.year ? ` • ${r.year}` : ""}`;
   node.querySelector(".record-location").textContent = `${r.callNumber || "No call number"} • ${r.location || "No location"}`;
