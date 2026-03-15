@@ -131,9 +131,21 @@ cancelEditBtn.addEventListener("click", () => {
 });
 
 function loadRecords() {
-  const raw = localStorage.getItem(STORAGE_KEY);
+  let raw = null;
+
+  try {
+    raw = localStorage.getItem(STORAGE_KEY);
+  } catch (error) {
+    console.warn("localStorage is unavailable, using in-memory starter records:", error);
+    return starterRecords;
+  }
+
   if (!raw) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(starterRecords));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(starterRecords));
+    } catch (error) {
+      console.warn("Could not seed starter records in localStorage:", error);
+    }
     return starterRecords;
   }
 
@@ -146,7 +158,11 @@ function loadRecords() {
 }
 
 function persistRecords() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.records));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.records));
+  } catch (error) {
+    console.warn("Could not save catalog records to localStorage:", error);
+  }
 }
 
 function updateAdminView() {
