@@ -131,21 +131,38 @@ cancelEditBtn.addEventListener("click", () => {
 });
 
 function loadRecords() {
-  const raw = localStorage.getItem(STORAGE_KEY);
+  let raw = null;
+
+  try {
+    raw = localStorage.getItem(STORAGE_KEY);
+  } catch (error) {
+    console.warn("localStorage is unavailable, using in-memory starter records:", error);
+    return starterRecords;
+  }
+
   if (!raw) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(starterRecords));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(starterRecords));
+    } catch (error) {
+      console.warn("Could not seed starter records in localStorage:", error);
+    }
     return starterRecords;
   }
 
   try {
     return JSON.parse(raw);
-  } catch {
+  } catch (error) {
+    console.error("Failed to parse catalog records from localStorage:", error);
     return starterRecords;
   }
 }
 
 function persistRecords() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.records));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.records));
+  } catch (error) {
+    console.warn("Could not save catalog records to localStorage:", error);
+  }
 }
 
 function updateAdminView() {
@@ -251,6 +268,21 @@ renderAll();
 
 
 function createId() {
-  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  if (
+    typeof globalThis !== "undefined" &&
+    globalThis.crypto &&
+    typeof globalThis.crypto.randomUUID === "function"
+  ) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  if (
+    typeof window !== "undefined" &&
+    window.crypto &&
+    typeof window.crypto.randomUUID === "function"
+  ) {
+    return window.crypto.randomUUID();
+  }
+
   return `id-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
 }
