@@ -11,6 +11,7 @@ const state = {
   selectedIds: new Set(),
   arrivalsPage: 0,
   view: "search",
+  adminTab: "catalog",
 };
 
 const $ = (s) => document.querySelector(s);
@@ -28,6 +29,8 @@ const els = {
   fetchMetadataBtn: $("#fetchMetadataBtn"), genres: $("#genres"), coverUpload: $("#coverUpload"), locationSelect: $("#location"),
   newLocationInput: $("#newLocationInput"), addLocationBtn: $("#addLocationBtn"), locationList: $("#locationList"), newGenreInput: $("#newGenreInput"), addGenreBtn: $("#addGenreBtn"), genreList: $("#genreList"),
   recentBuckets: $("#recentBuckets"), coverWall: $("#coverWall"), statsPage: $("#statsPage"), shelfPages: $("#shelfPages"),
+  adminTabButtons: $$(".admin-tab-btn"), adminTabPanels: $$(".admin-tab-panel"), curatedShelfSelect: $("#curatedShelf"),
+  newCuratedShelfInput: $("#newCuratedShelfInput"), addCuratedShelfBtn: $("#addCuratedShelfBtn"), curatedShelfList: $("#curatedShelfList"),
 };
 
 function q() {
@@ -73,6 +76,8 @@ function bindEvents() {
 
   els.addLocationBtn.addEventListener("click", addLocation);
   els.addGenreBtn.addEventListener("click", addGenre);
+  els.addCuratedShelfBtn.addEventListener("click", addCuratedShelf);
+  els.adminTabButtons.forEach((btn) => btn.addEventListener("click", () => switchAdminTab(btn.dataset.adminTab)));
   els.exportBtn.addEventListener("click", () => exportRecords(state.records));
   els.importInput.addEventListener("change", async (e) => { if (!e.target.files?.[0]) return; state.records = await importRecords(e.target.files[0]); saveRecords(state.records); render(); });
   els.closeRecordDetailsBtn.addEventListener("click", () => els.recordDetailsModal.classList.add("hidden"));
@@ -89,6 +94,13 @@ function switchView(view) {
   if (view === "covers") renderCoverWall();
   if (view === "stats") renderStatsPage();
   if (view === "shelves") renderShelfPages();
+  if (view === "admin") switchAdminTab(state.adminTab);
+}
+
+function switchAdminTab(tab) {
+  state.adminTab = tab;
+  els.adminTabButtons.forEach((btn) => btn.classList.toggle("is-active", btn.dataset.adminTab === tab));
+  els.adminTabPanels.forEach((panel) => panel.classList.toggle("hidden", panel.dataset.adminPanel !== tab));
 }
 
 function getManagedGenres() {
@@ -103,9 +115,21 @@ function fillGenres() {
 }
 
 function fillLocations() {
-  const locations = [...new Set([...state.settings.locations, ...state.records.map((r)=>r.location).filter(Boolean)])];
+  const locations = [...new Set([...state.settings.locations, ...state.records.map((r)=>r.location).filter(Boolean)])].sort((a,b)=>a.localeCompare(b));
   els.locationSelect.innerHTML = ['<option value="">Unspecified</option>', ...locations.map((loc) => `<option>${loc}</option>`)].join("");
   renderLocationList(locations);
+}
+
+function getManagedCuratedShelves() {
+  return [...new Set([...(state.settings.curatedShelves || []), ...state.records.map((r) => r.curatedShelf).filter(Boolean)])].sort((a,b)=>a.localeCompare(b));
+}
+
+function fillCuratedShelves() {
+  const shelves = getManagedCuratedShelves();
+  const current = els.curatedShelfSelect.value || "";
+  els.curatedShelfSelect.innerHTML = ['<option value="">None</option>', ...shelves.map((shelf) => `<option value="${shelf}">${shelf}</option>`)].join("");
+  els.curatedShelfSelect.value = shelves.includes(current) ? current : "";
+  renderCuratedShelfList(shelves);
 }
 
 function renderLocationList(locations) {
@@ -171,6 +195,47 @@ function deleteGenre(target) {
   saveRecords(state.records);
   render();
 }
+function renderCuratedShelfList(shelves) {
+  els.curatedShelfList.innerHTML = "";
+  shelves.forEach((shelf) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span>${shelf}</span><div><button class="button button-secondary" data-act="rename" type="button">Edit</button> <button class="button button-secondary" data-act="delete" type="button">Delete</button></div>`;
+    li.querySelector('[data-act="rename"]').addEventListener("click", () => {
+      const next = window.prompt("Rename curated shelf", shelf);
+      if (!next || next.trim() === shelf) return;
+      renameCuratedShelf(shelf, next.trim());
+    });
+    li.querySelector('[data-act="delete"]').addEventListener("click", () => deleteCuratedShelf(shelf));
+    els.curatedShelfList.appendChild(li);
+  });
+}
+
+function addCuratedShelf() {
+  const value = els.newCuratedShelfInput.value.trim();
+  if (!value) return;
+  const set = new Set(state.settings.curatedShelves || []);
+  set.add(value);
+  state.settings.curatedShelves = [...set].sort((a,b)=>a.localeCompare(b));
+  saveSettings(state.settings);
+  els.newCuratedShelfInput.value = "";
+  fillCuratedShelves();
+}
+
+function renameCuratedShelf(prev, next) {
+  state.records = state.records.map((record) => (record.curatedShelf === prev ? { ...record, curatedShelf: next } : record));
+  const set = new Set((state.settings.curatedShelves || []).map((shelf) => shelf === prev ? next : shelf));
+  state.settings.curatedShelves = [...set].sort((a,b)=>a.localeCompare(b));
+  saveSettings(state.settings);
+  saveRecords(state.records);
+  render();
+}
+
+function deleteCuratedShelf(target) {
+  state.settings.curatedShelves = (state.settings.curatedShelves || []).filter((shelf) => shelf !== target);
+  saveSettings(state.settings);
+  fillCuratedShelves();
+}
+
 function addLocation() {
   const value = els.newLocationInput.value.trim();
   if (!value) return;
@@ -243,7 +308,8 @@ function saveFormRecord(e) {
     genre: genres.join(", "), genres, subjects: $("#subjects").value.trim(), description: $("#description").value.trim(),
     location: $("#location").value, callNumber: $("#callNumber").value.trim(), accessionNumber: $("#accessionNumber").value.trim(), status: $("#status").value,
     dateAcquired: $("#dateAcquired").value, dateAdded, source: $("#source").value.trim(), pricePaid: $("#pricePaid").value.trim(), notes: $("#notes").value.trim(), coverUrl: $("#coverUrl").value.trim(),
-    binding: $("#binding").value, seriesName: $("#seriesName").value.trim(), seriesNumber: $("#seriesNumber").value.trim(), curatedShelf: $("#curatedShelf").value.trim(), addedAt: new Date(dateAdded).getTime() || Date.now(),
+    binding: $("#binding").value, seriesName: $("#seriesName").value.trim(), seriesNumber: $("#seriesNumber").value.trim(), curatedShelf: $("#curatedShelf").value,
+    pageCount: $("#pageCount").value.trim(), addedAt: new Date(dateAdded).getTime() || Date.now(),
   });
 
   const idx = state.records.findIndex((r) => r.id === id);
@@ -267,6 +333,7 @@ function render() {
   els.adminPageBtn.classList.toggle("hidden", !state.isAdmin);
   fillGenres();
   fillLocations();
+  fillCuratedShelves();
   renderPublic();
   renderAdminTable();
 }
@@ -341,7 +408,7 @@ function openDetail(record) {
   const related = getRelated(state.records, record);
   const genres = asArray(record.genres?.length ? record.genres : record.genre);
   const decade = record.year ? `${Math.floor(Number(record.year) / 10) * 10}s` : "";
-  els.recordDetailsBody.innerHTML = `<article class="opac-record-layout"><div class="record-columns"><div class="record-image-column"><img src="${record.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${record.title}" class="details-cover" /></div><section class="record-main-column"><h4>${record.title}</h4><p class="muted">${record.subtitle || ""}</p><dl class="metadata-grid"><dt>Author / Creator</dt><dd><button class="subject-link" id="authorPageBtn" type="button">${record.creator}</button></dd><dt>Publisher</dt><dd>${record.publisher || "Unknown"}</dd><dt>Published</dt><dd>${record.year || "n.d."}</dd><dt>Genres</dt><dd>${genres.join(", ") || "n/a"}</dd><dt>Binding</dt><dd>${record.binding || "n/a"}</dd><dt>Series</dt><dd>${record.seriesName ? `${record.seriesName}${record.seriesNumber ? ` #${record.seriesNumber}` : ""}` : "n/a"}</dd><dt>Identifier</dt><dd>${record.identifier || "n/a"}</dd><dt>Date acquired</dt><dd>${record.dateAcquired || "n/a"} ${record.source ? ` • ${record.source}` : ""} ${record.pricePaid ? ` • $${record.pricePaid}` : ""}</dd></dl></section><aside class="record-availability-column"><div class="availability-card ${String(record.status||"").toLowerCase()==="on order"?"status-on-order":""}"><h5>Availability</h5><p><strong>Status:</strong> ${record.status}</p><p><strong>Location:</strong> ${record.location || "n/a"}</p><p><strong>Call Number:</strong> ${record.callNumber || "n/a"}</p><p><strong>Format:</strong> ${record.format}</p></div></aside></div><section class="detail-section"><h5>Description</h5><p>${record.description || "No description"}</p></section><section class="detail-section"><h5>Collection Pathways</h5><p class="muted"><button class="subject-link" id="decadeBtn" type="button">More from ${decade || "this era"}</button> <button class="subject-link" id="genreBtn" type="button">More ${genres[0] || "in this category"}</button></p></section><section class="detail-section"><h5>Series & Related</h5><p class="muted">Series items: ${related.bySeries.map((r)=>r.title).join(", ") || "None"}</p><p class="muted">By creator: ${related.byCreator.map((r)=>r.title).join(", ") || "None"}</p></section><section class="detail-section nearby-section"><h5>Browse a Shelf</h5><div class="nearby-spines" role="list">${related.virtualShelf.map((item)=>`<button class="book-spine ${item.id===record.id?"selected":""}" data-record-id="${item.id}" type="button"><span class="spine-title">${item.title} • ${item.creator || "Unknown"}</span><span class="spine-call">${item.callNumber || "No call #"}</span></button>`).join("")}</div></section></article>`;
+  els.recordDetailsBody.innerHTML = `<article class="opac-record-layout"><div class="record-columns"><div class="record-image-column"><img src="${record.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${record.title}" class="details-cover" /></div><section class="record-main-column"><h4>${record.title}</h4><p class="muted">${record.subtitle || ""}</p><dl class="metadata-grid"><dt>Author / Creator</dt><dd><button class="subject-link" id="authorPageBtn" type="button">${record.creator}</button></dd><dt>Publisher</dt><dd>${record.publisher || "Unknown"}</dd><dt>Published</dt><dd>${record.year || "n.d."}</dd><dt>Genres</dt><dd>${genres.join(", ") || "n/a"}</dd><dt>Binding</dt><dd>${record.binding || "n/a"}</dd><dt>Series</dt><dd>${record.seriesName ? `${record.seriesName}${record.seriesNumber ? ` #${record.seriesNumber}` : ""}` : "n/a"}</dd><dt>Identifier</dt><dd>${record.identifier || "n/a"}</dd>${record.pageCount ? `<dt>Pages</dt><dd>${record.pageCount}</dd>` : ""}<dt>Date acquired</dt><dd>${record.dateAcquired || "n/a"}${record.pricePaid ? ` • $${record.pricePaid}` : ""}</dd></dl></section><aside class="record-availability-column"><div class="availability-card ${String(record.status||"").toLowerCase()==="on order"?"status-on-order":""}"><h5>Availability</h5><p><strong>Status:</strong> ${record.status}</p><p><strong>Location:</strong> ${record.location || "n/a"}</p><p><strong>Call Number:</strong> ${record.callNumber || "n/a"}</p><p><strong>Format:</strong> ${record.format}</p></div></aside></div><section class="detail-section"><h5>Description</h5><p>${record.description || "No description"}</p></section><section class="detail-section"><h5>Collection Pathways</h5><p class="muted"><button class="subject-link" id="decadeBtn" type="button">More from ${decade || "this era"}</button> <button class="subject-link" id="genreBtn" type="button">More ${genres[0] || "in this category"}</button></p></section><section class="detail-section"><h5>Series & Related</h5><p class="muted">Series items: ${related.bySeries.map((r)=>r.title).join(", ") || "None"}</p><p class="muted">By creator: ${related.byCreator.map((r)=>r.title).join(", ") || "None"}</p></section><section class="detail-section nearby-section"><h5>Browse a Shelf</h5><div class="nearby-spines" role="list">${related.virtualShelf.map((item)=>`<button class="book-spine ${item.id===record.id?"selected":""}" data-record-id="${item.id}" style="--spine-width:${getSpineWidth(item)}px" type="button"><span class="spine-title"><span>${item.title}</span><span>${item.creator || "Unknown"}</span></span><span class="spine-call">${item.callNumber || "No call #"}</span></button>`).join("")}</div></section></article>`;
   els.recordDetailsBody.querySelectorAll(".book-spine").forEach((spine) => spine.addEventListener("click", () => openDetail(state.records.find((r) => r.id === spine.dataset.recordId))));
   $("#authorPageBtn")?.addEventListener("click", ()=>renderAuthorPage(record.creator));
   $("#decadeBtn")?.addEventListener("click", ()=>{els.keywordSearch.value=decade.slice(0,4); switchView('search'); renderPublic();});
@@ -384,6 +451,13 @@ function renderShelfPages() {
 }
 
 function getAdminFiltered() { const term = els.adminSearch.value.trim().toLowerCase(); if (!term) return state.records; return state.records.filter((r) => `${r.title} ${r.creator} ${r.identifier || ""}`.toLowerCase().includes(term)); }
+
+function getSpineWidth(record) {
+  const pageCount = Number(record.pageCount);
+  if (Number.isFinite(pageCount) && pageCount > 0) return Math.min(72, Math.max(48, Math.round(44 + (pageCount / 900) * 28)));
+  const seed = [...String(record.id || `${record.title}-${record.creator}`)].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return 52 + (seed % 9);
+}
 function renderAdminTable() {
   els.adminTableBody.innerHTML = ""; if (!state.isAdmin) return;
   getAdminFiltered().forEach((r) => { const tr = document.createElement("tr"); tr.innerHTML = `<td><input type="checkbox" ${state.selectedIds.has(r.id) ? "checked" : ""}></td><td>${r.title}</td><td>${r.creator}</td><td>${r.format}</td><td>${r.year || ""}</td><td>${r.status}</td><td class="row-actions"><button class="button button-secondary" data-act="edit">Edit</button><button class="button button-secondary" data-act="dup">Duplicate</button><button class="button" data-act="del">Delete</button></td>`;
@@ -407,9 +481,10 @@ function bulkAddGenres() {
 }
 
 function populateForm(r) {
-  const fields = ["recordId:id", "title", "subtitle", "creator", "contributors", "format", "edition", "year", "publisher", "identifier", "genre", "subjects", "description", "location", "callNumber", "accessionNumber", "status", "dateAcquired", "dateAdded", "source", "pricePaid", "notes", "coverUrl", "binding", "seriesName", "seriesNumber", "curatedShelf"];
+  const fields = ["recordId:id", "title", "subtitle", "creator", "contributors", "format", "edition", "year", "publisher", "identifier", "genre", "subjects", "description", "location", "callNumber", "accessionNumber", "status", "dateAcquired", "dateAdded", "source", "pricePaid", "notes", "coverUrl", "binding", "seriesName", "seriesNumber", "curatedShelf", "pageCount"];
   fields.forEach((pair) => { const [elId, prop] = pair.includes(":") ? pair.split(":") : [pair, pair]; $(`#${elId}`).value = r[prop] || ""; });
   [...els.genres.options].forEach((option)=>{ option.selected = (r.genres || asArray(r.genre)).includes(option.value); });
+  switchAdminTab("catalog");
   window.scrollTo({ top: els.adminSection.offsetTop - 20, behavior: "smooth" });
 }
 function flash(msg, isError = false) { els.adminMessage.textContent = msg; els.adminMessage.classList.toggle("error", isError); setTimeout(() => { els.adminMessage.textContent = ""; }, 2400); }

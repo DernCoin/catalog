@@ -20,6 +20,7 @@ export function normalizeRecord(record) {
     seriesName: record.seriesName || "",
     seriesNumber: record.seriesNumber || "",
     source: record.source || "",
+    pageCount: record.pageCount || "",
     pricePaid: record.pricePaid || "",
     dateAdded: record.dateAdded || new Date().toISOString().slice(0, 10),
     addedAt: Number(record.addedAt) || Date.now(),
@@ -44,11 +45,11 @@ export function saveRecords(records) {
 export function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return { locations: [], genres: [] };
+    if (!raw) return { locations: [], genres: [], curatedShelves: [] };
     const parsed = JSON.parse(raw);
-    return { locations: parsed.locations || [], genres: parsed.genres || [] };
+    return { locations: parsed.locations || [], genres: parsed.genres || [], curatedShelves: parsed.curatedShelves || [] };
   } catch {
-    return { locations: [], genres: [] };
+    return { locations: [], genres: [], curatedShelves: [] };
   }
 }
 

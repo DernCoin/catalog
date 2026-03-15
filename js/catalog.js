@@ -115,12 +115,14 @@ export function duplicateCandidates(records, draft) {
 }
 
 export function getRelated(records, record) {
-  const withCallNumbers = records
+  const sameLocation = records.filter((r) => String(r.location || "") === String(record.location || ""));
+  const withCallNumbers = sameLocation
     .filter((r) => r.callNumber)
     .sort((a, b) => normalizeCallNumber(a.callNumber).localeCompare(normalizeCallNumber(b.callNumber), undefined, { numeric: true }));
 
-  const currentIndex = withCallNumbers.findIndex((r) => r.id === record.id);
-  const virtualShelf = withCallNumbers.slice(Math.max(currentIndex - 4, 0), currentIndex + 5);
+  const pool = withCallNumbers.length ? withCallNumbers : sameLocation;
+  const currentIndex = pool.findIndex((r) => r.id === record.id);
+  const virtualShelf = currentIndex >= 0 ? pool.slice(Math.max(currentIndex - 4, 0), currentIndex + 5) : [];
 
   const recordGenres = asArray(record.genres?.length ? record.genres : record.genre);
   const recordSubjects = asArray(record.subjects);
