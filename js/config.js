@@ -1,4 +1,5 @@
 export const STORAGE_KEY = "catalogRecordsV2";
+export const SETTINGS_KEY = "catalogSettingsV1";
 export const SESSION_KEY = "catalogAdminSession";
 
 export const ADMIN_CREDENTIALS = {
@@ -6,7 +7,7 @@ export const ADMIN_CREDENTIALS = {
   password: "catalog123",
 };
 
-export const STATUSES = ["Available", "Checked In", "On Loan", "Reference Only", "Missing"];
+export const STATUSES = ["Available", "Checked In", "On Loan", "On Order", "Reference Only", "Missing"];
 
 export const PAGE_SIZE = 12;
 
