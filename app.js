@@ -252,13 +252,20 @@ renderAll();
 
 
 function createId() {
-  const cryptoObj =
-    (typeof globalThis !== "undefined" && globalThis.crypto) ||
-    (typeof window !== "undefined" && window.crypto) ||
-    null;
+  if (
+    typeof globalThis !== "undefined" &&
+    globalThis.crypto &&
+    typeof globalThis.crypto.randomUUID === "function"
+  ) {
+    return globalThis.crypto.randomUUID();
+  }
 
-  if (cryptoObj && typeof cryptoObj.randomUUID === "function") {
-    return cryptoObj.randomUUID();
+  if (
+    typeof window !== "undefined" &&
+    window.crypto &&
+    typeof window.crypto.randomUUID === "function"
+  ) {
+    return window.crypto.randomUUID();
   }
 
   return `id-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
