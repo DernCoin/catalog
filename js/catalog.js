@@ -122,10 +122,34 @@ export function getRelated(records, record) {
   const currentIndex = withCallNumbers.findIndex((r) => r.id === record.id);
   const virtualShelf = withCallNumbers.slice(Math.max(currentIndex - 4, 0), currentIndex + 5);
 
+  const recordGenres = asArray(record.genres?.length ? record.genres : record.genre);
+  const recordSubjects = asArray(record.subjects);
+  const recordTags = asArray(record.tags || record.subjects);
+
+  const scored = records
+    .filter((r) => r.id !== record.id)
+    .map((r) => {
+      const genres = asArray(r.genres?.length ? r.genres : r.genre);
+      const subjects = asArray(r.subjects);
+      const tags = asArray(r.tags || r.subjects);
+      let score = 0;
+      if (normalizeAuthor(r.creator) === normalizeAuthor(record.creator)) score += 6;
+      if (record.seriesName && r.seriesName === record.seriesName) score += 5;
+      if (r.format === record.format) score += 3;
+      score += genres.filter((g) => recordGenres.includes(g)).length * 3;
+      score += subjects.filter((s) => recordSubjects.includes(s)).length * 2;
+      score += tags.filter((t) => recordTags.includes(t)).length;
+      return { r, score };
+    })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score || Number(b.r.addedAt || 0) - Number(a.r.addedAt || 0));
+
+  const relatedItems = scored.map((item) => item.r).slice(0, 6);
+
   return {
-    byCreator: records.filter((r) => r.id !== record.id && normalizeAuthor(r.creator) === normalizeAuthor(record.creator)).slice(0, 6),
-    byCategory: records.filter((r) => r.id !== record.id && asArray(r.genres?.length ? r.genres : r.genre).some((g) => asArray(record.genres?.length ? record.genres : record.genre).includes(g))).slice(0, 6),
-    bySeries: records.filter((r) => r.id !== record.id && record.seriesName && r.seriesName === record.seriesName).sort((a,b)=>Number(a.seriesNumber||999)-Number(b.seriesNumber||999)),
+    byCreator: relatedItems.filter((r) => normalizeAuthor(r.creator) === normalizeAuthor(record.creator)).slice(0, 6),
+    byCategory: relatedItems,
+    bySeries: relatedItems.filter((r) => record.seriesName && r.seriesName === record.seriesName).sort((a,b)=>Number(a.seriesNumber||999)-Number(b.seriesNumber||999)),
     virtualShelf,
   };
 }
