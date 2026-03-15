@@ -139,7 +139,8 @@ function loadRecords() {
 
   try {
     return JSON.parse(raw);
-  } catch {
+  } catch (error) {
+    console.error("Failed to parse catalog records from localStorage:", error);
     return starterRecords;
   }
 }
@@ -251,6 +252,8 @@ renderAll();
 
 
 function createId() {
-  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") {
+    return globalThis.crypto.randomUUID();
+  }
   return `id-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
 }
