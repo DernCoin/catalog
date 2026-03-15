@@ -155,16 +155,24 @@ label {
   display: none !important;
 }
 
-dialog {
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  z-index: 1000;
+}
+
+.modal-content {
   border: none;
   border-radius: 10px;
   max-width: 360px;
-  width: calc(100% - 2rem);
+  width: 100%;
+  background: #fff;
+  padding: 1rem;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-}
-
-dialog::backdrop {
-  background: rgba(0, 0, 0, 0.35);
 }
 
 menu {
