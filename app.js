@@ -4,7 +4,7 @@ const ADMIN_PASSWORD = "catalog123";
 
 const starterRecords = [
   {
-    id: crypto.randomUUID(),
+    id: createId(),
     title: "The Hobbit",
     creator: "J.R.R. Tolkien",
     format: "Book",
@@ -14,7 +14,7 @@ const starterRecords = [
     notes: "Classic adventure fantasy.",
   },
   {
-    id: crypto.randomUUID(),
+    id: createId(),
     title: "Kind of Blue",
     creator: "Miles Davis",
     format: "Vinyl",
@@ -24,7 +24,7 @@ const starterRecords = [
     notes: "Essential jazz LP.",
   },
   {
-    id: crypto.randomUUID(),
+    id: createId(),
     title: "Catan",
     creator: "Klaus Teuber",
     format: "Board Game",
@@ -41,7 +41,7 @@ const state = {
 };
 
 const adminToggleBtn = document.querySelector("#adminToggleBtn");
-const loginDialog = document.querySelector("#loginDialog");
+const loginModal = document.querySelector("#loginModal");
 const closeLoginBtn = document.querySelector("#closeLoginBtn");
 const loginForm = document.querySelector("#loginForm");
 const loginError = document.querySelector("#loginError");
@@ -65,10 +65,10 @@ adminToggleBtn.addEventListener("click", () => {
     return;
   }
   loginError.textContent = "";
-  loginDialog.showModal();
+  openLoginModal();
 });
 
-closeLoginBtn.addEventListener("click", () => loginDialog.close());
+closeLoginBtn.addEventListener("click", closeLoginModal);
 
 loginForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -77,7 +77,7 @@ loginForm.addEventListener("submit", (event) => {
 
   if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
     state.isAdmin = true;
-    loginDialog.close();
+    closeLoginModal();
     loginForm.reset();
     updateAdminView();
     return;
@@ -89,12 +89,30 @@ loginForm.addEventListener("submit", (event) => {
 searchInput.addEventListener("input", renderPublicCatalog);
 formatFilter.addEventListener("change", renderPublicCatalog);
 
+
+function openLoginModal() {
+  loginModal.classList.remove("hidden");
+  document.querySelector("#username").focus();
+}
+
+function closeLoginModal() {
+  loginModal.classList.add("hidden");
+}
+
+loginModal.addEventListener("click", (event) => {
+  if (event.target === loginModal) closeLoginModal();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeLoginModal();
+});
+
 recordForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const payload = getFormData();
 
   if (!payload.id) {
-    payload.id = crypto.randomUUID();
+    payload.id = createId();
     state.records.unshift(payload);
   } else {
     const idx = state.records.findIndex((item) => item.id === payload.id);
@@ -230,3 +248,9 @@ function getFormData() {
 }
 
 renderAll();
+
+
+function createId() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return `id-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+}
