@@ -21,6 +21,7 @@ const starterRecords = [
     location: "Living Room Shelf A",
     coverUrl: "https://images-na.ssl-images-amazon.com/images/I/81t2CVWEsUL.jpg",
     notes: "Classic adventure fantasy.",
+    addedAt: Date.now() - 1000 * 60 * 60 * 24 * 14,
   },
   {
     id: createId(),
@@ -33,6 +34,7 @@ const starterRecords = [
     location: "Media Cabinet 2",
     coverUrl: "https://upload.wikimedia.org/wikipedia/en/9/9c/MilesDavisKindofBlue.jpg",
     notes: "Essential jazz LP.",
+    addedAt: Date.now() - 1000 * 60 * 60 * 24 * 7,
   },
   {
     id: createId(),
@@ -45,6 +47,7 @@ const starterRecords = [
     location: "Game Closet",
     coverUrl: "https://upload.wikimedia.org/wikipedia/en/b/b0/Catan-2015-boxart.jpg",
     notes: "Great gateway strategy game.",
+    addedAt: Date.now() - 1000 * 60 * 60 * 24 * 2,
   },
 ];
 
@@ -66,6 +69,12 @@ const template = document.querySelector("#recordTemplate");
 
 const searchInput = document.querySelector("#searchInput");
 const formatFilter = document.querySelector("#formatFilter");
+const sortFilter = document.querySelector("#sortFilter");
+const resultsSummary = document.querySelector("#resultsSummary");
+
+const newArrivals = document.querySelector("#newArrivals");
+const arrivalsPrevBtn = document.querySelector("#arrivalsPrevBtn");
+const arrivalsNextBtn = document.querySelector("#arrivalsNextBtn");
 
 const recordForm = document.querySelector("#recordForm");
 const cancelEditBtn = document.querySelector("#cancelEditBtn");
@@ -117,7 +126,11 @@ if (loginForm) {
 
 if (searchInput) searchInput.addEventListener("input", renderPublicCatalog);
 if (formatFilter) formatFilter.addEventListener("change", renderPublicCatalog);
+if (sortFilter) sortFilter.addEventListener("change", renderPublicCatalog);
 if (formatField) formatField.addEventListener("change", () => populateGenreOptions(formatField.value));
+
+if (arrivalsPrevBtn) arrivalsPrevBtn.addEventListener("click", () => scrollArrivals(-1));
+if (arrivalsNextBtn) arrivalsNextBtn.addEventListener("click", () => scrollArrivals(1));
 
 function attemptAdminLogin(username, password) {
   if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) return false;
@@ -194,10 +207,14 @@ if (recordForm) {
 
     if (!payload.id) {
       payload.id = createId();
+      payload.addedAt = Date.now();
       state.records.unshift(payload);
     } else {
       const idx = state.records.findIndex((item) => item.id === payload.id);
-      if (idx >= 0) state.records[idx] = payload;
+      if (idx >= 0) {
+        payload.addedAt = state.records[idx].addedAt || Date.now();
+        state.records[idx] = payload;
+      }
     }
 
     persistRecords();
@@ -223,7 +240,7 @@ function loadRecords() {
     raw = localStorage.getItem(STORAGE_KEY);
   } catch (error) {
     console.warn("localStorage is unavailable, using in-memory starter records:", error);
-    return starterRecords;
+    return starterRecords.map((record) => normalizeRecord(record));
   }
 
   if (!raw) {
@@ -232,14 +249,14 @@ function loadRecords() {
     } catch (error) {
       console.warn("Could not seed starter records in localStorage:", error);
     }
-    return starterRecords;
+    return starterRecords.map((record) => normalizeRecord(record));
   }
 
   try {
     return JSON.parse(raw).map((record) => normalizeRecord(record));
   } catch (error) {
     console.error("Failed to parse catalog records from localStorage:", error);
-    return starterRecords;
+    return starterRecords.map((record) => normalizeRecord(record));
   }
 }
 
@@ -250,6 +267,7 @@ function normalizeRecord(record) {
     location: record.location || "",
     genre: record.genre || "",
     notes: record.notes || "",
+    addedAt: Number(record.addedAt) || Date.now(),
   };
 }
 
@@ -275,8 +293,24 @@ function renderAll() {
 function renderPublicCatalog() {
   publicResults.innerHTML = "";
 
-  const term = searchInput.value.trim().toLowerCase();
-  const format = formatFilter.value;
+  const filtered = getFilteredAndSortedRecords();
+
+  if (resultsSummary) {
+    const label = filtered.length === 1 ? "record" : "records";
+    resultsSummary.textContent = `${filtered.length} ${label} found`;
+  }
+
+  filtered.forEach((record) => {
+    publicResults.appendChild(renderRecord(record, false));
+  });
+
+  renderNewArrivals();
+}
+
+function getFilteredAndSortedRecords() {
+  const term = searchInput ? searchInput.value.trim().toLowerCase() : "";
+  const format = formatFilter ? formatFilter.value : "all";
+  const sortValue = sortFilter ? sortFilter.value : "newest";
 
   const filtered = state.records.filter((item) => {
     const haystack = `${item.title} ${item.creator} ${item.genre} ${item.notes} ${item.publisher || ""} ${item.location || ""}`.toLowerCase();
@@ -285,9 +319,52 @@ function renderPublicCatalog() {
     return matchesTerm && matchesFormat;
   });
 
-  filtered.forEach((record) => {
-    publicResults.appendChild(renderRecord(record, false));
+  filtered.sort((a, b) => {
+    if (sortValue === "title") return a.title.localeCompare(b.title);
+    if (sortValue === "yearAsc") return (a.year || 0) - (b.year || 0);
+    if (sortValue === "yearDesc") return (b.year || 0) - (a.year || 0);
+    return (b.addedAt || 0) - (a.addedAt || 0);
   });
+
+  return filtered;
+}
+
+function renderNewArrivals() {
+  if (!newArrivals) return;
+
+  newArrivals.innerHTML = "";
+
+  const newest = [...state.records]
+    .sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0))
+    .slice(0, 12);
+
+  newest.forEach((record) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "arrival-item";
+    button.setAttribute("role", "listitem");
+    button.setAttribute("aria-label", `View details for ${record.title}`);
+
+    const img = document.createElement("img");
+    img.className = "arrival-cover";
+    img.src = record.coverUrl || "https://placehold.co/90x130?text=No+Cover";
+    img.alt = `${record.title} cover`;
+    img.loading = "lazy";
+
+    const text = document.createElement("span");
+    text.className = "arrival-title";
+    text.textContent = record.title;
+
+    button.append(img, text);
+    button.addEventListener("click", () => openRecordDetailsModal(record));
+    newArrivals.appendChild(button);
+  });
+}
+
+function scrollArrivals(direction) {
+  if (!newArrivals) return;
+  const distance = Math.max(220, newArrivals.clientWidth * 0.75);
+  newArrivals.scrollBy({ left: direction * distance, behavior: "smooth" });
 }
 
 function renderAdminCatalog() {
