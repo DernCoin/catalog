@@ -1,546 +1,333 @@
 import { PAGE_SIZE, PLACEHOLDER_COVER } from "./config.js";
-import { loadRecords, saveRecords, exportRecords, importRecords, normalizeRecord } from "./storage.js";
+import { loadRecords, saveRecords, exportRecords, importRecords, normalizeRecord, loadSettings, saveSettings } from "./storage.js";
 import { login, logout, isAdminSessionActive } from "./auth.js";
 import { sampleRecords } from "./seed.js";
-import { buildFacets, queryRecords, getStats, duplicateCandidates, getRelated } from "./catalog.js";
+import { buildFacets, queryRecords, getStats, duplicateCandidates, getRelated, PRELOADED_GENRES, didYouMean, asArray, normalizeAuthor } from "./catalog.js";
 
 const state = {
   isAdmin: isAdminSessionActive(),
   records: loadRecords(),
+  settings: loadSettings(),
   shown: PAGE_SIZE,
   selectedIds: new Set(),
-  currentDetail: null,
   arrivalsPage: 0,
+  view: "search",
 };
 
 const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
 const els = {
-  adminToggleBtn: $("#adminToggleBtn"),
-  adminSection: $("#adminSection"),
-  loginModal: $("#loginModal"),
-  closeLoginBtn: $("#closeLoginBtn"),
-  loginForm: $("#loginForm"),
-  loginError: $("#loginError"),
-  keywordSearch: $("#keywordSearch"),
-  toggleAdvancedBtn: $("#toggleAdvancedBtn"),
-  advancedSearch: $("#advancedSearch"),
-  sortFilter: $("#sortFilter"),
-  resultsSummary: $("#resultsSummary"),
-  publicResults: $("#publicResults"),
-  emptyState: $("#emptyState"),
-  loadMoreBtn: $("#loadMoreBtn"),
-  template: $("#recordTemplate"),
-  catalogStats: $("#catalogStats"),
-  newArrivals: $("#newArrivals"),
-  arrivalsPrevBtn: $("#arrivalsPrevBtn"),
-  arrivalsNextBtn: $("#arrivalsNextBtn"),
-  randomItemBtn: $("#randomItemBtn"),
-  facets: {
-    format: $("#facetFormat"), genre: $("#facetGenre"), year: $("#facetYear"), status: $("#facetStatus"), location: $("#facetLocation"),
-  },
-  clearFiltersBtn: $("#clearFiltersBtn"),
-  adminSearch: $("#adminSearch"),
-  adminTableBody: $("#adminTableBody"),
-  selectAllRows: $("#selectAllRows"),
-  applyBulkBtn: $("#applyBulkBtn"),
-  bulkStatusSelect: $("#bulkStatusSelect"),
-  recordForm: $("#recordForm"),
-  cancelEditBtn: $("#cancelEditBtn"),
-  duplicateWarning: $("#duplicateWarning"),
-  adminMessage: $("#adminMessage"),
-  exportBtn: $("#exportBtn"),
-  importInput: $("#importInput"),
-  seedDataBtn: $("#seedDataBtn"),
-  recordDetailsModal: $("#recordDetailsModal"),
-  closeRecordDetailsBtn: $("#closeRecordDetailsBtn"),
-  recordDetailsBody: $("#recordDetailsBody"),
-  copyCitationBtn: $("#copyCitationBtn"),
+  adminToggleBtn: $("#adminToggleBtn"), adminSection: $("#adminSection"), loginModal: $("#loginModal"), closeLoginBtn: $("#closeLoginBtn"), loginForm: $("#loginForm"), loginError: $("#loginError"),
+  keywordSearch: $("#keywordSearch"), searchSuggestions: $("#searchSuggestions"), didYouMean: $("#didYouMean"),
+  toggleAdvancedBtn: $("#toggleAdvancedBtn"), advancedSearch: $("#advancedSearch"), sortFilter: $("#sortFilter"), resultsSummary: $("#resultsSummary"), publicResults: $("#publicResults"), emptyState: $("#emptyState"),
+  loadMoreBtn: $("#loadMoreBtn"), template: $("#recordTemplate"), catalogStats: $("#catalogStats"), newArrivals: $("#newArrivals"), arrivalsPrevBtn: $("#arrivalsPrevBtn"), arrivalsNextBtn: $("#arrivalsNextBtn"), randomItemBtn: $("#randomItemBtn"),
+  facets: { format: $("#facetFormat"), genre: $("#facetGenre"), year: $("#facetYear"), status: $("#facetStatus"), location: $("#facetLocation"), binding: $("#facetBinding") },
+  clearFiltersBtn: $("#clearFiltersBtn"), adminSearch: $("#adminSearch"), adminTableBody: $("#adminTableBody"), selectAllRows: $("#selectAllRows"), applyBulkBtn: $("#applyBulkBtn"), bulkStatusSelect: $("#bulkStatusSelect"),
+  bulkGenreSelect: $("#bulkGenreSelect"), bulkGenreAddBtn: $("#bulkGenreAddBtn"),
+  recordForm: $("#recordForm"), cancelEditBtn: $("#cancelEditBtn"), duplicateWarning: $("#duplicateWarning"), adminMessage: $("#adminMessage"), exportBtn: $("#exportBtn"), importInput: $("#importInput"), seedDataBtn: $("#seedDataBtn"),
+  recordDetailsModal: $("#recordDetailsModal"), closeRecordDetailsBtn: $("#closeRecordDetailsBtn"), recordDetailsBody: $("#recordDetailsBody"), copyCitationBtn: $("#copyCitationBtn"),
+  fetchMetadataBtn: $("#fetchMetadataBtn"), genres: $("#genres"), coverUpload: $("#coverUpload"), locationSelect: $("#location"),
+  newLocationInput: $("#newLocationInput"), addLocationBtn: $("#addLocationBtn"), locationList: $("#locationList"),
+  recentBuckets: $("#recentBuckets"), coverWall: $("#coverWall"), statsPage: $("#statsPage"), shelfPages: $("#shelfPages"),
 };
 
 function q() {
-  return {
-    keyword: els.keywordSearch.value.trim(),
-    title: $("#advTitle").value.trim(),
-    creator: $("#advCreator").value.trim(),
-    subject: $("#advSubject").value.trim(),
-    advKeyword: $("#advKeyword").value.trim(),
-    year: $("#advYear").value.trim(),
-    advFormat: $("#advFormat").value,
-    facetFormat: els.facets.format.value,
-    facetGenre: els.facets.genre.value,
-    facetYear: els.facets.year.value,
-    facetStatus: els.facets.status.value,
-    facetLocation: els.facets.location.value,
-    sort: els.sortFilter.value,
+  const out = {
+    keyword: els.keywordSearch.value.trim(), title: $("#advTitle").value.trim(), creator: $("#advCreator").value.trim(), subject: $("#advSubject").value.trim(),
+    advKeyword: $("#advKeyword").value.trim(), year: $("#advYear").value.trim(), advFormat: $("#advFormat").value,
+    facetFormat: els.facets.format.value, facetGenre: els.facets.genre.value, facetYear: els.facets.year.value, facetStatus: els.facets.status.value, facetLocation: els.facets.location.value,
+    facetBinding: els.facets.binding.value, sort: els.sortFilter.value,
   };
+  history.replaceState(null, "", `#search?${new URLSearchParams(out).toString()}`);
+  return out;
 }
 
 function bindEvents() {
-  els.adminToggleBtn.addEventListener("click", () => {
-    if (state.isAdmin) {
-      state.isAdmin = false;
-      logout();
-      render();
-      return;
-    }
-    els.loginModal.classList.remove("hidden");
-    $("#username").focus();
-  });
-
+  $$(".nav-btn").forEach((btn) => btn.addEventListener("click", () => switchView(btn.dataset.view)));
+  els.adminToggleBtn.addEventListener("click", () => { if (state.isAdmin) { state.isAdmin = false; logout(); render(); return; } els.loginModal.classList.remove("hidden"); $("#username").focus(); });
   els.closeLoginBtn.addEventListener("click", () => els.loginModal.classList.add("hidden"));
+  els.loginForm.addEventListener("submit", (e) => { e.preventDefault(); const ok = login($("#username").value.trim(), $("#password").value); if (!ok) { els.loginError.textContent = "Login failed."; return; } els.loginError.textContent = ""; els.loginModal.classList.add("hidden"); els.loginForm.reset(); state.isAdmin = true; render(); });
 
-  els.loginForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const ok = login($("#username").value.trim(), $("#password").value);
-    if (!ok) {
-      els.loginError.textContent = "Login failed. Use the configured coded admin account.";
-      return;
-    }
-    els.loginError.textContent = "";
-    els.loginModal.classList.add("hidden");
-    els.loginForm.reset();
-    state.isAdmin = true;
-    render();
-  });
-
-  [els.keywordSearch, els.sortFilter, $("#advTitle"), $("#advCreator"), $("#advSubject"), $("#advKeyword"), $("#advYear"), $("#advFormat")]
-    .forEach((el) => el.addEventListener("input", () => { state.shown = PAGE_SIZE; renderPublic(); }));
-
+  [els.keywordSearch, els.sortFilter, $("#advTitle"), $("#advCreator"), $("#advSubject"), $("#advKeyword"), $("#advYear"), $("#advFormat")].forEach((el) => el.addEventListener("input", () => { state.shown = PAGE_SIZE; renderPublic(); }));
+  els.keywordSearch.addEventListener("input", renderSuggestions);
   Object.values(els.facets).forEach((el) => el.addEventListener("change", () => { state.shown = PAGE_SIZE; renderPublic(); }));
-
-  els.toggleAdvancedBtn.addEventListener("click", () => {
-    const hidden = els.advancedSearch.classList.toggle("hidden");
-    els.toggleAdvancedBtn.setAttribute("aria-expanded", String(!hidden));
-  });
-
-  els.clearFiltersBtn.addEventListener("click", () => {
-    Object.values(els.facets).forEach((s) => { s.value = "all"; });
-    state.shown = PAGE_SIZE;
-    renderPublic();
-  });
-
+  els.toggleAdvancedBtn.addEventListener("click", () => { const hidden = els.advancedSearch.classList.toggle("hidden"); els.toggleAdvancedBtn.setAttribute("aria-expanded", String(!hidden)); });
+  els.clearFiltersBtn.addEventListener("click", () => { Object.values(els.facets).forEach((s) => { s.value = "all"; }); ["#advTitle", "#advCreator", "#advSubject", "#advKeyword", "#advYear"].forEach((id)=>$(id).value=""); $("#advFormat").value="all"; els.keywordSearch.value=""; renderPublic(); });
   els.loadMoreBtn.addEventListener("click", () => { state.shown += PAGE_SIZE; renderPublic(); });
-  els.arrivalsPrevBtn.addEventListener("click", () => {
-    state.arrivalsPage = Math.max(state.arrivalsPage - 1, 0);
-    renderArrivals();
-  });
-  els.arrivalsNextBtn.addEventListener("click", () => {
-    const maxPage = Math.max(Math.ceil(getRecentArrivals().length / 5) - 1, 0);
-    state.arrivalsPage = Math.min(state.arrivalsPage + 1, maxPage);
-    renderArrivals();
-  });
+  els.arrivalsPrevBtn.addEventListener("click", () => { state.arrivalsPage = Math.max(state.arrivalsPage - 1, 0); renderArrivals(); });
+  els.arrivalsNextBtn.addEventListener("click", () => { const maxPage = Math.max(Math.ceil(getRecentArrivals().length / 5) - 1, 0); state.arrivalsPage = Math.min(state.arrivalsPage + 1, maxPage); renderArrivals(); });
   els.randomItemBtn.addEventListener("click", () => openDetail(state.records[Math.floor(Math.random() * state.records.length)]));
 
   els.recordForm.addEventListener("input", checkDuplicateDraft);
   els.recordForm.addEventListener("submit", saveFormRecord);
   els.cancelEditBtn.addEventListener("click", () => { els.recordForm.reset(); $("#recordId").value = ""; checkDuplicateDraft(); });
+  els.fetchMetadataBtn.addEventListener("click", fetchMetadata);
+  els.coverUpload.addEventListener("change", handleCoverUpload);
+  els.recordForm.addEventListener("dragover", (e) => e.preventDefault());
+  els.recordForm.addEventListener("drop", handleCoverDrop);
 
   els.adminSearch.addEventListener("input", renderAdminTable);
-  els.selectAllRows.addEventListener("change", (e) => {
-    state.selectedIds.clear();
-    if (e.target.checked) getAdminFiltered().forEach((r) => state.selectedIds.add(r.id));
-    renderAdminTable();
-  });
+  els.selectAllRows.addEventListener("change", (e) => { state.selectedIds.clear(); if (e.target.checked) getAdminFiltered().forEach((r) => state.selectedIds.add(r.id)); renderAdminTable(); });
+  els.applyBulkBtn.addEventListener("click", () => { const status = els.bulkStatusSelect.value; if (!status || !state.selectedIds.size) return; state.records = state.records.map((r) => (state.selectedIds.has(r.id) ? { ...r, status } : r)); saveRecords(state.records); render(); });
+  els.bulkGenreAddBtn.addEventListener("click", bulkAddGenres);
 
-  els.applyBulkBtn.addEventListener("click", () => {
-    const status = els.bulkStatusSelect.value;
-    if (!status || !state.selectedIds.size) return;
-    state.records = state.records.map((r) => (state.selectedIds.has(r.id) ? { ...r, status } : r));
-    saveRecords(state.records);
-    flash("Bulk update applied.");
-    render();
-  });
-
+  els.addLocationBtn.addEventListener("click", addLocation);
   els.exportBtn.addEventListener("click", () => exportRecords(state.records));
-  els.importInput.addEventListener("change", async (e) => {
-    if (!e.target.files?.[0]) return;
-    try {
-      state.records = await importRecords(e.target.files[0]);
-      saveRecords(state.records);
-      flash("Catalog imported successfully.");
-      render();
-    } catch (err) {
-      flash(err.message, true);
-    }
-  });
-
-  els.seedDataBtn.addEventListener("click", () => {
-    state.records = [...sampleRecords];
-    saveRecords(state.records);
-    flash("Sample data seeded.");
-    render();
-  });
-
+  els.importInput.addEventListener("change", async (e) => { if (!e.target.files?.[0]) return; state.records = await importRecords(e.target.files[0]); saveRecords(state.records); render(); });
+  els.seedDataBtn.addEventListener("click", () => { state.records = sampleRecords.map(normalizeRecord); saveRecords(state.records); render(); });
   els.closeRecordDetailsBtn.addEventListener("click", () => els.recordDetailsModal.classList.add("hidden"));
-  els.copyCitationBtn.addEventListener("click", async () => {
-    if (!state.currentDetail) return;
-    const r = state.currentDetail;
-    const citation = `${r.creator}. (${r.year || "n.d."}). ${r.title}${r.subtitle ? `: ${r.subtitle}` : ""}. ${r.publisher || "Unknown publisher"}.`;
-    await navigator.clipboard.writeText(citation);
-    flash("Citation copied to clipboard.");
-  });
+}
 
-  window.addEventListener("hashchange", openByHash);
+function switchView(view) {
+  state.view = view;
+  ["Search", "Recent", "Covers", "Stats", "Shelves"].forEach((v) => $(`#view${v}`).classList.toggle("hidden", view !== v.toLowerCase()));
+  if (view === "recent") renderRecentPage();
+  if (view === "covers") renderCoverWall();
+  if (view === "stats") renderStatsPage();
+  if (view === "shelves") renderShelfPages();
+}
+
+function fillGenres() {
+  els.genres.innerHTML = PRELOADED_GENRES.map((g) => `<option value="${g}">${g}</option>`).join("");
+  els.bulkGenreSelect.innerHTML = PRELOADED_GENRES.map((g) => `<option value="${g}">${g}</option>`).join("");
+}
+
+function fillLocations() {
+  const locations = [...new Set([...state.settings.locations, ...state.records.map((r)=>r.location).filter(Boolean)])];
+  els.locationSelect.innerHTML = ['<option value="">Unspecified</option>', ...locations.map((loc) => `<option>${loc}</option>`)].join("");
+  renderLocationList(locations);
+}
+
+function renderLocationList(locations) {
+  els.locationList.innerHTML = "";
+  locations.forEach((loc) => {
+    const li = document.createElement("li");
+    li.innerHTML = `${loc} <button class="button button-secondary" type="button">Delete</button>`;
+    li.querySelector("button").addEventListener("click", () => { state.settings.locations = state.settings.locations.filter((l) => l !== loc); saveSettings(state.settings); fillLocations(); renderPublic(); });
+    els.locationList.appendChild(li);
+  });
+}
+
+function addLocation() {
+  const value = els.newLocationInput.value.trim();
+  if (!value) return;
+  if (!state.settings.locations.includes(value)) state.settings.locations.push(value);
+  saveSettings(state.settings);
+  els.newLocationInput.value = "";
+  fillLocations();
+}
+
+async function fetchMetadata() {
+  const isbn = $("#identifier").value.trim().replace(/[^0-9Xx]/g, "");
+  if (!isbn) return;
+  try {
+    const res = await fetch(`https://openlibrary.org/isbn/${isbn}.json`);
+    if (!res.ok) throw new Error("No metadata found");
+    const data = await res.json();
+    const map = { title: "#title", publishers: "#publisher", publish_date: "#year", notes: "#description" };
+    Object.entries(map).forEach(([k, id]) => { if (!$(id).value && data[k]) $(id).value = Array.isArray(data[k]) ? data[k][0] : String(data[k]).slice(0, 300); });
+    if (!$("#coverUrl").value) $("#coverUrl").value = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
+    flash("Metadata fetched.");
+  } catch (error) {
+    flash(`Metadata fetch failed: ${error.message}`, true);
+  }
+}
+
+function handleCoverUpload() {
+  const file = els.coverUpload.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => { $("#coverUrl").value = reader.result; };
+  reader.readAsDataURL(file);
+}
+
+function handleCoverDrop(e) {
+  e.preventDefault();
+  const file = e.dataTransfer.files?.[0];
+  if (!file || !file.type.startsWith("image/")) return;
+  const reader = new FileReader();
+  reader.onload = () => { $("#coverUrl").value = reader.result; flash("Cover dropped and loaded."); };
+  reader.readAsDataURL(file);
 }
 
 function saveFormRecord(e) {
   e.preventDefault();
-  const form = new FormData(els.recordForm);
-  const id = $("#recordId").value.trim() || crypto.randomUUID();
-  const dateAdded = form.get("dateAdded") || new Date().toISOString().slice(0, 10);
+  const id = $("#recordId").value || crypto.randomUUID();
+  const dateAdded = $("#dateAdded").value || new Date().toISOString().slice(0, 10);
+  const selectedGenres = [...els.genres.selectedOptions].map((o) => o.value);
+  const custom = $("#genre").value.trim();
+  const genres = [...new Set([...selectedGenres, ...(custom ? [custom] : [])])];
+
   const record = normalizeRecord({
     id,
-    title: $("#title").value.trim(),
-    subtitle: $("#subtitle").value.trim(),
-    creator: $("#creator").value.trim(),
-    contributors: $("#contributors").value.trim(),
-    format: $("#format").value,
-    edition: $("#edition").value.trim(),
-    year: $("#year").value.trim() ? Number($("#year").value) : "",
-    publisher: $("#publisher").value.trim(),
-    identifier: $("#identifier").value.trim(),
-    genre: $("#genre").value.trim(),
-    subjects: $("#subjects").value.trim(),
-    description: $("#description").value.trim(),
-    location: $("#location").value.trim(),
-    callNumber: $("#callNumber").value.trim(),
-    accessionNumber: $("#accessionNumber").value.trim(),
-    status: $("#status").value,
-    dateAcquired: $("#dateAcquired").value,
-    dateAdded,
-    notes: $("#notes").value.trim(),
-    coverUrl: $("#coverUrl").value.trim(),
-    addedAt: new Date(dateAdded).getTime() || Date.now(),
+    permalink: `record-${id}`,
+    title: $("#title").value.trim(), subtitle: $("#subtitle").value.trim(), creator: $("#creator").value.trim(), contributors: $("#contributors").value.trim(),
+    format: $("#format").value, edition: $("#edition").value.trim(), year: $("#year").value.trim(), publisher: $("#publisher").value.trim(), identifier: $("#identifier").value.trim(),
+    genre: genres.join(", "), genres, subjects: $("#subjects").value.trim(), description: $("#description").value.trim(),
+    location: $("#location").value, callNumber: $("#callNumber").value.trim(), accessionNumber: $("#accessionNumber").value.trim(), status: $("#status").value,
+    dateAcquired: $("#dateAcquired").value, dateAdded, source: $("#source").value.trim(), pricePaid: $("#pricePaid").value.trim(), notes: $("#notes").value.trim(), coverUrl: $("#coverUrl").value.trim(),
+    binding: $("#binding").value, seriesName: $("#seriesName").value.trim(), seriesNumber: $("#seriesNumber").value.trim(), curatedShelf: $("#curatedShelf").value.trim(), addedAt: new Date(dateAdded).getTime() || Date.now(),
   });
 
-  if (!record.title || !record.creator || !record.format) {
-    flash("Title, creator, and format are required.", true);
-    return;
-  }
-
   const idx = state.records.findIndex((r) => r.id === id);
-  if (idx >= 0) state.records[idx] = record;
-  else state.records.unshift(record);
-
+  if (idx >= 0) state.records[idx] = record; else state.records.unshift(record);
   saveRecords(state.records);
   flash("Record saved.");
   els.recordForm.reset();
   $("#recordId").value = "";
-  checkDuplicateDraft();
   render();
 }
 
 function checkDuplicateDraft() {
-  const draft = {
-    id: $("#recordId").value,
-    title: $("#title").value.trim(),
-    creator: $("#creator").value.trim(),
-  };
-  if (!draft.title || !draft.creator) {
-    els.duplicateWarning.textContent = "";
-    return;
-  }
+  const draft = { id: $("#recordId").value, title: $("#title").value.trim(), creator: $("#creator").value.trim(), identifier: $("#identifier").value.trim() };
+  if (!draft.title || !draft.creator) { els.duplicateWarning.textContent = ""; return; }
   const dupes = duplicateCandidates(state.records, draft);
-  els.duplicateWarning.textContent = dupes.length ? `Possible duplicate: ${dupes[0].title} by ${dupes[0].creator}.` : "";
+  els.duplicateWarning.textContent = dupes.length ? `Possible duplicate found. Existing: ${dupes[0].title} by ${dupes[0].creator}. You may still save.` : "";
 }
 
 function render() {
   els.adminSection.classList.toggle("hidden", !state.isAdmin);
   els.adminToggleBtn.textContent = state.isAdmin ? "Logout Admin" : "Admin Login";
+  fillGenres();
+  fillLocations();
   renderPublic();
   renderAdminTable();
 }
 
 function renderPublic() {
   renderArrivals();
-
   const facets = buildFacets(state.records);
-  fillFacet(els.facets.format, ["all", ...facets.format]);
-  fillFacet(els.facets.genre, ["all", ...facets.genre]);
-  fillFacet(els.facets.year, ["all", ...facets.year]);
-  fillFacet(els.facets.status, ["all", ...facets.status]);
-  fillFacet(els.facets.location, ["all", ...facets.location]);
-
+  fillFacet(els.facets.format, ["all", ...facets.format]); fillFacet(els.facets.genre, ["all", ...facets.genre]); fillFacet(els.facets.year, ["all", ...facets.year]); fillFacet(els.facets.status, ["all", ...facets.status]); fillFacet(els.facets.location, ["all", ...facets.location]); fillFacet(els.facets.binding, ["all", ...facets.binding]);
   const criteria = q();
   const hasSearchInput = hasActiveSearch(criteria);
   const results = hasSearchInput ? queryRecords(state.records, criteria) : [];
   const visible = results.slice(0, state.shown);
-
   els.publicResults.innerHTML = "";
-  visible.forEach((r) => els.publicResults.appendChild(renderCard(r)));
-
+  visible.forEach((r) => els.publicResults.appendChild(renderCard(r, criteria.keyword || criteria.advKeyword)));
+  const suggestion = didYouMean(state.records, criteria.keyword);
+  els.didYouMean.innerHTML = suggestion && hasSearchInput ? `Did you mean <button class="subject-link" type="button" id="dymBtn">${suggestion}</button>?` : "";
+  $("#dymBtn")?.addEventListener("click", ()=>{els.keywordSearch.value=suggestion; renderPublic();});
   els.resultsSummary.textContent = hasSearchInput ? `${results.length} results` : "Search to view catalog records.";
-  els.emptyState.textContent = hasSearchInput
-    ? "No records match your search. Try broadening your filters or searching by keyword."
-    : "Start with a keyword, advanced search field, or a filter to explore the catalog.";
   els.emptyState.classList.toggle("hidden", results.length > 0 && hasSearchInput);
   els.loadMoreBtn.classList.toggle("hidden", !hasSearchInput || results.length <= visible.length);
-
   const stats = getStats(state.records);
-  els.catalogStats.innerHTML = `
-    <span>Total: <strong>${stats.total}</strong></span>
-    <span>Recently added (30d): <strong>${stats.recentlyAdded}</strong></span>
-    ${Object.entries(stats.byFormat).map(([k, v]) => `<span>${k}: <strong>${v}</strong></span>`).join("")}
-  `;
-
+  els.catalogStats.innerHTML = `<span>Total: <strong>${stats.total}</strong></span><span>Recently added (30d): <strong>${stats.recentlyAdded}</strong></span>${Object.entries(stats.byFormat).map(([k, v]) => `<span>${k}: <strong>${v}</strong></span>`).join("")}`;
 }
 
-
-function hasActiveSearch(criteria) {
-  return Boolean(
-    criteria.keyword ||
-    criteria.title ||
-    criteria.creator ||
-    criteria.subject ||
-    criteria.advKeyword ||
-    criteria.year ||
-    (criteria.advFormat && criteria.advFormat !== "all") ||
-    criteria.facetFormat !== "all" ||
-    criteria.facetGenre !== "all" ||
-    criteria.facetYear !== "all" ||
-    criteria.facetStatus !== "all" ||
-    criteria.facetLocation !== "all"
-  );
+function renderSuggestions() {
+  const term = els.keywordSearch.value.trim().toLowerCase();
+  if (term.length < 2) { els.searchSuggestions.classList.add("hidden"); els.searchSuggestions.innerHTML = ""; return; }
+  const suggestions = [...new Set(state.records.flatMap((r) => [r.title, r.creator, ...asArray(r.genres?.length ? r.genres : r.genre)]).filter((s) => s && s.toLowerCase().includes(term)).slice(0, 8))];
+  els.searchSuggestions.innerHTML = suggestions.map((s) => `<button type="button" class="suggestion-item">${s}</button>`).join("");
+  els.searchSuggestions.classList.toggle("hidden", !suggestions.length);
+  els.searchSuggestions.querySelectorAll(".suggestion-item").forEach((btn) => btn.addEventListener("click", () => { els.keywordSearch.value = btn.textContent; els.searchSuggestions.classList.add("hidden"); renderPublic(); }));
 }
 
-function getRecentArrivals() {
-  return [...state.records].sort((a, b) => Number(b.addedAt) - Number(a.addedAt)).slice(0, 24);
-}
+function hasActiveSearch(c) { return Boolean(c.keyword || c.title || c.creator || c.subject || c.advKeyword || c.year || (c.advFormat && c.advFormat !== "all") || Object.entries(c).some(([k,v])=>k.startsWith("facet") && v !== "all")); }
+function getRecentArrivals() { return [...state.records].sort((a, b) => Number(b.addedAt) - Number(a.addedAt)).slice(0, 24); }
 
 function renderArrivals() {
-  const recent = getRecentArrivals();
-  const perPage = 5;
-  const pages = Math.max(Math.ceil(recent.length / perPage), 1);
-  state.arrivalsPage = Math.min(state.arrivalsPage, pages - 1);
-
-  const start = state.arrivalsPage * perPage;
-  const pageItems = recent.slice(start, start + perPage);
-
+  const recent = getRecentArrivals(); const perPage = 5; const pages = Math.max(Math.ceil(recent.length / perPage), 1); state.arrivalsPage = Math.min(state.arrivalsPage, pages - 1);
+  const pageItems = recent.slice(state.arrivalsPage * perPage, state.arrivalsPage * perPage + perPage);
   els.newArrivals.innerHTML = "";
-  pageItems.forEach((r) => {
-    const b = document.createElement("button");
-    b.className = "arrival-item";
-    b.type = "button";
-    b.innerHTML = `<img class="arrival-cover" src="${r.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${r.title}"><span class="arrival-title">${r.title}</span>`;
-    b.addEventListener("click", () => openDetail(r));
-    els.newArrivals.appendChild(b);
-  });
-
-  els.arrivalsPrevBtn.disabled = state.arrivalsPage === 0;
-  els.arrivalsNextBtn.disabled = state.arrivalsPage >= pages - 1;
+  pageItems.forEach((r) => { const b = document.createElement("button"); b.className = "arrival-item"; b.type = "button"; b.innerHTML = `<img class="arrival-cover" src="${r.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${r.title}"><span class="arrival-title">${r.title}</span>`; b.addEventListener("click", () => openDetail(r)); els.newArrivals.appendChild(b); });
+  els.arrivalsPrevBtn.disabled = state.arrivalsPage === 0; els.arrivalsNextBtn.disabled = state.arrivalsPage >= pages - 1;
 }
 
-function fillFacet(select, values) {
-  const current = select.value || "all";
-  select.innerHTML = values.map((v) => `<option value="${v}">${v === "all" ? "All" : v}</option>`).join("");
-  select.value = values.includes(current) ? current : "all";
-}
+function fillFacet(select, values) { const current = select.value || "all"; select.innerHTML = values.map((v) => `<option value="${v}">${v === "all" ? "All" : `${v} (${facetCount(select.id, v)})`}</option>`).join(""); select.value = values.includes(current) ? current : "all"; }
+function facetCount(id, value) { if (value === "all") return state.records.length; const map={facetFormat:"format",facetGenre:"genre",facetYear:"year",facetStatus:"status",facetLocation:"location",facetBinding:"binding"}; const k=map[id]; return state.records.filter((r)=> k==="genre" ? asArray(r.genres?.length?r.genres:r.genre).includes(value) : String(r[k]||"")===value).length; }
 
-function renderCard(r) {
+function highlight(text, term) { if (!term) return text; const re = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "ig"); return String(text||"").replace(re, "<mark>$1</mark>"); }
+function renderCard(r, term) {
   const node = els.template.content.firstElementChild.cloneNode(true);
-  node.querySelector(".cover").src = r.coverUrl || PLACEHOLDER_COVER;
-  node.querySelector(".cover").alt = `Cover for ${r.title}`;
-  const formatBadge = node.querySelector(".badge-format");
-  formatBadge.textContent = r.format;
-  formatBadge.dataset.format = r.format.toLowerCase().replace(/\s+/g, "-");
-  const statusBadge = node.querySelector(".badge-status");
-  statusBadge.textContent = r.status;
-  statusBadge.dataset.status = r.status.toLowerCase().replace(/\s+/g, "-");
-  node.classList.toggle("status-on-order", r.status === "On Order");
-  node.querySelector(".record-title").textContent = r.title;
-  node.querySelector(".record-meta").textContent = `${r.creator}${r.year ? ` • ${r.year}` : ""}`;
+  node.querySelector(".cover").src = r.coverUrl || PLACEHOLDER_COVER; node.querySelector(".cover").alt = `Cover for ${r.title}`;
+  node.querySelector(".badge-format").textContent = r.format; node.querySelector(".badge-status").textContent = r.status;
+  node.querySelector(".record-title").innerHTML = highlight(r.title, term);
+  node.querySelector(".record-meta").innerHTML = highlight(`${r.creator}${r.year ? ` • ${r.year}` : ""}${r.binding ? ` • ${r.binding}` : ""}`, term);
   node.querySelector(".record-location").textContent = `${r.callNumber || "No call number"} • ${r.location || "No location"}`;
-
-  const subjectWrap = node.querySelector(".record-subjects");
-  const subjects = (r.subjects || r.genre || "").split(",").map((s) => s.trim()).filter(Boolean).slice(0, 4);
+  const subjectWrap = node.querySelector(".record-subjects"); const subjects = asArray(r.genres?.length ? r.genres : (r.subjects || r.genre)).slice(0, 4);
   subjectWrap.innerHTML = subjects.map((s) => `<button class="subject-link" type="button">${s}</button>`).join(" ");
-  subjectWrap.querySelectorAll(".subject-link").forEach((btn) => btn.addEventListener("click", () => {
-    $("#advSubject").value = btn.textContent;
-    state.shown = PAGE_SIZE;
-    renderPublic();
-  }));
-
+  subjectWrap.querySelectorAll(".subject-link").forEach((btn) => btn.addEventListener("click", () => { $("#advSubject").value = btn.textContent; renderPublic(); }));
+  node.querySelector(".expand-btn").addEventListener("click", () => { const detail=node.querySelector('.inline-details'); detail.classList.toggle('hidden'); detail.innerHTML=`<p class="muted">${r.description || "No description"}</p><p class="muted">Series: ${r.seriesName || "n/a"}${r.seriesNumber ? ` #${r.seriesNumber}` : ""}</p>`; });
   node.querySelector(".view-details-btn").addEventListener("click", () => openDetail(r));
   return node;
 }
 
 function openDetail(record) {
   if (!record) return;
-  state.currentDetail = record;
   location.hash = `record-${record.id}`;
   const related = getRelated(state.records, record);
-  const nearbyShelf = getNearbyShelf(state.records, record, 3);
-  const subjects = splitSubjects(record.subjects || record.genre);
-
-  els.recordDetailsBody.innerHTML = `
-    <article class="opac-record-layout">
-      <div class="record-columns">
-        <div class="record-image-column">
-          <img src="${record.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${record.title}" class="details-cover" />
-        </div>
-        <section class="record-main-column">
-          <h4>${record.title}</h4>
-          <p class="muted">${record.subtitle || ""}</p>
-          <dl class="metadata-grid">
-            <dt>Author / Creator</dt><dd>${record.creator}${record.contributors ? `; ${record.contributors}` : ""}</dd>
-            <dt>Publisher</dt><dd>${record.publisher || "Unknown publisher"}</dd>
-            <dt>Published</dt><dd>${record.year || "n.d."}</dd>
-            <dt>Subjects</dt><dd>${record.subjects || record.genre || "n/a"}</dd>
-            <dt>Identifier</dt><dd>${record.identifier || "n/a"}</dd>
-            <dt>Accession Number</dt><dd>${record.accessionNumber || "n/a"}</dd>
-          </dl>
-        </section>
-        <aside class="record-availability-column">
-          <div class="availability-card">
-            <h5>Availability</h5>
-            <p><strong>Status:</strong> ${record.status}</p>
-            <p><strong>Location:</strong> ${record.location || "n/a"}</p>
-            <p><strong>Call Number:</strong> ${record.callNumber || "n/a"}</p>
-            <p><strong>Format:</strong> ${record.format}</p>
-          </div>
-        </aside>
-      </div>
-      <section class="detail-section">
-        <h5>Description</h5>
-        <p>${record.description || "No description available."}</p>
-      </section>
-      <section class="detail-section">
-        <h5>Subjects</h5>
-        <div class="subject-pills">${subjects.length ? subjects.map((subject) => `<span class="subject-pill">${subject}</span>`).join("") : "<p class=\"muted\">No subjects listed.</p>"}</div>
-      </section>
-      <section class="detail-section">
-        <h5>Related Titles</h5>
-        <p class="muted">More by this creator: ${related.byCreator.map((r) => r.title).join(", ") || "None"}</p>
-        <p class="muted">More in this category: ${related.byCategory.map((r) => r.title).join(", ") || "None"}</p>
-      </section>
-      <section class="detail-section nearby-section">
-        <h5>Books Nearby</h5>
-        <div class="nearby-spines" role="list" aria-label="Nearby books by call number">
-          ${nearbyShelf.map((item) => `
-            <button class="book-spine ${item.id === record.id ? "selected" : ""}" type="button" data-record-id="${item.id}" role="listitem">
-              <span class="spine-call">${item.callNumber || "No call #"}</span>
-              <span class="spine-title">${item.title}</span>
-            </button>
-          `).join("")}
-        </div>
-      </section>
-    </article>
-  `;
-
-  els.recordDetailsBody.querySelectorAll(".book-spine").forEach((spine) => {
-    spine.addEventListener("click", () => {
-      const target = state.records.find((candidate) => candidate.id === spine.dataset.recordId);
-      if (target) openDetail(target);
-    });
-  });
-
+  const genres = asArray(record.genres?.length ? record.genres : record.genre);
+  const decade = record.year ? `${Math.floor(Number(record.year) / 10) * 10}s` : "";
+  els.recordDetailsBody.innerHTML = `<article class="opac-record-layout"><div class="record-columns"><div class="record-image-column"><img src="${record.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${record.title}" class="details-cover" /></div><section class="record-main-column"><h4>${record.title}</h4><p class="muted">${record.subtitle || ""}</p><dl class="metadata-grid"><dt>Author / Creator</dt><dd><button class="subject-link" id="authorPageBtn" type="button">${record.creator}</button></dd><dt>Publisher</dt><dd>${record.publisher || "Unknown"}</dd><dt>Published</dt><dd>${record.year || "n.d."}</dd><dt>Genres</dt><dd>${genres.join(", ") || "n/a"}</dd><dt>Binding</dt><dd>${record.binding || "n/a"}</dd><dt>Series</dt><dd>${record.seriesName ? `${record.seriesName}${record.seriesNumber ? ` #${record.seriesNumber}` : ""}` : "n/a"}</dd><dt>Identifier</dt><dd>${record.identifier || "n/a"}</dd><dt>Date acquired</dt><dd>${record.dateAcquired || "n/a"} ${record.source ? ` • ${record.source}` : ""} ${record.pricePaid ? ` • $${record.pricePaid}` : ""}</dd></dl></section><aside class="record-availability-column"><div class="availability-card"><h5>Availability</h5><p><strong>Status:</strong> ${record.status}</p><p><strong>Location:</strong> ${record.location || "n/a"}</p><p><strong>Call Number:</strong> ${record.callNumber || "n/a"}</p><p><strong>Format:</strong> ${record.format}</p></div></aside></div><section class="detail-section"><h5>Description</h5><p>${record.description || "No description"}</p></section><section class="detail-section"><h5>Collection Pathways</h5><p class="muted"><button class="subject-link" id="decadeBtn" type="button">More from ${decade || "this era"}</button> <button class="subject-link" id="genreBtn" type="button">More ${genres[0] || "in this category"}</button></p></section><section class="detail-section"><h5>Series & Related</h5><p class="muted">Series items: ${related.bySeries.map((r)=>r.title).join(", ") || "None"}</p><p class="muted">By creator: ${related.byCreator.map((r)=>r.title).join(", ") || "None"}</p></section><section class="detail-section nearby-section"><h5>Browse a Shelf</h5><div class="nearby-spines" role="list">${related.virtualShelf.map((item)=>`<button class="book-spine ${item.id===record.id?"selected":""}" data-record-id="${item.id}" type="button"><span class="spine-call">${item.callNumber || "No call #"}</span><span class="spine-title">${item.title}</span></button>`).join("")}</div></section></article>`;
+  els.recordDetailsBody.querySelectorAll(".book-spine").forEach((spine) => spine.addEventListener("click", () => openDetail(state.records.find((r) => r.id === spine.dataset.recordId))));
+  $("#authorPageBtn")?.addEventListener("click", ()=>renderAuthorPage(record.creator));
+  $("#decadeBtn")?.addEventListener("click", ()=>{els.keywordSearch.value=decade.slice(0,4); switchView('search'); renderPublic();});
+  $("#genreBtn")?.addEventListener("click", ()=>{$("#advSubject").value=genres[0]||""; switchView('search'); renderPublic();});
   els.recordDetailsModal.classList.remove("hidden");
 }
 
-function splitSubjects(value) {
-  return String(value || "")
-    .split(",")
-    .map((subject) => subject.trim())
-    .filter(Boolean);
+function renderAuthorPage(author) {
+  const normalized = normalizeAuthor(author);
+  const items = state.records.filter((r)=>normalizeAuthor(r.creator)===normalized);
+  switchView("covers");
+  els.coverWall.innerHTML = `<h4>${author}</h4>` + items.map((r, i)=>`<button class="wall-item ${i%2?'stacked':''}" type="button" data-id="${r.id}"><img src="${r.coverUrl || PLACEHOLDER_COVER}" alt="${r.title}" /><span>${r.title}</span></button>`).join("");
+  els.coverWall.querySelectorAll(".wall-item").forEach((b)=>b.addEventListener("click", ()=>openDetail(state.records.find((r)=>r.id===b.dataset.id))));
 }
 
-function getNearbyShelf(records, currentRecord, offset) {
-  const sorted = [...records].sort((a, b) => normalizeCall(a.callNumber).localeCompare(normalizeCall(b.callNumber), undefined, { numeric: true }));
-  const centerIndex = sorted.findIndex((record) => record.id === currentRecord.id);
-  if (centerIndex < 0) return [currentRecord];
-
-  const shelf = [];
-  for (let step = offset; step > 0; step -= 1) {
-    shelf.push(sorted[centerIndex - step] || null);
-  }
-  shelf.push(currentRecord);
-  for (let step = 1; step <= offset; step += 1) {
-    shelf.push(sorted[centerIndex + step] || null);
-  }
-
-  return shelf.filter(Boolean);
+function renderRecentPage() {
+  const now = Date.now();
+  const week = state.records.filter((r)=>Number(r.addedAt)>now-1000*60*60*24*7);
+  const month = state.records.filter((r)=>Number(r.addedAt)>now-1000*60*60*24*30);
+  els.recentBuckets.innerHTML = `<h4>This week</h4>${week.map((r)=>`<p><button class="subject-link recent-open" data-id="${r.id}" type="button">${r.title}</button> — ${r.creator}</p>`).join("") || '<p class="muted">No additions.</p>'}<h4>This month</h4>${month.map((r)=>`<p><button class="subject-link recent-open" data-id="${r.id}" type="button">${r.title}</button> — ${r.creator}</p>`).join("")}`;
+  els.recentBuckets.querySelectorAll('.recent-open').forEach((b)=>b.addEventListener('click',()=>openDetail(state.records.find((r)=>r.id===b.dataset.id))));
+}
+function renderCoverWall() {
+  els.coverWall.innerHTML = state.records.map((r)=>`<button class="wall-item" data-id="${r.id}" type="button"><img src="${r.coverUrl || PLACEHOLDER_COVER}" alt="${r.title}" /><span>${r.title}</span></button>`).join("");
+  els.coverWall.querySelectorAll(".wall-item").forEach((b)=>b.addEventListener("click",()=>openDetail(state.records.find((r)=>r.id===b.dataset.id))));
+}
+function renderStatsPage() {
+  const s = getStats(state.records);
+  els.statsPage.innerHTML = `<p>Total items: <strong>${s.total}</strong></p><p>Formats: ${Object.entries(s.byFormat).map(([k,v])=>`${k} (${v})`).join(' • ')}</p><p>Most owned authors: ${s.mostOwnedAuthors.map((a)=>`${a.author} (${a.count})`).join(', ')}</p><p>Publication year distribution: ${Object.entries(s.byYear).map(([k,v])=>`${k}: ${v}`).join(' • ')}</p><p>Newest additions: ${s.newest.map((r)=>r.title).join(', ')}</p>`;
+}
+function renderShelfPages() {
+  const map = state.records.reduce((acc, r)=>{ if (!r.curatedShelf) return acc; (acc[r.curatedShelf] ||= []).push(r); return acc; }, {});
+  els.shelfPages.innerHTML = Object.entries(map).map(([name, items])=>`<section><h4>${name}</h4><div class="cover-wall">${items.map((r,i)=>`<button class="wall-item ${i%3===0?'stacked':''}" data-id="${r.id}" type="button"><img src="${r.coverUrl || PLACEHOLDER_COVER}" alt="${r.title}" /><span>${r.title}</span></button>`).join('')}</div></section>`).join('') || '<p class="muted">No curated shelves yet.</p>';
+  els.shelfPages.querySelectorAll('.wall-item').forEach((b)=>b.addEventListener('click',()=>openDetail(state.records.find((r)=>r.id===b.dataset.id))));
 }
 
-function normalizeCall(value) {
-  return String(value || "ZZZ")
-    .toUpperCase()
-    .replace(/[^A-Z0-9.]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function openByHash() {
-  if (!location.hash.startsWith("#record-")) return;
-  const id = location.hash.replace("#record-", "");
-  const hit = state.records.find((r) => r.id === id);
-  if (hit) openDetail(hit);
-}
-
-function getAdminFiltered() {
-  const term = els.adminSearch.value.trim().toLowerCase();
-  if (!term) return state.records;
-  return state.records.filter((r) => `${r.title} ${r.creator} ${r.identifier || ""}`.toLowerCase().includes(term));
-}
-
+function getAdminFiltered() { const term = els.adminSearch.value.trim().toLowerCase(); if (!term) return state.records; return state.records.filter((r) => `${r.title} ${r.creator} ${r.identifier || ""}`.toLowerCase().includes(term)); }
 function renderAdminTable() {
-  els.adminTableBody.innerHTML = "";
-  if (!state.isAdmin) return;
-
-  getAdminFiltered().forEach((r) => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td><input type="checkbox" ${state.selectedIds.has(r.id) ? "checked" : ""}></td>
-      <td>${r.title}</td>
-      <td>${r.creator}</td>
-      <td>${r.format}</td>
-      <td>${r.year || ""}</td>
-      <td>${r.status}</td>
-      <td class="row-actions">
-        <button class="button button-secondary" data-act="edit">Edit</button>
-        <button class="button button-secondary" data-act="dup">Duplicate</button>
-        <button class="button" data-act="del">Delete</button>
-      </td>
-    `;
-
-    tr.querySelector('input[type="checkbox"]').addEventListener("change", (e) => {
-      if (e.target.checked) state.selectedIds.add(r.id); else state.selectedIds.delete(r.id);
-    });
-
+  els.adminTableBody.innerHTML = ""; if (!state.isAdmin) return;
+  getAdminFiltered().forEach((r) => { const tr = document.createElement("tr"); tr.innerHTML = `<td><input type="checkbox" ${state.selectedIds.has(r.id) ? "checked" : ""}></td><td>${r.title}</td><td>${r.creator}</td><td>${r.format}</td><td>${r.year || ""}</td><td>${r.status}</td><td class="row-actions"><button class="button button-secondary" data-act="edit">Edit</button><button class="button button-secondary" data-act="dup">Duplicate</button><button class="button" data-act="del">Delete</button></td>`;
+    tr.querySelector('input[type="checkbox"]').addEventListener("change", (e) => { if (e.target.checked) state.selectedIds.add(r.id); else state.selectedIds.delete(r.id); });
     tr.querySelector('[data-act="edit"]').addEventListener("click", () => populateForm(r));
-    tr.querySelector('[data-act="dup"]').addEventListener("click", () => {
-      const copy = normalizeRecord({ ...r, id: crypto.randomUUID(), title: `${r.title} (Copy)`, accessionNumber: "" });
-      state.records.unshift(copy);
-      saveRecords(state.records);
-      flash("Record duplicated.");
-      render();
-    });
-    tr.querySelector('[data-act="del"]').addEventListener("click", () => {
-      state.records = state.records.filter((x) => x.id !== r.id);
-      saveRecords(state.records);
-      flash("Record deleted.");
-      render();
-    });
+    tr.querySelector('[data-act="dup"]').addEventListener("click", () => { const copy = normalizeRecord({ ...r, id: crypto.randomUUID(), title: `${r.title} (Copy)` }); state.records.unshift(copy); saveRecords(state.records); render(); });
+    tr.querySelector('[data-act="del"]').addEventListener("click", () => { state.records = state.records.filter((x) => x.id !== r.id); saveRecords(state.records); render(); });
+    els.adminTableBody.appendChild(tr); });
+}
 
-    els.adminTableBody.appendChild(tr);
+function bulkAddGenres() {
+  const selectedGenres = [...els.bulkGenreSelect.selectedOptions].map((o)=>o.value);
+  if (!selectedGenres.length || !state.selectedIds.size) return;
+  state.records = state.records.map((r)=>{
+    if (!state.selectedIds.has(r.id)) return r;
+    const merged = [...new Set([...(r.genres || asArray(r.genre)), ...selectedGenres])];
+    return { ...r, genres: merged, genre: merged.join(', ') };
   });
+  saveRecords(state.records);
+  render();
 }
 
 function populateForm(r) {
-  const fields = ["recordId:id", "title", "subtitle", "creator", "contributors", "format", "edition", "year", "publisher", "identifier", "genre", "subjects", "description", "location", "callNumber", "accessionNumber", "status", "dateAcquired", "dateAdded", "notes", "coverUrl"];
-  fields.forEach((pair) => {
-    const [elId, prop] = pair.includes(":") ? pair.split(":") : [pair, pair];
-    $(`#${elId}`).value = r[prop] || "";
-  });
-  checkDuplicateDraft();
+  const fields = ["recordId:id", "title", "subtitle", "creator", "contributors", "format", "edition", "year", "publisher", "identifier", "genre", "subjects", "description", "location", "callNumber", "accessionNumber", "status", "dateAcquired", "dateAdded", "source", "pricePaid", "notes", "coverUrl", "binding", "seriesName", "seriesNumber", "curatedShelf"];
+  fields.forEach((pair) => { const [elId, prop] = pair.includes(":") ? pair.split(":") : [pair, pair]; $(`#${elId}`).value = r[prop] || ""; });
+  [...els.genres.options].forEach((option)=>{ option.selected = (r.genres || asArray(r.genre)).includes(option.value); });
   window.scrollTo({ top: els.adminSection.offsetTop - 20, behavior: "smooth" });
 }
-
-function flash(msg, isError = false) {
-  els.adminMessage.textContent = msg;
-  els.adminMessage.classList.toggle("error", isError);
-  setTimeout(() => { els.adminMessage.textContent = ""; }, 2400);
-}
+function flash(msg, isError = false) { els.adminMessage.textContent = msg; els.adminMessage.classList.toggle("error", isError); setTimeout(() => { els.adminMessage.textContent = ""; }, 2400); }
 
 bindEvents();
 render();
-openByHash();
+switchView("search");
+if (location.hash.startsWith("#record-")) { const id = location.hash.replace("#record-", ""); const hit = state.records.find((r) => r.id === id); if (hit) openDetail(hit); }

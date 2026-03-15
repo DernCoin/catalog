@@ -1,10 +1,18 @@
+export const FORMAT_OPTIONS = ["Book", "Vinyl", "Board Game", "CD", "Zine", "Magazine", "Other"];
+export const BINDING_OPTIONS = ["", "Paperback", "Hardcover"];
+export const PRELOADED_GENRES = [
+  "Fantasy", "Science Fiction", "Experimental Fiction", "Mystery", "Romance", "Nonfiction", "Biography", "Poetry", "Horror",
+  "Essay", "History", "Philosophy", "Art", "Design", "Comics", "Small Press", "Jazz", "Rock", "Classical", "Strategy",
+];
+
 export function buildFacets(records) {
   return {
     format: unique(records.map((r) => r.format)),
-    genre: unique(records.map((r) => r.genre).filter(Boolean)),
+    genre: unique(records.flatMap((r) => asArray(r.genres).length ? asArray(r.genres) : [r.genre]).filter(Boolean)),
     year: unique(records.map((r) => String(r.year || "")).filter(Boolean)).sort((a, b) => Number(b) - Number(a)),
     status: unique(records.map((r) => r.status).filter(Boolean)),
     location: unique(records.map((r) => r.location).filter(Boolean)),
+    binding: unique(records.map((r) => r.binding).filter(Boolean)),
   };
 }
 
@@ -13,36 +21,49 @@ function unique(values) {
 }
 
 function includes(haystack, needle) {
-  return !needle || haystack.toLowerCase().includes(needle.toLowerCase());
+  return !needle || String(haystack || "").toLowerCase().includes(needle.toLowerCase());
+}
+
+export function asArray(value) {
+  if (Array.isArray(value)) return value.map((v) => String(v).trim()).filter(Boolean);
+  return String(value || "").split(",").map((v) => v.trim()).filter(Boolean);
+}
+
+export function normalizeAuthor(author) {
+  return String(author || "").toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
 }
 
 export function queryRecords(records, q) {
   const filtered = records.filter((r) => {
-    const global = `${r.title} ${r.subtitle || ""} ${r.creator} ${r.contributors || ""} ${r.genre || ""} ${r.subjects || ""} ${r.notes || ""} ${r.description || ""} ${r.callNumber || ""} ${r.location || ""}`;
+    const genres = asArray(r.genres?.length ? r.genres : r.genre).join(" ");
+    const global = `${r.title} ${r.subtitle || ""} ${r.creator} ${r.contributors || ""} ${genres} ${r.subjects || ""} ${r.notes || ""} ${r.description || ""} ${r.callNumber || ""} ${r.location || ""} ${r.binding || ""} ${r.seriesName || ""}`;
     const matchesGlobal = includes(global, q.keyword);
 
     const matchesAdvanced =
       includes(r.title, q.title) &&
       includes(`${r.creator} ${r.contributors || ""}`, q.creator) &&
-      includes(`${r.genre || ""} ${r.subjects || ""}`, q.subject) &&
+      includes(`${genres} ${r.subjects || ""}`, q.subject) &&
       includes(global, q.advKeyword) &&
       (!q.year || String(r.year || "") === String(q.year)) &&
       (q.advFormat === "all" || !q.advFormat || r.format === q.advFormat);
 
+    const genreArray = asArray(r.genres?.length ? r.genres : r.genre);
     const matchesFacets =
       (q.facetFormat === "all" || r.format === q.facetFormat) &&
-      (q.facetGenre === "all" || r.genre === q.facetGenre) &&
+      (q.facetGenre === "all" || genreArray.includes(q.facetGenre)) &&
       (q.facetYear === "all" || String(r.year || "") === q.facetYear) &&
       (q.facetStatus === "all" || r.status === q.facetStatus) &&
-      (q.facetLocation === "all" || r.location === q.facetLocation);
+      (q.facetLocation === "all" || r.location === q.facetLocation) &&
+      (q.facetBinding === "all" || r.binding === q.facetBinding);
 
     return matchesGlobal && matchesAdvanced && matchesFacets;
   });
 
   filtered.forEach((r) => {
     const keyword = q.keyword || q.advKeyword;
+    const genres = asArray(r.genres?.length ? r.genres : r.genre).join(" ");
     r._score = keyword
-      ? [r.title, r.creator, r.genre, r.subjects, r.description]
+      ? [r.title, r.creator, genres, r.subjects, r.description]
           .map((field) => (field || "").toLowerCase().includes(keyword.toLowerCase()))
           .filter(Boolean).length
       : 0;
@@ -58,6 +79,7 @@ function sortRecords(a, b, sort) {
   if (sort === "titleAsc") return a.title.localeCompare(b.title);
   if (sort === "titleDesc") return b.title.localeCompare(a.title);
   if (sort === "creatorAsc") return a.creator.localeCompare(b.creator);
+  if (sort === "callNumber") return normalizeCallNumber(a.callNumber).localeCompare(normalizeCallNumber(b.callNumber), undefined, { numeric: true });
   if (sort === "relevance") return (b._score || 0) - (a._score || 0) || Number(b.addedAt || 0) - Number(a.addedAt || 0);
   return Number(b.addedAt || 0) - Number(a.addedAt || 0);
 }
@@ -68,40 +90,66 @@ export function getStats(records) {
     acc[r.format] = (acc[r.format] || 0) + 1;
     return acc;
   }, {});
+  const byYear = records.reduce((acc, r) => {
+    const decade = r.year ? `${Math.floor(Number(r.year) / 10) * 10}s` : "Unknown";
+    acc[decade] = (acc[decade] || 0) + 1;
+    return acc;
+  }, {});
+  const mostOwnedAuthors = Object.entries(records.reduce((acc, r) => {
+    const key = normalizeAuthor(r.creator);
+    acc[key] = acc[key] || { author: r.creator, count: 0 };
+    acc[key].count += 1;
+    return acc;
+  }, {})).map(([, v]) => v).sort((a, b) => b.count - a.count).slice(0, 5);
   const recentlyAdded = records.filter((r) => Number(r.addedAt || 0) > Date.now() - 1000 * 60 * 60 * 24 * 30).length;
-  return { total, byFormat, recentlyAdded };
+  return { total, byFormat, byYear, mostOwnedAuthors, recentlyAdded, newest: [...records].sort((a,b)=>Number(b.addedAt)-Number(a.addedAt)).slice(0,5) };
 }
 
 export function duplicateCandidates(records, draft) {
   return records.filter((r) =>
-    r.id !== draft.id &&
-    r.title.toLowerCase() === draft.title.toLowerCase() &&
-    r.creator.toLowerCase() === draft.creator.toLowerCase()
+    r.id !== draft.id && (
+      (r.title.toLowerCase() === draft.title.toLowerCase() && r.creator.toLowerCase() === draft.creator.toLowerCase()) ||
+      (draft.identifier && r.identifier && r.identifier.toLowerCase() === draft.identifier.toLowerCase())
+    )
   );
 }
 
 export function getRelated(records, record) {
   const withCallNumbers = records
-    .filter((r) => r.id !== record.id && r.callNumber)
+    .filter((r) => r.callNumber)
     .sort((a, b) => normalizeCallNumber(a.callNumber).localeCompare(normalizeCallNumber(b.callNumber), undefined, { numeric: true }));
 
-  const currentCall = normalizeCallNumber(record.callNumber || "");
-  const insertionIndex = withCallNumbers.findIndex((r) => normalizeCallNumber(r.callNumber).localeCompare(currentCall, undefined, { numeric: true }) >= 0);
-  const anchor = insertionIndex >= 0 ? insertionIndex : Math.max(withCallNumbers.length - 1, 0);
-  const start = Math.max(anchor - 2, 0);
-  const virtualShelf = withCallNumbers.slice(start, start + 5);
+  const currentIndex = withCallNumbers.findIndex((r) => r.id === record.id);
+  const virtualShelf = withCallNumbers.slice(Math.max(currentIndex - 4, 0), currentIndex + 5);
 
   return {
-    byCreator: records.filter((r) => r.id !== record.id && r.creator === record.creator).slice(0, 3),
-    byCategory: records.filter((r) => r.id !== record.id && r.genre && r.genre === record.genre).slice(0, 3),
+    byCreator: records.filter((r) => r.id !== record.id && normalizeAuthor(r.creator) === normalizeAuthor(record.creator)).slice(0, 6),
+    byCategory: records.filter((r) => r.id !== record.id && asArray(r.genres?.length ? r.genres : r.genre).some((g) => asArray(record.genres?.length ? record.genres : record.genre).includes(g))).slice(0, 6),
+    bySeries: records.filter((r) => r.id !== record.id && record.seriesName && r.seriesName === record.seriesName).sort((a,b)=>Number(a.seriesNumber||999)-Number(b.seriesNumber||999)),
     virtualShelf,
   };
 }
 
-function normalizeCallNumber(callNumber) {
+export function normalizeCallNumber(callNumber) {
   return String(callNumber || "")
     .toUpperCase()
     .replace(/[^A-Z0-9.]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+export function didYouMean(records, term) {
+  if (!term || term.length < 3) return "";
+  const corpus = unique(records.flatMap((r) => [r.title, r.creator, ...asArray(r.genres?.length ? r.genres : r.genre)]).filter(Boolean));
+  const lower = term.toLowerCase();
+  let best = "";
+  let bestScore = Infinity;
+  corpus.forEach((entry) => {
+    const score = Math.abs(entry.length - term.length) + (entry.toLowerCase().startsWith(lower.slice(0, 2)) ? 0 : 2);
+    if (score < bestScore && entry.toLowerCase() !== lower) {
+      bestScore = score;
+      best = entry;
+    }
+  });
+  return bestScore <= 4 ? best : "";
 }

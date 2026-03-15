@@ -25,7 +25,15 @@
           <h2>Public Catalog</h2>
           <div id="catalogStats" class="stats"></div>
         </div>
+        <nav class="public-nav">
+          <button class="button button-secondary nav-btn" data-view="search" type="button">Search</button>
+          <button class="button button-secondary nav-btn" data-view="recent" type="button">Recently Added Page</button>
+          <button class="button button-secondary nav-btn" data-view="covers" type="button">Cover Wall</button>
+          <button class="button button-secondary nav-btn" data-view="stats" type="button">Collection Stats</button>
+          <button class="button button-secondary nav-btn" data-view="shelves" type="button">Curated Shelves</button>
+        </nav>
 
+        <section id="viewSearch" class="view-panel">
         <section class="arrivals" aria-labelledby="arrivalsTitle">
           <div class="arrivals-header">
             <h3 id="arrivalsTitle">Recently Added</h3>
@@ -41,6 +49,8 @@
           <div class="search-main">
             <label for="keywordSearch" class="sr-only">Global keyword search</label>
             <input id="keywordSearch" type="search" placeholder="Search everything: title, creator, subjects, notes, call number..." />
+            <div id="searchSuggestions" class="suggestions hidden"></div>
+            <p id="didYouMean" class="muted did-you-mean"></p>
 
             <div class="toolbar">
               <button id="toggleAdvancedBtn" class="button button-secondary" type="button" aria-expanded="false">Advanced Search</button>
@@ -53,6 +63,7 @@
                   <option value="titleAsc">Title A-Z</option>
                   <option value="titleDesc">Title Z-A</option>
                   <option value="creatorAsc">Creator A-Z</option>
+                  <option value="callNumber">Call Number</option>
                 </select>
               </label>
             </div>
@@ -69,6 +80,9 @@
                   <option value="Book">Book</option>
                   <option value="Vinyl">Vinyl</option>
                   <option value="Board Game">Board Game</option>
+                  <option value="CD">CD</option>
+                  <option value="Zine">Zine</option>
+                  <option value="Magazine">Magazine</option>
                   <option value="Other">Other</option>
                 </select>
               </label>
@@ -82,6 +96,7 @@
             <label>Year <select id="facetYear"></select></label>
             <label>Availability <select id="facetStatus"></select></label>
             <label>Location <select id="facetLocation"></select></label>
+            <label>Binding <select id="facetBinding"></select></label>
             <button id="clearFiltersBtn" class="button button-secondary" type="button">Clear Filters</button>
           </aside>
         </section>
@@ -92,6 +107,12 @@
           <button id="loadMoreBtn" class="button button-secondary hidden" type="button">Load More</button>
         </div>
         <p id="emptyState" class="empty-state hidden">No records match your search. Try broadening your filters or searching by keyword.</p>
+        </section>
+
+        <section id="viewRecent" class="view-panel hidden"><h3>Recently Added</h3><div id="recentBuckets"></div></section>
+        <section id="viewCovers" class="view-panel hidden"><h3>Cover Wall</h3><div id="coverWall" class="cover-wall"></div></section>
+        <section id="viewStats" class="view-panel hidden"><h3>Collection Stats</h3><div id="statsPage" class="stats-page"></div></section>
+        <section id="viewShelves" class="view-panel hidden"><h3>Curated Shelves</h3><div id="shelfPages"></div></section>
       </section>
 
       <section id="adminSection" class="card hidden" aria-label="Catalog admin">
@@ -125,6 +146,9 @@
                   <option value="Book">Book</option>
                   <option value="Vinyl">Vinyl</option>
                   <option value="Board Game">Board Game</option>
+                  <option value="CD">CD</option>
+                  <option value="Zine">Zine</option>
+                  <option value="Magazine">Magazine</option>
                   <option value="Other">Other</option>
                 </select>
               </label>
@@ -132,7 +156,19 @@
               <label>Publication Year <input id="year" type="number" min="0" /></label>
               <label>Publisher / Label <input id="publisher" /></label>
               <label>ISBN / UPC / Catalog Number <input id="identifier" /></label>
-              <label>Genre / Category <input id="genre" /></label>
+              <button id="fetchMetadataBtn" class="button button-secondary" type="button">Fetch Metadata</button>
+              <label>Genres <select id="genres" multiple size="6"></select></label>
+              <label>Custom Genre / Category <input id="genre" placeholder="Optional custom" /></label>
+              <label>Binding
+                <select id="binding">
+                  <option value="">None</option>
+                  <option value="Paperback">Paperback</option>
+                  <option value="Hardcover">Hardcover</option>
+                </select>
+              </label>
+              <label>Series Name <input id="seriesName" /></label>
+              <label>Series Number <input id="seriesNumber" type="number" min="0" /></label>
+              <label>Curated Shelf <input id="curatedShelf" placeholder="e.g. Experimental fiction" /></label>
               <label>Subjects / Tags <input id="subjects" placeholder="Comma-separated" /></label>
             </div>
           </fieldset>
@@ -150,12 +186,15 @@
                   <option>Missing</option>
                 </select>
               </label>
-              <label>Location <input id="location" placeholder="Shelf, room, bin..." /></label>
+              <label>Location <select id="location"></select></label>
               <label>Call Number <input id="callNumber" /></label>
               <label>Accession Number <input id="accessionNumber" /></label>
               <label>Date Acquired <input id="dateAcquired" type="date" /></label>
               <label>Date Added <input id="dateAdded" type="date" /></label>
+              <label>Source <input id="source" /></label>
+              <label>Price Paid <input id="pricePaid" type="number" min="0" step="0.01" /></label>
               <label>Cover Image URL <input id="coverUrl" type="url" placeholder="https://..." /></label>
+              <label>Cover Upload <input id="coverUpload" type="file" accept="image/*" /></label>
             </div>
             <label>Description / Summary <textarea id="description" rows="3"></textarea></label>
             <label>Personal Notes <textarea id="notes" rows="2"></textarea></label>
@@ -169,6 +208,16 @@
           </div>
         </form>
 
+        
+        <section class="location-manager">
+          <h3>Manage Locations</h3>
+          <div class="admin-tools">
+            <input id="newLocationInput" placeholder="Add location" />
+            <button id="addLocationBtn" class="button button-secondary" type="button">Add Location</button>
+          </div>
+          <ul id="locationList" class="location-list"></ul>
+        </section>
+
         <section class="admin-table-wrap">
           <div class="admin-tools">
             <input id="adminSearch" type="search" placeholder="Search records in admin table" />
@@ -181,7 +230,9 @@
               <option value="Reference Only">Reference Only</option>
               <option value="Missing">Missing</option>
             </select>
+            <select id="bulkGenreSelect" multiple size="4"></select>
             <button id="applyBulkBtn" class="button button-secondary" type="button">Apply to selected</button>
+            <button id="bulkGenreAddBtn" class="button button-secondary" type="button">Add Genres to selected</button>
           </div>
           <table id="adminTable">
             <thead>
@@ -240,6 +291,8 @@
           <p class="record-meta"></p>
           <p class="record-location"></p>
           <p class="record-subjects"></p>
+          <button class="button button-secondary expand-btn" type="button">Quick View</button>
+          <div class="inline-details hidden"></div>
           <button class="button button-secondary view-details-btn" type="button">View Full Record</button>
         </div>
       </article>

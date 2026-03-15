@@ -1,19 +1,30 @@
-import { STORAGE_KEY } from "./config.js";
+import { STORAGE_KEY, SETTINGS_KEY } from "./config.js";
 import { sampleRecords } from "./seed.js";
 
 export function normalizeRecord(record) {
+  const genres = Array.isArray(record.genres)
+    ? record.genres
+    : String(record.genres || record.genre || "").split(",").map((g) => g.trim()).filter(Boolean);
+
   return {
     ...record,
     id: record.id || `id-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
     title: (record.title || "").trim(),
     creator: (record.creator || "").trim(),
     format: record.format || "Other",
+    binding: record.binding || "",
     status: record.status || "Available",
-    genre: record.genre || "",
+    genre: record.genre || genres.join(", "),
+    genres,
     subjects: record.subjects || "",
     location: record.location || "",
+    seriesName: record.seriesName || "",
+    seriesNumber: record.seriesNumber || "",
+    source: record.source || "",
+    pricePaid: record.pricePaid || "",
     dateAdded: record.dateAdded || new Date().toISOString().slice(0, 10),
     addedAt: Number(record.addedAt) || Date.now(),
+    permalink: record.permalink || `record-${record.id || crypto.randomUUID()}`,
   };
 }
 
@@ -32,6 +43,21 @@ export function loadRecords() {
 
 export function saveRecords(records) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+}
+
+export function loadSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return { locations: [] };
+    const parsed = JSON.parse(raw);
+    return { locations: parsed.locations || [] };
+  } catch {
+    return { locations: [] };
+  }
+}
+
+export function saveSettings(settings) {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
 
 export function exportRecords(records) {
