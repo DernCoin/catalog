@@ -58,55 +58,89 @@ const formatFilter = document.querySelector("#formatFilter");
 const recordForm = document.querySelector("#recordForm");
 const cancelEditBtn = document.querySelector("#cancelEditBtn");
 
-adminToggleBtn.addEventListener("click", () => {
-  if (state.isAdmin) {
-    state.isAdmin = false;
-    updateAdminView();
-    return;
-  }
-  loginError.textContent = "";
-  openLoginModal();
-});
+if (adminToggleBtn) {
+  adminToggleBtn.addEventListener("click", () => {
+    if (state.isAdmin) {
+      state.isAdmin = false;
+      updateAdminView();
+      return;
+    }
 
-closeLoginBtn.addEventListener("click", closeLoginModal);
+    if (loginError) loginError.textContent = "";
+    openLoginModal();
+  });
+}
 
-loginForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const username = document.querySelector("#username").value.trim();
-  const password = document.querySelector("#password").value;
+if (closeLoginBtn) {
+  closeLoginBtn.addEventListener("click", closeLoginModal);
+}
 
-  if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-    state.isAdmin = true;
-    closeLoginModal();
-    loginForm.reset();
-    updateAdminView();
-    return;
-  }
+if (loginForm) {
+  loginForm.addEventListener("submit", (event) => {
+    event.preventDefault();
 
-  loginError.textContent = "Invalid credentials. Try admin / catalog123.";
-});
+    const usernameField = document.querySelector("#username");
+    const passwordField = document.querySelector("#password");
+    const username = usernameField ? usernameField.value.trim() : "";
+    const password = passwordField ? passwordField.value : "";
 
-searchInput.addEventListener("input", renderPublicCatalog);
-formatFilter.addEventListener("change", renderPublicCatalog);
+    if (attemptAdminLogin(username, password)) {
+      closeLoginModal();
+      loginForm.reset();
+      return;
+    }
 
+    if (loginError) loginError.textContent = "Invalid credentials. Try admin / catalog123.";
+  });
+}
+
+if (searchInput) searchInput.addEventListener("input", renderPublicCatalog);
+if (formatFilter) formatFilter.addEventListener("change", renderPublicCatalog);
+
+
+function attemptAdminLogin(username, password) {
+  if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) return false;
+
+  state.isAdmin = true;
+  updateAdminView();
+  return true;
+}
 
 function openLoginModal() {
+  if (!loginModal || !loginForm) {
+    const username = window.prompt("Admin username:", "");
+    if (username === null) return;
+
+    const password = window.prompt("Admin password:", "");
+    if (password === null) return;
+
+    if (!attemptAdminLogin(username.trim(), password) && loginError) {
+      loginError.textContent = "Invalid credentials. Try admin / catalog123.";
+    }
+    return;
+  }
+
   loginModal.classList.remove("hidden");
-  document.querySelector("#username").focus();
+  const usernameField = document.querySelector("#username");
+  if (usernameField) usernameField.focus();
 }
 
 function closeLoginModal() {
+  if (!loginModal) return;
   loginModal.classList.add("hidden");
 }
 
-loginModal.addEventListener("click", (event) => {
-  if (event.target === loginModal) closeLoginModal();
-});
+if (loginModal) {
+  loginModal.addEventListener("click", (event) => {
+    if (event.target === loginModal) closeLoginModal();
+  });
+}
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") closeLoginModal();
+  if (event.key === "Escape" && loginModal) closeLoginModal();
 });
 
+if (recordForm) {
 recordForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const payload = getFormData();
@@ -124,28 +158,48 @@ recordForm.addEventListener("submit", (event) => {
   document.querySelector("#recordId").value = "";
   renderAll();
 });
+}
 
-cancelEditBtn.addEventListener("click", () => {
-  recordForm.reset();
-  document.querySelector("#recordId").value = "";
-});
+if (cancelEditBtn && recordForm) {
+  cancelEditBtn.addEventListener("click", () => {
+    recordForm.reset();
+    document.querySelector("#recordId").value = "";
+  });
+}
 
 function loadRecords() {
-  const raw = localStorage.getItem(STORAGE_KEY);
+  let raw = null;
+
+  try {
+    raw = localStorage.getItem(STORAGE_KEY);
+  } catch (error) {
+    console.warn("localStorage is unavailable, using in-memory starter records:", error);
+    return starterRecords;
+  }
+
   if (!raw) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(starterRecords));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(starterRecords));
+    } catch (error) {
+      console.warn("Could not seed starter records in localStorage:", error);
+    }
     return starterRecords;
   }
 
   try {
     return JSON.parse(raw);
-  } catch {
+  } catch (error) {
+    console.error("Failed to parse catalog records from localStorage:", error);
     return starterRecords;
   }
 }
 
 function persistRecords() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.records));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.records));
+  } catch (error) {
+    console.warn("Could not save catalog records to localStorage:", error);
+  }
 }
 
 function updateAdminView() {
@@ -251,6 +305,21 @@ renderAll();
 
 
 function createId() {
-  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  if (
+    typeof globalThis !== "undefined" &&
+    globalThis.crypto &&
+    typeof globalThis.crypto.randomUUID === "function"
+  ) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  if (
+    typeof window !== "undefined" &&
+    window.crypto &&
+    typeof window.crypto.randomUUID === "function"
+  ) {
+    return window.crypto.randomUUID();
+  }
+
   return `id-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
 }
