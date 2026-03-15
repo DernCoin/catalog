@@ -252,8 +252,21 @@ renderAll();
 
 
 function createId() {
-  if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") {
+  if (
+    typeof globalThis !== "undefined" &&
+    globalThis.crypto &&
+    typeof globalThis.crypto.randomUUID === "function"
+  ) {
     return globalThis.crypto.randomUUID();
   }
+
+  if (
+    typeof window !== "undefined" &&
+    window.crypto &&
+    typeof window.crypto.randomUUID === "function"
+  ) {
+    return window.crypto.randomUUID();
+  }
+
   return `id-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
 }
