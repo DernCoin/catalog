@@ -3,169 +3,246 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Library Catalog</title>
+    <title>Willow Creek Personal OPAC</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <header class="site-header">
       <div>
-        <h1>My Personal Catalog</h1>
-        <p>Browse books, vinyl, board games, and more.</p>
+        <p class="eyebrow">Personal Collection Catalog</p>
+        <h1>Willow Creek OPAC</h1>
+        <p class="muted">Browse books, vinyl, board games, and special media.</p>
       </div>
-      <button id="adminToggleBtn" class="button">Admin Login</button>
+      <div class="header-actions">
+        <button id="randomItemBtn" class="button button-secondary" type="button">Browse something unexpected</button>
+        <button id="adminToggleBtn" class="button" type="button">Admin Login</button>
+      </div>
     </header>
 
-    <main>
+    <main class="layout">
       <section id="opacSection" class="card">
-        <h2>Public Catalog (OPAC)</h2>
+        <div class="section-header">
+          <h2>Public Catalog</h2>
+          <div id="catalogStats" class="stats"></div>
+        </div>
+
         <section class="arrivals" aria-labelledby="arrivalsTitle">
           <div class="arrivals-header">
-            <h3 id="arrivalsTitle">New Arrivals</h3>
+            <h3 id="arrivalsTitle">Recently Added</h3>
             <div class="arrivals-controls">
-              <button id="arrivalsPrevBtn" class="button button-secondary" type="button" aria-label="Scroll new arrivals left">←</button>
-              <button id="arrivalsNextBtn" class="button button-secondary" type="button" aria-label="Scroll new arrivals right">→</button>
+              <button id="arrivalsPrevBtn" class="button button-secondary" type="button" aria-label="Scroll recently added left">←</button>
+              <button id="arrivalsNextBtn" class="button button-secondary" type="button" aria-label="Scroll recently added right">→</button>
             </div>
           </div>
           <div id="newArrivals" class="cover-scroller" role="list"></div>
         </section>
-        <div class="toolbar">
-          <input id="searchInput" type="search" placeholder="Search title, creator, genre..." />
-          <select id="formatFilter">
-            <option value="all">All Formats</option>
-            <option value="Book">Book</option>
-            <option value="Vinyl">Vinyl</option>
-            <option value="Board Game">Board Game</option>
-            <option value="Other">Other</option>
-          </select>
-          <select id="sortFilter" aria-label="Sort records">
-            <option value="newest">Newest first</option>
-            <option value="title">Title A-Z</option>
-            <option value="yearDesc">Year (newest)</option>
-            <option value="yearAsc">Year (oldest)</option>
-          </select>
-        </div>
+
+        <section class="search-shell" aria-label="Search and filters">
+          <div class="search-main">
+            <label for="keywordSearch" class="sr-only">Global keyword search</label>
+            <input id="keywordSearch" type="search" placeholder="Search everything: title, creator, subjects, notes, call number..." />
+
+            <div class="toolbar">
+              <button id="toggleAdvancedBtn" class="button button-secondary" type="button" aria-expanded="false">Advanced Search</button>
+              <label>
+                Sort by
+                <select id="sortFilter">
+                  <option value="relevance">Relevance</option>
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="titleAsc">Title A-Z</option>
+                  <option value="titleDesc">Title Z-A</option>
+                  <option value="creatorAsc">Creator A-Z</option>
+                </select>
+              </label>
+            </div>
+
+            <div id="advancedSearch" class="advanced-grid hidden">
+              <label>Title <input id="advTitle" type="search" /></label>
+              <label>Creator / Author / Artist <input id="advCreator" type="search" /></label>
+              <label>Subject / Genre <input id="advSubject" type="search" /></label>
+              <label>Keyword <input id="advKeyword" type="search" /></label>
+              <label>Year <input id="advYear" type="number" min="0" /></label>
+              <label>Format
+                <select id="advFormat">
+                  <option value="all">All formats</option>
+                  <option value="Book">Book</option>
+                  <option value="Vinyl">Vinyl</option>
+                  <option value="Board Game">Board Game</option>
+                  <option value="Other">Other</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <aside class="facets" aria-label="Faceted filters">
+            <h3>Refine Results</h3>
+            <label>Format <select id="facetFormat"></select></label>
+            <label>Genre / Category <select id="facetGenre"></select></label>
+            <label>Year <select id="facetYear"></select></label>
+            <label>Availability <select id="facetStatus"></select></label>
+            <label>Location <select id="facetLocation"></select></label>
+            <button id="clearFiltersBtn" class="button button-secondary" type="button">Clear Filters</button>
+          </aside>
+        </section>
+
         <p id="resultsSummary" class="results-summary"></p>
-        <div id="publicResults" class="grid"></div>
+        <div id="publicResults" class="results-list"></div>
+        <div class="pagination-row">
+          <button id="loadMoreBtn" class="button button-secondary hidden" type="button">Load More</button>
+        </div>
+        <p id="emptyState" class="empty-state hidden">No records match your search. Try broadening your filters or searching by keyword.</p>
       </section>
 
-      <section id="adminSection" class="card hidden">
-        <h2>Catalog Admin</h2>
-        <p class="muted">Use this area to add or edit items in your collection.</p>
+      <section id="adminSection" class="card hidden" aria-label="Catalog admin">
+        <div class="admin-header">
+          <div>
+            <h2>Catalog Manager</h2>
+            <p class="muted">Lightweight cataloging workspace for your personal OPAC.</p>
+          </div>
+          <div class="admin-buttons">
+            <button id="seedDataBtn" type="button" class="button button-secondary">Seed Sample Data</button>
+            <button id="exportBtn" type="button" class="button button-secondary">Export JSON</button>
+            <label class="file-label button button-secondary" for="importInput">Import JSON</label>
+            <input id="importInput" type="file" accept="application/json" class="hidden" />
+          </div>
+        </div>
 
-        <form id="recordForm" class="form-grid">
+        <p id="adminMessage" class="status-message" aria-live="polite"></p>
+
+        <form id="recordForm" class="catalog-form">
           <input id="recordId" type="hidden" />
 
-          <label>
-            Title
-            <input id="title" required />
-          </label>
+          <fieldset>
+            <legend>Core Bibliographic Details</legend>
+            <div class="form-grid">
+              <label>Title* <input id="title" required /></label>
+              <label>Subtitle <input id="subtitle" /></label>
+              <label>Creator / Author / Artist* <input id="creator" required /></label>
+              <label>Additional Contributors <input id="contributors" placeholder="Editor, narrator, illustrator..." /></label>
+              <label>Format*
+                <select id="format" required>
+                  <option value="Book">Book</option>
+                  <option value="Vinyl">Vinyl</option>
+                  <option value="Board Game">Board Game</option>
+                  <option value="Other">Other</option>
+                </select>
+              </label>
+              <label>Edition <input id="edition" /></label>
+              <label>Publication Year <input id="year" type="number" min="0" /></label>
+              <label>Publisher / Label <input id="publisher" /></label>
+              <label>ISBN / UPC / Catalog Number <input id="identifier" /></label>
+              <label>Genre / Category <input id="genre" /></label>
+              <label>Subjects / Tags <input id="subjects" placeholder="Comma-separated" /></label>
+            </div>
+          </fieldset>
 
-          <label>
-            Creator / Author / Artist
-            <input id="creator" required />
-          </label>
+          <fieldset>
+            <legend>Holdings & Local Data</legend>
+            <div class="form-grid">
+              <label>Status
+                <select id="status">
+                  <option>Available</option>
+                  <option>Checked In</option>
+                  <option>On Loan</option>
+                  <option>Reference Only</option>
+                  <option>Missing</option>
+                </select>
+              </label>
+              <label>Location <input id="location" placeholder="Shelf, room, bin..." /></label>
+              <label>Call Number <input id="callNumber" /></label>
+              <label>Accession Number <input id="accessionNumber" /></label>
+              <label>Date Acquired <input id="dateAcquired" type="date" /></label>
+              <label>Date Added <input id="dateAdded" type="date" /></label>
+              <label>Cover Image URL <input id="coverUrl" type="url" placeholder="https://..." /></label>
+            </div>
+            <label>Description / Summary <textarea id="description" rows="3"></textarea></label>
+            <label>Personal Notes <textarea id="notes" rows="2"></textarea></label>
+          </fieldset>
 
-          <label>
-            Format
-            <select id="format" required>
-              <option value="Book">Book</option>
-              <option value="Vinyl">Vinyl</option>
-              <option value="Board Game">Board Game</option>
-              <option value="Other">Other</option>
-            </select>
-          </label>
+          <div id="duplicateWarning" class="warning"></div>
 
-          <label>
-            Year
-            <input id="year" type="number" min="0" step="1" />
-          </label>
-
-          <label>
-            Genre / Category
-            <select id="genre"></select>
-          </label>
-
-          <label>
-            Publisher
-            <input id="publisher" />
-          </label>
-
-          <label>
-            Location
-            <input id="location" placeholder="Shelf, room, bin, etc." />
-          </label>
-
-          <label>
-            Cover Image URL
-            <input id="coverUrl" type="url" placeholder="https://..." />
-          </label>
-
-          <label class="full-width">
-            Notes
-            <textarea id="notes" rows="3"></textarea>
-          </label>
-
-          <div class="actions full-width">
+          <div class="actions">
             <button class="button" type="submit">Save Record</button>
-            <button class="button button-secondary" id="cancelEditBtn" type="button">Cancel Edit</button>
+            <button id="cancelEditBtn" class="button button-secondary" type="button">Cancel Edit</button>
           </div>
         </form>
 
-        <h3>Collection Records</h3>
-        <div id="adminResults" class="grid"></div>
+        <section class="admin-table-wrap">
+          <div class="admin-tools">
+            <input id="adminSearch" type="search" placeholder="Search records in admin table" />
+            <select id="bulkStatusSelect">
+              <option value="">Bulk status…</option>
+              <option value="Available">Available</option>
+              <option value="Checked In">Checked In</option>
+              <option value="On Loan">On Loan</option>
+              <option value="Reference Only">Reference Only</option>
+              <option value="Missing">Missing</option>
+            </select>
+            <button id="applyBulkBtn" class="button button-secondary" type="button">Apply to selected</button>
+          </div>
+          <table id="adminTable">
+            <thead>
+              <tr>
+                <th><input id="selectAllRows" type="checkbox" aria-label="Select all records" /></th>
+                <th>Title</th>
+                <th>Creator</th>
+                <th>Format</th>
+                <th>Year</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="adminTableBody"></tbody>
+          </table>
+        </section>
       </section>
     </main>
 
     <div id="loginModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
       <form id="loginForm" class="modal-content">
         <h3 id="loginTitle">Admin Login</h3>
-        <p class="muted">Temporary coded login until Firebase auth is added.</p>
-
-        <label>
-          Username
-          <input id="username" required />
-        </label>
-
-        <label>
-          Password
-          <input id="password" type="password" required />
-        </label>
-
+        <p class="muted">Sign in to manage records. This temporary login can later be replaced with Firebase Auth.</p>
+        <label>Username <input id="username" required autocomplete="username" /></label>
+        <label>Password <input id="password" type="password" required autocomplete="current-password" /></label>
         <p id="loginError" class="error" aria-live="polite"></p>
-
         <menu>
-          <button class="button" value="cancel" type="button" id="closeLoginBtn">Cancel</button>
-          <button class="button" value="default" type="submit">Login</button>
+          <button class="button button-secondary" type="button" id="closeLoginBtn">Cancel</button>
+          <button class="button" type="submit">Login</button>
         </menu>
       </form>
     </div>
 
     <div id="recordDetailsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="recordDetailsTitle">
-      <div class="modal-content record-details-content">
+      <article class="modal-content record-details-content" id="recordDetailsContent">
         <div class="record-details-header">
-          <h3 id="recordDetailsTitle">Record Details</h3>
-          <button class="button button-secondary" id="closeRecordDetailsBtn" type="button">Close</button>
+          <h3 id="recordDetailsTitle">Full Record</h3>
+          <div class="record-detail-actions">
+            <button id="copyCitationBtn" class="button button-secondary" type="button">Copy Citation (APA)</button>
+            <button id="closeRecordDetailsBtn" class="button button-secondary" type="button">Close</button>
+          </div>
         </div>
-        <p id="recordDetailsMeta" class="record-meta"></p>
-        <p id="recordDetailsPublisher" class="record-meta"></p>
-        <p id="recordDetailsLocation" class="record-meta"></p>
-        <h4>Notes</h4>
-        <p id="recordDetailsNotes" class="record-notes"></p>
-      </div>
+        <div id="recordDetailsBody"></div>
+      </article>
     </div>
 
     <template id="recordTemplate">
       <article class="record-card">
         <img class="cover" alt="" loading="lazy" />
         <div>
+          <div class="record-topline">
+            <span class="badge badge-format"></span>
+            <span class="badge badge-status"></span>
+          </div>
           <h4 class="record-title"></h4>
           <p class="record-meta"></p>
-          <button class="button button-secondary view-details-btn" type="button">View Details</button>
-          <div class="record-actions hidden"></div>
+          <p class="record-location"></p>
+          <p class="record-subjects"></p>
+          <button class="button button-secondary view-details-btn" type="button">View Full Record</button>
         </div>
       </article>
     </template>
 
-    <script src="app.js"></script>
+    <script type="module" src="js/main.js"></script>
   </body>
 </html>
