@@ -18,6 +18,16 @@
     <main>
       <section id="opacSection" class="card">
         <h2>Public Catalog (OPAC)</h2>
+        <section class="arrivals" aria-labelledby="arrivalsTitle">
+          <div class="arrivals-header">
+            <h3 id="arrivalsTitle">New Arrivals</h3>
+            <div class="arrivals-controls">
+              <button id="arrivalsPrevBtn" class="button button-secondary" type="button" aria-label="Scroll new arrivals left">←</button>
+              <button id="arrivalsNextBtn" class="button button-secondary" type="button" aria-label="Scroll new arrivals right">→</button>
+            </div>
+          </div>
+          <div id="newArrivals" class="cover-scroller" role="list"></div>
+        </section>
         <div class="toolbar">
           <input id="searchInput" type="search" placeholder="Search title, creator, genre..." />
           <select id="formatFilter">
@@ -27,7 +37,14 @@
             <option value="Board Game">Board Game</option>
             <option value="Other">Other</option>
           </select>
+          <select id="sortFilter" aria-label="Sort records">
+            <option value="newest">Newest first</option>
+            <option value="title">Title A-Z</option>
+            <option value="yearDesc">Year (newest)</option>
+            <option value="yearAsc">Year (oldest)</option>
+          </select>
         </div>
+        <p id="resultsSummary" class="results-summary"></p>
         <div id="publicResults" class="grid"></div>
       </section>
 
