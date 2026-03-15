@@ -369,39 +369,102 @@ function openDetail(record) {
   state.currentDetail = record;
   location.hash = `record-${record.id}`;
   const related = getRelated(state.records, record);
+  const nearbyShelf = getNearbyShelf(state.records, record, 3);
+  const subjects = splitSubjects(record.subjects || record.genre);
 
   els.recordDetailsBody.innerHTML = `
-    <div class="details-grid">
-      <img src="${record.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${record.title}" class="details-cover" />
-      <div>
-        <h4>${record.title}</h4>
-        <p class="muted">${record.subtitle || ""}</p>
-        <p><strong>${record.creator}</strong>${record.contributors ? `; ${record.contributors}` : ""}</p>
-        <p>${record.format} • ${record.year || "n.d."} • ${record.status}</p>
-        <p>${record.publisher || "Unknown publisher"}</p>
-        <p>Location: ${record.location || "n/a"} | Call Number: ${record.callNumber || "n/a"}</p>
+    <article class="opac-record-layout">
+      <div class="record-columns">
+        <aside class="record-left-column">
+          <img src="${record.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${record.title}" class="details-cover" />
+          <div class="availability-card">
+            <h5>Availability</h5>
+            <p><strong>Status:</strong> ${record.status}</p>
+            <p><strong>Location:</strong> ${record.location || "n/a"}</p>
+            <p><strong>Call Number:</strong> ${record.callNumber || "n/a"}</p>
+            <p><strong>Format:</strong> ${record.format}</p>
+          </div>
+        </aside>
+        <section class="record-right-column">
+          <h4>${record.title}</h4>
+          <p class="muted">${record.subtitle || ""}</p>
+          <dl class="metadata-grid">
+            <dt>Author / Creator</dt><dd>${record.creator}${record.contributors ? `; ${record.contributors}` : ""}</dd>
+            <dt>Publisher</dt><dd>${record.publisher || "Unknown publisher"}</dd>
+            <dt>Published</dt><dd>${record.year || "n.d."}</dd>
+            <dt>Subjects</dt><dd>${record.subjects || record.genre || "n/a"}</dd>
+            <dt>Identifier</dt><dd>${record.identifier || "n/a"}</dd>
+            <dt>Accession Number</dt><dd>${record.accessionNumber || "n/a"}</dd>
+          </dl>
+        </section>
       </div>
-    </div>
-    <section class="full-record">
-      <h5>Full Record (Catalog Data)</h5>
-      <dl>
-        <dt>Accession Number</dt><dd>${record.accessionNumber || "n/a"}</dd>
-        <dt>Identifier</dt><dd>${record.identifier || "n/a"}</dd>
-        <dt>Subjects</dt><dd>${record.subjects || "n/a"}</dd>
-        <dt>Description</dt><dd>${record.description || "n/a"}</dd>
-        <dt>Notes</dt><dd>${record.notes || "n/a"}</dd>
-        <dt>Date Cataloged</dt><dd>${record.dateAdded || "n/a"}</dd>
-      </dl>
-    </section>
-    <section>
-      <h5>Related Items</h5>
-      <p class="muted">More by this creator: ${related.byCreator.map((r) => r.title).join(", ") || "None"}</p>
-      <p class="muted">More in this category: ${related.byCategory.map((r) => r.title).join(", ") || "None"}</p>
-      <p class="muted">Virtual shelf (by call number): ${related.virtualShelf.map((r) => `${r.callNumber || "n/a"} — ${r.title}`).join(" • ") || "None"}</p>
-    </section>
+      <section class="detail-section">
+        <h5>Description</h5>
+        <p>${record.description || "No description available."}</p>
+      </section>
+      <section class="detail-section">
+        <h5>Subjects</h5>
+        <div class="subject-pills">${subjects.length ? subjects.map((subject) => `<span class="subject-pill">${subject}</span>`).join("") : "<p class=\"muted\">No subjects listed.</p>"}</div>
+      </section>
+      <section class="detail-section">
+        <h5>Related Titles</h5>
+        <p class="muted">More by this creator: ${related.byCreator.map((r) => r.title).join(", ") || "None"}</p>
+        <p class="muted">More in this category: ${related.byCategory.map((r) => r.title).join(", ") || "None"}</p>
+      </section>
+      <section class="detail-section nearby-section">
+        <h5>Books Nearby</h5>
+        <div class="nearby-spines" role="list" aria-label="Nearby books by call number">
+          ${nearbyShelf.map((item) => `
+            <button class="book-spine ${item.id === record.id ? "selected" : ""}" type="button" data-record-id="${item.id}" role="listitem">
+              <span class="spine-call">${item.callNumber || "No call #"}</span>
+              <span class="spine-title">${item.title}</span>
+            </button>
+          `).join("")}
+        </div>
+      </section>
+    </article>
   `;
 
+  els.recordDetailsBody.querySelectorAll(".book-spine").forEach((spine) => {
+    spine.addEventListener("click", () => {
+      const target = state.records.find((candidate) => candidate.id === spine.dataset.recordId);
+      if (target) openDetail(target);
+    });
+  });
+
   els.recordDetailsModal.classList.remove("hidden");
+}
+
+function splitSubjects(value) {
+  return String(value || "")
+    .split(",")
+    .map((subject) => subject.trim())
+    .filter(Boolean);
+}
+
+function getNearbyShelf(records, currentRecord, offset) {
+  const sorted = [...records].sort((a, b) => normalizeCall(a.callNumber).localeCompare(normalizeCall(b.callNumber), undefined, { numeric: true }));
+  const centerIndex = sorted.findIndex((record) => record.id === currentRecord.id);
+  if (centerIndex < 0) return [currentRecord];
+
+  const shelf = [];
+  for (let step = offset; step > 0; step -= 1) {
+    shelf.push(sorted[centerIndex - step] || null);
+  }
+  shelf.push(currentRecord);
+  for (let step = 1; step <= offset; step += 1) {
+    shelf.push(sorted[centerIndex + step] || null);
+  }
+
+  return shelf.filter(Boolean);
+}
+
+function normalizeCall(value) {
+  return String(value || "ZZZ")
+    .toUpperCase()
+    .replace(/[^A-Z0-9.]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function openByHash() {
