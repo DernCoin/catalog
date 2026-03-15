@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Library Catalog</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div>
+        <h1>My Personal Catalog</h1>
+        <p>Browse books, vinyl, board games, and more.</p>
+      </div>
+      <button id="adminToggleBtn" class="button">Admin Login</button>
+    </header>
+
+    <main>
+      <section id="opacSection" class="card">
+        <h2>Public Catalog (OPAC)</h2>
+        <div class="toolbar">
+          <input id="searchInput" type="search" placeholder="Search title, creator, genre..." />
+          <select id="formatFilter">
+            <option value="all">All Formats</option>
+            <option value="Book">Book</option>
+            <option value="Vinyl">Vinyl</option>
+            <option value="Board Game">Board Game</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div id="publicResults" class="grid"></div>
+      </section>
+
+      <section id="adminSection" class="card hidden">
+        <h2>Catalog Admin</h2>
+        <p class="muted">Use this area to add or edit items in your collection.</p>
+
+        <form id="recordForm" class="form-grid">
+          <input id="recordId" type="hidden" />
+
+          <label>
+            Title
+            <input id="title" required />
+          </label>
+
+          <label>
+            Creator / Author / Artist
+            <input id="creator" required />
+          </label>
+
+          <label>
+            Format
+            <select id="format" required>
+              <option value="Book">Book</option>
+              <option value="Vinyl">Vinyl</option>
+              <option value="Board Game">Board Game</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+
+          <label>
+            Year
+            <input id="year" type="number" min="0" step="1" />
+          </label>
+
+          <label>
+            Genre / Category
+            <input id="genre" />
+          </label>
+
+          <label>
+            Cover Image URL
+            <input id="coverUrl" type="url" placeholder="https://..." />
+          </label>
+
+          <label class="full-width">
+            Notes
+            <textarea id="notes" rows="3"></textarea>
+          </label>
+
+          <div class="actions full-width">
+            <button class="button" type="submit">Save Record</button>
+            <button class="button button-secondary" id="cancelEditBtn" type="button">Cancel Edit</button>
+          </div>
+        </form>
+
+        <h3>Collection Records</h3>
+        <div id="adminResults" class="grid"></div>
+      </section>
+    </main>
+
+    <dialog id="loginDialog">
+      <form method="dialog" id="loginForm">
+        <h3>Admin Login</h3>
+        <p class="muted">Temporary coded login until Firebase auth is added.</p>
+
+        <label>
+          Username
+          <input id="username" required />
+        </label>
+
+        <label>
+          Password
+          <input id="password" type="password" required />
+        </label>
+
+        <p id="loginError" class="error" aria-live="polite"></p>
+
+        <menu>
+          <button class="button" value="cancel" type="button" id="closeLoginBtn">Cancel</button>
+          <button class="button" value="default" type="submit">Login</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <template id="recordTemplate">
+      <article class="record-card">
+        <img class="cover" alt="" loading="lazy" />
+        <div>
+          <h4 class="record-title"></h4>
+          <p class="record-meta"></p>
+          <p class="record-notes"></p>
+          <div class="record-actions hidden"></div>
+        </div>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
