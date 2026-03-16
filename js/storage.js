@@ -1,4 +1,7 @@
 import { STORAGE_KEY, SETTINGS_KEY } from "./config.js";
+import { fetchAllFirebaseRecords, isFirebaseConfigured, syncFirebaseRecords } from "./firebase.js";
+
+let syncQueue = Promise.resolve();
 
 export function normalizeRecord(record) {
   const genres = Array.isArray(record.genres)
@@ -38,8 +41,26 @@ export function loadRecords() {
   }
 }
 
+export async function loadRecordsFromRemote() {
+  if (!isFirebaseConfigured()) return [];
+  try {
+    const records = await fetchAllFirebaseRecords();
+    return records.map(normalizeRecord);
+  } catch (error) {
+    console.error("Unable to load Firebase records", error);
+    return [];
+  }
+}
+
 export function saveRecords(records) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  if (!isFirebaseConfigured()) return;
+
+  syncQueue = syncQueue
+    .then(() => syncFirebaseRecords(records))
+    .catch((error) => {
+      console.error("Unable to sync Firebase records", error);
+    });
 }
 
 export function loadSettings() {

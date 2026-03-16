@@ -299,3 +299,17 @@ mark { background:#ffe8f6; color:inherit; padding:0 .15em; border-radius:3px; }
 #adminSection .admin-tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .55rem; align-items: end; }
 #adminSection .admin-tools .button { white-space: nowrap; }
 .arrival-cover, .wall-item img, .details-cover { object-fit: contain; object-position: center; }
+
+.ils-layout {
+  grid-template-columns: minmax(280px, 360px) 1fr;
+}
+
+.simple-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.simple-form label {
+  display: grid;
+  gap: 0.25rem;
+}

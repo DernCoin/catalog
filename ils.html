@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jordan's Library ILS</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div>
+        <p class="eyebrow">Integrated Library System</p>
+        <h1>Catalog Staff Workspace</h1>
+        <p class="muted">Manage records in Firebase. OPAC reads from this same record set.</p>
+      </div>
+      <div class="header-actions">
+        <a class="button button-secondary" href="./index.html">Back to OPAC</a>
+        <button id="logoutBtn" class="button button-secondary hidden" type="button">Log out</button>
+      </div>
+    </header>
+
+    <main class="layout ils-layout">
+      <section class="card" id="loginCard">
+        <h2>Staff Login</h2>
+        <p class="muted">Use a Firebase Auth email/password account.</p>
+        <form id="loginForm" class="simple-form">
+          <label>Email <input id="email" type="email" required /></label>
+          <label>Password <input id="password" type="password" required /></label>
+          <button class="button" type="submit">Sign in</button>
+          <p id="loginError" class="warning"></p>
+        </form>
+      </section>
+
+      <section class="card hidden" id="ilsCard">
+        <div class="section-header">
+          <h2>Basic Record Management</h2>
+          <p id="recordCount" class="muted"></p>
+        </div>
+
+        <form id="recordForm" class="simple-form">
+          <input id="recordId" type="hidden" />
+          <label>Title <input id="title" required /></label>
+          <label>Creator <input id="creator" required /></label>
+          <label>Format <input id="format" placeholder="Book, Vinyl, etc" /></label>
+          <label>Year <input id="year" type="number" min="0" /></label>
+          <label>Genre <input id="genre" /></label>
+          <label>Status <input id="status" value="Available" /></label>
+          <button class="button" type="submit">Save Record</button>
+          <button id="cancelEditBtn" class="button button-secondary" type="button">Cancel Edit</button>
+        </form>
+
+        <div class="admin-table-wrap">
+          <input id="searchInput" type="search" placeholder="Filter records" />
+          <table id="recordsTable">
+            <thead>
+              <tr><th>Title</th><th>Creator</th><th>Format</th><th>Year</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="recordsBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./js/ils.js"></script>
+  </body>
+</html>

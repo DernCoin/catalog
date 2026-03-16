@@ -12,3 +12,15 @@ export const STATUSES = ["Available", "Checked In", "On Loan", "On Order", "Refe
 export const PAGE_SIZE = 12;
 
 export const PLACEHOLDER_COVER = "https://placehold.co/180x260?text=No+Cover";
+
+
+export const FIREBASE_COLLECTION = "records";
+
+export const FIREBASE_CONFIG = {
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: "",
+};
