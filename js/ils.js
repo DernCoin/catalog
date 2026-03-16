@@ -60,6 +60,16 @@ const els = {
   bindingList: $("#bindingList"),
   ilsStatsPage: $("#ilsStatsPage"),
   dashboardTiles: $$(".dashboard-tile"),
+  patronForm: $("#patronForm"),
+  patronName: $("#patronName"),
+  patronEmail: $("#patronEmail"),
+  patronsBody: $("#patronsBody"),
+  checkOutForm: $("#checkOutForm"),
+  checkOutRecordSelect: $("#checkOutRecordSelect"),
+  checkOutPatronSelect: $("#checkOutPatronSelect"),
+  checkOutDueDate: $("#checkOutDueDate"),
+  circulationMessage: $("#circulationMessage"),
+  loansBody: $("#loansBody"),
 };
 
 const FORM_FIELDS = [
@@ -77,6 +87,174 @@ function setAuthenticatedUI(isAuthed) {
   els.loginCard.classList.toggle("hidden", isAuthed);
   els.ilsCard.classList.toggle("hidden", !isAuthed);
   els.logoutBtn.classList.toggle("hidden", !isAuthed);
+}
+
+
+
+function getPatrons() {
+  return Array.isArray(state.settings.patrons) ? state.settings.patrons : [];
+}
+
+function savePatrons(patrons) {
+  state.settings.patrons = patrons;
+  saveSettings(state.settings);
+}
+
+function renderPatronSelect() {
+  if (!els.checkOutPatronSelect) return;
+  const patrons = getPatrons();
+  const current = els.checkOutPatronSelect.value;
+  const options = patrons
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((patron) => `<option value="${patron.id}">${patron.name}${patron.email ? ` (${patron.email})` : ""}</option>`)
+    .join("");
+
+  els.checkOutPatronSelect.innerHTML = `<option value="">Select a patron</option>${options}`;
+  if (patrons.some((patron) => patron.id === current)) els.checkOutPatronSelect.value = current;
+}
+
+function renderAvailableItemsSelect() {
+  if (!els.checkOutRecordSelect) return;
+  const available = state.records
+    .filter((record) => String(record.status || "Available") !== "On Loan")
+    .sort((a, b) => a.title.localeCompare(b.title));
+  const current = els.checkOutRecordSelect.value;
+  const options = available
+    .map((record) => `<option value="${record.id}">${record.title} — ${record.creator || "Unknown creator"}</option>`)
+    .join("");
+
+  els.checkOutRecordSelect.innerHTML = `<option value="">Select an available item</option>${options}`;
+  if (available.some((record) => record.id === current)) els.checkOutRecordSelect.value = current;
+}
+
+function renderPatronsTable() {
+  if (!els.patronsBody) return;
+
+  const patrons = getPatrons().slice().sort((a, b) => a.name.localeCompare(b.name));
+  els.patronsBody.innerHTML = "";
+
+  if (!patrons.length) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = '<td colspan="4">No patrons added yet.</td>';
+    els.patronsBody.appendChild(tr);
+    return;
+  }
+
+  patrons.forEach((patron) => {
+    const loansCount = state.records.filter((record) => record.checkedOutTo === patron.id && String(record.status) === "On Loan").length;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${patron.name}</td><td>${patron.email || ""}</td><td>${loansCount}</td><td><button class="button button-secondary" type="button" data-patron-id="${patron.id}">Delete</button></td>`;
+
+    tr.querySelector("button").addEventListener("click", () => removePatron(patron.id));
+    els.patronsBody.appendChild(tr);
+  });
+}
+
+function renderLoansTable() {
+  if (!els.loansBody) return;
+  const loans = state.records
+    .filter((record) => String(record.status) === "On Loan")
+    .sort((a, b) => String(a.dueDate || "").localeCompare(String(b.dueDate || "")));
+
+  els.loansBody.innerHTML = "";
+  if (!loans.length) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = '<td colspan="4">No items are currently checked out.</td>';
+    els.loansBody.appendChild(tr);
+    return;
+  }
+
+  loans.forEach((record) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${record.title}</td><td>${record.checkedOutToName || "Unknown patron"}</td><td>${record.dueDate || ""}</td><td><button class="button button-secondary" type="button" data-record-id="${record.id}">Check In</button></td>`;
+    tr.querySelector("button").addEventListener("click", () => checkInRecord(record.id));
+    els.loansBody.appendChild(tr);
+  });
+}
+
+function setCirculationMessage(message, isError = false) {
+  if (!els.circulationMessage) return;
+  els.circulationMessage.textContent = message;
+  els.circulationMessage.classList.toggle("warning", isError);
+}
+
+function addPatron(event) {
+  event.preventDefault();
+  const name = els.patronName.value.trim();
+  const email = els.patronEmail.value.trim();
+  if (!name) return;
+
+  const patrons = getPatrons();
+  const duplicate = patrons.some((patron) => patron.name.toLowerCase() === name.toLowerCase() && (!email || patron.email.toLowerCase() === email.toLowerCase()));
+  if (duplicate) return;
+
+  patrons.push({ id: crypto.randomUUID(), name, email });
+  savePatrons(patrons);
+  els.patronForm.reset();
+  render();
+}
+
+function removePatron(patronId) {
+  const hasLoans = state.records.some((record) => record.checkedOutTo === patronId && String(record.status) === "On Loan");
+  if (hasLoans) {
+    setCirculationMessage("Cannot delete patron with checked out items.", true);
+    return;
+  }
+
+  savePatrons(getPatrons().filter((patron) => patron.id !== patronId));
+  render();
+}
+
+function checkOutRecord(event) {
+  event.preventDefault();
+  const recordId = els.checkOutRecordSelect.value;
+  const patronId = els.checkOutPatronSelect.value;
+  const dueDate = els.checkOutDueDate.value;
+
+  if (!recordId || !patronId || !dueDate) {
+    setCirculationMessage("Please choose an item, patron, and due date.", true);
+    return;
+  }
+
+  const patron = getPatrons().find((entry) => entry.id === patronId);
+  const idx = state.records.findIndex((entry) => entry.id === recordId);
+  if (!patron || idx < 0) {
+    setCirculationMessage("Could not complete checkout. Try again.", true);
+    return;
+  }
+
+  state.records[idx] = {
+    ...state.records[idx],
+    status: "On Loan",
+    checkedOutTo: patron.id,
+    checkedOutToName: patron.name,
+    checkedOutAt: new Date().toISOString(),
+    dueDate,
+  };
+
+  saveRecords(state.records);
+  els.checkOutForm.reset();
+  setCirculationMessage(`Checked out to ${patron.name} until ${dueDate}.`);
+  render();
+}
+
+function checkInRecord(recordId) {
+  const idx = state.records.findIndex((entry) => entry.id === recordId);
+  if (idx < 0) return;
+
+  state.records[idx] = {
+    ...state.records[idx],
+    status: "Available",
+    checkedOutTo: "",
+    checkedOutToName: "",
+    checkedOutAt: "",
+    dueDate: "",
+  };
+
+  saveRecords(state.records);
+  setCirculationMessage(`Checked in "${state.records[idx].title}".`);
+  render();
 }
 
 function getManagedGenres() {
@@ -591,6 +769,8 @@ function bindEvents() {
 
   els.applyBulkBtn.addEventListener("click", applyBulkStatus);
   els.bulkGenreAddBtn.addEventListener("click", bulkAddGenres);
+  if (els.patronForm) els.patronForm.addEventListener("submit", addPatron);
+  if (els.checkOutForm) els.checkOutForm.addEventListener("submit", checkOutRecord);
   els.ilsTabButtons.forEach((btn) => btn.addEventListener("click", () => switchIlsTab(btn.dataset.ilsTab)));
   els.dashboardTiles.forEach((tile) => tile.addEventListener("click", () => {
     const { ilsTarget, ilsEmpty } = tile.dataset;
@@ -613,6 +793,10 @@ function render() {
   fillLocations();
   fillCuratedShelves();
   renderTable();
+  renderPatronsTable();
+  renderAvailableItemsSelect();
+  renderPatronSelect();
+  renderLoansTable();
   renderStatsPanel();
 }
 

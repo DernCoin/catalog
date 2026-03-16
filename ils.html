@@ -135,14 +135,72 @@
 
         <section class="admin-tab-panel hidden" data-ils-panel="circulation">
           <h2>Circulation</h2>
-          <div class="circulation-actions">
-            <div class="circulation-box circulation-check-in">Check In</div>
-            <div class="circulation-box circulation-check-out">Check Out</div>
-          </div>
+          <section class="admin-block circulation-panel-block">
+            <h3>Check out item</h3>
+            <form id="checkOutForm" class="simple-form circulation-form">
+              <label>Item
+                <select id="checkOutRecordSelect" required>
+                  <option value="">Select an available item</option>
+                </select>
+              </label>
+              <label>Patron
+                <select id="checkOutPatronSelect" required>
+                  <option value="">Select a patron</option>
+                </select>
+              </label>
+              <label>Due date
+                <input id="checkOutDueDate" type="date" required />
+              </label>
+              <button class="button" type="submit">Check Out</button>
+              <p id="circulationMessage" class="status-message" aria-live="polite"></p>
+            </form>
+          </section>
+
+          <section class="admin-block circulation-panel-block">
+            <h3>Items currently on loan</h3>
+            <table id="loansTable">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Patron</th>
+                  <th>Due Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="loansBody"></tbody>
+            </table>
+          </section>
         </section>
 
         <section class="admin-tab-panel hidden" data-ils-panel="patrons">
           <h2>Patrons</h2>
+          <section class="admin-block">
+            <h3>Add patron</h3>
+            <form id="patronForm" class="simple-form">
+              <label>Full name
+                <input id="patronName" required />
+              </label>
+              <label>Email
+                <input id="patronEmail" type="email" placeholder="optional@example.com" />
+              </label>
+              <button class="button" type="submit">Add Patron</button>
+            </form>
+          </section>
+
+          <section class="admin-block">
+            <h3>Patron list</h3>
+            <table id="patronsTable">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Items Out</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="patronsBody"></tbody>
+            </table>
+          </section>
         </section>
 
         <section class="admin-tab-panel hidden" data-ils-panel="records">
