@@ -1,5 +1,5 @@
 import { duplicateCandidates, PRELOADED_GENRES, asArray } from "./catalog.js";
-import { normalizeRecord, loadRecords, saveRecords, loadSettings } from "./storage.js";
+import { normalizeRecord, loadRecords, saveRecords, loadSettings, saveSettings } from "./storage.js";
 import { isFirebaseConfigured, loginWithFirebase, logoutFirebase, onFirebaseAuthStateChanged, subscribeToFirebaseRecords } from "./firebase.js";
 
 const state = {
@@ -7,9 +7,11 @@ const state = {
   settings: loadSettings(),
   query: "",
   selectedIds: new Set(),
+  ilsTab: "catalog",
 };
 
 const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
 
 const els = {
   loginCard: $("#loginCard"),
@@ -32,11 +34,38 @@ const els = {
   applyBulkBtn: $("#applyBulkBtn"),
   bulkGenreSelect: $("#bulkGenreSelect"),
   bulkGenreAddBtn: $("#bulkGenreAddBtn"),
+  formatSelect: $("#format"),
+  bindingSelect: $("#binding"),
+  locationSelect: $("#location"),
+  curatedShelfSelect: $("#curatedShelf"),
+  ilsTabButtons: $$(".admin-tab-btn[data-ils-tab]"),
+  ilsTabPanels: $$(".admin-tab-panel[data-ils-panel]"),
+  newGenreInput: $("#newGenreInput"),
+  addGenreBtn: $("#addGenreBtn"),
+  genreList: $("#genreList"),
+  newFormatInput: $("#newFormatInput"),
+  addFormatBtn: $("#addFormatBtn"),
+  formatList: $("#formatList"),
+  newLocationInput: $("#newLocationInput"),
+  addLocationBtn: $("#addLocationBtn"),
+  locationList: $("#locationList"),
+  newCuratedShelfInput: $("#newCuratedShelfInput"),
+  addCuratedShelfBtn: $("#addCuratedShelfBtn"),
+  curatedShelfList: $("#curatedShelfList"),
+  newBindingInput: $("#newBindingInput"),
+  addBindingBtn: $("#addBindingBtn"),
+  bindingList: $("#bindingList"),
 };
 
 const FORM_FIELDS = [
   "recordId:id", "title", "subtitle", "creator", "contributors", "format", "edition", "year", "publisher", "identifier", "genre", "subjects", "description", "location", "callNumber", "accessionNumber", "status", "dateAcquired", "dateAdded", "source", "pricePaid", "notes", "coverUrl", "binding", "seriesName", "seriesNumber", "curatedShelf", "pageCount",
 ];
+
+function switchIlsTab(tab) {
+  state.ilsTab = tab;
+  els.ilsTabButtons.forEach((btn) => btn.classList.toggle("is-active", btn.dataset.ilsTab === tab));
+  els.ilsTabPanels.forEach((panel) => panel.classList.toggle("hidden", panel.dataset.ilsPanel !== tab));
+}
 
 function setAuthenticatedUI(isAuthed) {
   els.loginCard.classList.toggle("hidden", isAuthed);
@@ -50,11 +79,175 @@ function getManagedGenres() {
     .sort((a, b) => a.localeCompare(b));
 }
 
+function getManagedFormats() {
+  const defaults = ["Book", "Vinyl", "Board Game", "CD", "Zine", "Magazine", "Other"];
+  return [...new Set([...(state.settings.formats || []), ...defaults, ...state.records.map((r) => r.format).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
+}
+
+function getManagedBindings() {
+  return [...new Set([...(state.settings.bindings || []), "Paperback", "Hardcover", ...state.records.map((r) => r.binding).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
+}
+
+function getManagedLocations() {
+  return [...new Set([...(state.settings.locations || []), ...state.records.map((r) => r.location).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
+}
+
+function getManagedCuratedShelves() {
+  return [...new Set([...(state.settings.curatedShelves || []), ...state.records.map((r) => r.curatedShelf).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
+}
+
 function fillGenres() {
   const managed = getManagedGenres();
   const options = managed.map((g) => `<option value="${g}">${g}</option>`).join("");
   $("#genres").innerHTML = options;
   els.bulkGenreSelect.innerHTML = options;
+  renderManagedList(els.genreList, managed, "genre", renameGenre, deleteGenre);
+}
+
+function fillFormats() {
+  const managed = getManagedFormats();
+  const current = els.formatSelect.value || "";
+  els.formatSelect.innerHTML = managed.map((format) => `<option value="${format}">${format}</option>`).join("");
+  els.formatSelect.value = managed.includes(current) ? current : (managed[0] || "Other");
+  renderManagedList(els.formatList, managed, "format", renameFormat, deleteFormat);
+}
+
+function fillBindings() {
+  const managed = getManagedBindings();
+  const current = els.bindingSelect.value || "";
+  els.bindingSelect.innerHTML = ['<option value="">None</option>', ...managed.map((binding) => `<option value="${binding}">${binding}</option>`)].join("");
+  els.bindingSelect.value = managed.includes(current) ? current : "";
+  renderManagedList(els.bindingList, managed, "binding", renameBinding, deleteBinding);
+}
+
+function fillLocations() {
+  const managed = getManagedLocations();
+  const current = els.locationSelect.value || "";
+  els.locationSelect.innerHTML = ['<option value="">Unspecified</option>', ...managed.map((location) => `<option value="${location}">${location}</option>`)].join("");
+  els.locationSelect.value = managed.includes(current) ? current : "";
+  renderManagedList(els.locationList, managed, "location", renameLocation, deleteLocation);
+}
+
+function fillCuratedShelves() {
+  const managed = getManagedCuratedShelves();
+  const current = els.curatedShelfSelect.value || "";
+  els.curatedShelfSelect.innerHTML = ['<option value="">None</option>', ...managed.map((shelf) => `<option value="${shelf}">${shelf}</option>`)].join("");
+  els.curatedShelfSelect.value = managed.includes(current) ? current : "";
+  renderManagedList(els.curatedShelfList, managed, "curated shelf", renameCuratedShelf, deleteCuratedShelf);
+}
+
+function renderManagedList(listEl, values, label, onRename, onDelete) {
+  if (!listEl) return;
+  listEl.innerHTML = "";
+  values.forEach((value) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span>${value}</span><div><button class="button button-secondary" data-act="rename" type="button">Edit</button> <button class="button button-secondary" data-act="delete" type="button">Delete</button></div>`;
+    li.querySelector('[data-act="rename"]').addEventListener("click", () => {
+      const next = window.prompt(`Rename ${label}`, value);
+      if (!next || next.trim() === value) return;
+      onRename(value, next.trim());
+    });
+    li.querySelector('[data-act="delete"]').addEventListener("click", () => onDelete(value));
+    listEl.appendChild(li);
+  });
+}
+
+function addToManagedList(key, inputEl, fillFn) {
+  const value = inputEl.value.trim();
+  if (!value) return;
+  const set = new Set(state.settings[key] || []);
+  set.add(value);
+  state.settings[key] = [...set].sort((a, b) => a.localeCompare(b));
+  saveSettings(state.settings);
+  inputEl.value = "";
+  fillFn();
+}
+
+function renameInRecords(recordKey, prev, next) {
+  state.records = state.records.map((record) => (record[recordKey] === prev ? { ...record, [recordKey]: next } : record));
+  saveRecords(state.records);
+}
+
+function renameInSettings(key, prev, next) {
+  const set = new Set((state.settings[key] || []).map((value) => (value === prev ? next : value)));
+  state.settings[key] = [...set].sort((a, b) => a.localeCompare(b));
+  saveSettings(state.settings);
+}
+
+function removeFromSettings(key, target) {
+  state.settings[key] = (state.settings[key] || []).filter((value) => value !== target);
+  saveSettings(state.settings);
+}
+
+function addGenre() { addToManagedList("genres", els.newGenreInput, fillGenres); }
+function addFormat() { addToManagedList("formats", els.newFormatInput, fillFormats); }
+function addLocation() { addToManagedList("locations", els.newLocationInput, fillLocations); }
+function addCuratedShelf() { addToManagedList("curatedShelves", els.newCuratedShelfInput, fillCuratedShelves); }
+function addBinding() { addToManagedList("bindings", els.newBindingInput, fillBindings); }
+
+function renameGenre(prev, next) {
+  state.records = state.records.map((record) => {
+    const genres = asArray(record.genres?.length ? record.genres : record.genre).map((g) => (g === prev ? next : g));
+    const unique = [...new Set(genres)];
+    return { ...record, genres: unique, genre: unique.join(", ") };
+  });
+  renameInSettings("genres", prev, next);
+  saveRecords(state.records);
+  render();
+}
+
+function deleteGenre(target) {
+  state.records = state.records.map((record) => {
+    const genres = asArray(record.genres?.length ? record.genres : record.genre).filter((g) => g !== target);
+    return { ...record, genres, genre: genres.join(", ") };
+  });
+  removeFromSettings("genres", target);
+  saveRecords(state.records);
+  render();
+}
+
+function renameFormat(prev, next) {
+  renameInRecords("format", prev, next);
+  renameInSettings("formats", prev, next);
+  render();
+}
+
+function deleteFormat(target) {
+  removeFromSettings("formats", target);
+  fillFormats();
+}
+
+function renameLocation(prev, next) {
+  renameInRecords("location", prev, next);
+  renameInSettings("locations", prev, next);
+  render();
+}
+
+function deleteLocation(target) {
+  removeFromSettings("locations", target);
+  fillLocations();
+}
+
+function renameCuratedShelf(prev, next) {
+  renameInRecords("curatedShelf", prev, next);
+  renameInSettings("curatedShelves", prev, next);
+  render();
+}
+
+function deleteCuratedShelf(target) {
+  removeFromSettings("curatedShelves", target);
+  fillCuratedShelves();
+}
+
+function renameBinding(prev, next) {
+  renameInRecords("binding", prev, next);
+  renameInSettings("bindings", prev, next);
+  render();
+}
+
+function deleteBinding(target) {
+  removeFromSettings("bindings", target);
+  fillBindings();
 }
 
 function fillFormats() {
@@ -148,6 +341,7 @@ function populateForm(record) {
 
   window.scrollTo({ top: 0, behavior: "smooth" });
   checkDuplicateDraft();
+  switchIlsTab("catalog");
 }
 
 function saveFormRecord(event) {
@@ -321,14 +515,19 @@ function bindEvents() {
 
   els.selectAllRows.addEventListener("change", (event) => {
     state.selectedIds.clear();
-    if (event.target.checked) {
-      getAdminFiltered().forEach((record) => state.selectedIds.add(record.id));
-    }
+    if (event.target.checked) getAdminFiltered().forEach((record) => state.selectedIds.add(record.id));
     renderTable();
   });
 
   els.applyBulkBtn.addEventListener("click", applyBulkStatus);
   els.bulkGenreAddBtn.addEventListener("click", bulkAddGenres);
+  els.ilsTabButtons.forEach((btn) => btn.addEventListener("click", () => switchIlsTab(btn.dataset.ilsTab)));
+
+  els.addGenreBtn.addEventListener("click", addGenre);
+  els.addFormatBtn.addEventListener("click", addFormat);
+  els.addLocationBtn.addEventListener("click", addLocation);
+  els.addCuratedShelfBtn.addEventListener("click", addCuratedShelf);
+  els.addBindingBtn.addEventListener("click", addBinding);
 }
 
 function render() {
@@ -358,6 +557,7 @@ function init() {
     render();
   });
 
+  switchIlsTab("catalog");
   render();
 }
 

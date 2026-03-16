@@ -37,6 +37,12 @@
           <p id="recordCount" class="muted"></p>
         </div>
 
+        <nav class="admin-tab-nav" aria-label="ILS sections">
+          <button class="button button-secondary admin-tab-btn is-active" data-ils-tab="catalog" type="button">Catalog</button>
+          <button class="button button-secondary admin-tab-btn" data-ils-tab="utilities" type="button">Utilities</button>
+        </nav>
+
+        <section class="admin-tab-panel" data-ils-panel="catalog">
         <form id="recordForm" class="catalog-form">
           <input id="recordId" type="hidden" />
 
@@ -123,6 +129,54 @@
             </thead>
             <tbody id="recordsBody"></tbody>
           </table>
+        </section>
+        </section>
+
+        <section class="admin-tab-panel hidden" data-ils-panel="utilities">
+          <section class="location-manager admin-block">
+            <h3>Genres</h3>
+            <div class="admin-tools">
+              <input id="newGenreInput" placeholder="Add genre" />
+              <button id="addGenreBtn" class="button button-secondary" type="button">Add genre</button>
+            </div>
+            <ul id="genreList" class="location-list"></ul>
+          </section>
+
+          <section class="location-manager admin-block">
+            <h3>Formats</h3>
+            <div class="admin-tools">
+              <input id="newFormatInput" placeholder="Add format" />
+              <button id="addFormatBtn" class="button button-secondary" type="button">Add format</button>
+            </div>
+            <ul id="formatList" class="location-list"></ul>
+          </section>
+
+          <section class="location-manager admin-block">
+            <h3>Shelf locations</h3>
+            <div class="admin-tools">
+              <input id="newLocationInput" placeholder="Add shelf location" />
+              <button id="addLocationBtn" class="button button-secondary" type="button">Add location</button>
+            </div>
+            <ul id="locationList" class="location-list"></ul>
+          </section>
+
+          <section class="location-manager admin-block">
+            <h3>Curated shelves</h3>
+            <div class="admin-tools">
+              <input id="newCuratedShelfInput" placeholder="Add curated shelf" />
+              <button id="addCuratedShelfBtn" class="button button-secondary" type="button">Add curated shelf</button>
+            </div>
+            <ul id="curatedShelfList" class="location-list"></ul>
+          </section>
+
+          <section class="location-manager admin-block">
+            <h3>Bindings</h3>
+            <div class="admin-tools">
+              <input id="newBindingInput" placeholder="Add binding" />
+              <button id="addBindingBtn" class="button button-secondary" type="button">Add binding</button>
+            </div>
+            <ul id="bindingList" class="location-list"></ul>
+          </section>
         </section>
       </section>
     </main>
