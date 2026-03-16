@@ -250,6 +250,35 @@ function deleteBinding(target) {
   fillBindings();
 }
 
+function fillFormats() {
+  const defaults = ["Book", "Vinyl", "Board Game", "CD", "Zine", "Magazine", "Other"];
+  const managed = [...new Set([...(state.settings.formats || []), ...defaults, ...state.records.map((r) => r.format).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
+  const current = $("#format").value || "";
+  $("#format").innerHTML = managed.map((format) => `<option value="${format}">${format}</option>`).join("");
+  $("#format").value = managed.includes(current) ? current : (managed[0] || "Other");
+}
+
+function fillBindings() {
+  const managed = [...new Set([...(state.settings.bindings || []), "Paperback", "Hardcover", ...state.records.map((r) => r.binding).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
+  const current = $("#binding").value || "";
+  $("#binding").innerHTML = ['<option value="">None</option>', ...managed.map((binding) => `<option value="${binding}">${binding}</option>`)].join("");
+  $("#binding").value = managed.includes(current) ? current : "";
+}
+
+function fillLocations() {
+  const managed = [...new Set([...(state.settings.locations || []), ...state.records.map((r) => r.location).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
+  const current = $("#location").value || "";
+  $("#location").innerHTML = ['<option value="">Unspecified</option>', ...managed.map((location) => `<option value="${location}">${location}</option>`)].join("");
+  $("#location").value = managed.includes(current) ? current : "";
+}
+
+function fillCuratedShelves() {
+  const managed = [...new Set([...(state.settings.curatedShelves || []), ...state.records.map((r) => r.curatedShelf).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
+  const current = $("#curatedShelf").value || "";
+  $("#curatedShelf").innerHTML = ['<option value="">None</option>', ...managed.map((shelf) => `<option value="${shelf}">${shelf}</option>`)].join("");
+  $("#curatedShelf").value = managed.includes(current) ? current : "";
+}
+
 function resetForm() {
   els.recordForm.reset();
   $("#recordId").value = "";

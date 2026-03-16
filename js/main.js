@@ -79,6 +79,8 @@ function bindEvents() {
   els.addLocationBtn.addEventListener("click", addLocation);
   els.addGenreBtn.addEventListener("click", addGenre);
   els.addCuratedShelfBtn.addEventListener("click", addCuratedShelf);
+  els.addFormatBtn.addEventListener("click", addFormat);
+  els.addBindingBtn.addEventListener("click", addBinding);
   els.adminTabButtons.forEach((btn) => btn.addEventListener("click", () => switchAdminTab(btn.dataset.adminTab)));
   els.exportBtn.addEventListener("click", () => exportRecords(state.records));
   els.importInput.addEventListener("change", async (e) => { if (!e.target.files?.[0]) return; state.records = await importRecords(e.target.files[0]); saveRecords(state.records); render(); });
