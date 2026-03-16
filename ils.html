@@ -110,6 +110,9 @@
                 <label>Location <select id="location"></select></label>
                 <label>Call Number <input id="callNumber" /></label>
                 <label>Accession Number <input id="accessionNumber" /></label>
+                <label>Material Number(s)
+                  <textarea id="materialNumbers" rows="2" placeholder="One material number per line"></textarea>
+                </label>
                 <label>Date Acquired <input id="dateAcquired" type="date" /></label>
                 <label>Date Added <input id="dateAdded" type="date" /></label>
                 <label>Source <input id="source" /></label>
@@ -135,24 +138,39 @@
 
         <section class="admin-tab-panel hidden" data-ils-panel="circulation">
           <h2>Circulation</h2>
-          <section class="admin-block circulation-panel-block">
-            <h3>Check out item</h3>
+          <div class="admin-tab-nav circulation-subtabs" aria-label="Circulation actions">
+            <button class="button button-secondary circulation-tab-btn is-active" type="button" data-circulation-tab="checkout">Check Out</button>
+            <button class="button button-secondary circulation-tab-btn" type="button" data-circulation-tab="checkin">Check In</button>
+          </div>
+          <section class="admin-block circulation-panel-block" data-circulation-panel="checkout">
+            <h3>Check out items</h3>
             <form id="checkOutForm" class="simple-form circulation-form">
-              <label>Item
-                <select id="checkOutRecordSelect" required>
-                  <option value="">Select an available item</option>
-                </select>
+              <label>Patron card number
+                <input id="checkOutCardNumber" placeholder="Scan card number" required />
               </label>
-              <label>Patron
-                <select id="checkOutPatronSelect" required>
-                  <option value="">Select a patron</option>
-                </select>
+              <label>Item material number
+                <input id="checkOutMaterialNumber" placeholder="Scan item material number" />
               </label>
               <label>Due date
                 <input id="checkOutDueDate" type="date" required />
               </label>
-              <button class="button" type="submit">Check Out</button>
+              <button id="queueCheckoutItemBtn" class="button button-secondary" type="button">Add Item</button>
+              <div>
+                <strong>Queued items</strong>
+                <ul id="checkOutQueue" class="location-list"></ul>
+              </div>
+              <button class="button" type="submit">Check Out All Scanned Items</button>
               <p id="circulationMessage" class="status-message" aria-live="polite"></p>
+            </form>
+          </section>
+
+          <section class="admin-block circulation-panel-block hidden" data-circulation-panel="checkin">
+            <h3>Check in items</h3>
+            <form id="checkInForm" class="simple-form circulation-form">
+              <label>Item material number
+                <input id="checkInMaterialNumber" placeholder="Scan item material number" required />
+              </label>
+              <button class="button" type="submit">Check In Scanned Item</button>
             </form>
           </section>
 
@@ -180,8 +198,23 @@
               <label>Full name
                 <input id="patronName" required />
               </label>
+              <label>Middle name
+                <input id="patronMiddleName" />
+              </label>
+              <label>Card number
+                <input id="patronCardNumber" required />
+              </label>
               <label>Email
                 <input id="patronEmail" type="email" placeholder="optional@example.com" />
+              </label>
+              <label>Address
+                <input id="patronAddress" />
+              </label>
+              <label>Phone number
+                <input id="patronPhone" />
+              </label>
+              <label>Birth day
+                <input id="patronBirthDay" type="date" />
               </label>
               <button class="button" type="submit">Add Patron</button>
             </form>
@@ -193,6 +226,7 @@
               <thead>
                 <tr>
                   <th>Name</th>
+                  <th>Card #</th>
                   <th>Email</th>
                   <th>Items Out</th>
                   <th>Actions</th>

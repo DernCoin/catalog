@@ -10,6 +10,8 @@ const state = {
   ilsTab: "dashboard",
   activeSearchIndex: -1,
   unsubscribeRecords: null,
+  circulationTab: "checkout",
+  queuedCheckoutItems: [],
 };
 
 const $ = (s) => document.querySelector(s);
@@ -62,18 +64,29 @@ const els = {
   dashboardTiles: $$(".dashboard-tile"),
   patronForm: $("#patronForm"),
   patronName: $("#patronName"),
+  patronMiddleName: $("#patronMiddleName"),
+  patronCardNumber: $("#patronCardNumber"),
   patronEmail: $("#patronEmail"),
+  patronAddress: $("#patronAddress"),
+  patronPhone: $("#patronPhone"),
+  patronBirthDay: $("#patronBirthDay"),
   patronsBody: $("#patronsBody"),
   checkOutForm: $("#checkOutForm"),
-  checkOutRecordSelect: $("#checkOutRecordSelect"),
-  checkOutPatronSelect: $("#checkOutPatronSelect"),
+  checkOutCardNumber: $("#checkOutCardNumber"),
+  checkOutMaterialNumber: $("#checkOutMaterialNumber"),
+  queueCheckoutItemBtn: $("#queueCheckoutItemBtn"),
+  checkOutQueue: $("#checkOutQueue"),
   checkOutDueDate: $("#checkOutDueDate"),
+  checkInForm: $("#checkInForm"),
+  checkInMaterialNumber: $("#checkInMaterialNumber"),
+  circulationTabButtons: $$(".circulation-tab-btn"),
+  circulationPanels: $$("[data-circulation-panel]"),
   circulationMessage: $("#circulationMessage"),
   loansBody: $("#loansBody"),
 };
 
 const FORM_FIELDS = [
-  "recordId:id", "title", "subtitle", "creator", "contributors", "format", "edition", "year", "publisher", "identifier", "genre", "subjects", "description", "location", "callNumber", "accessionNumber", "status", "dateAcquired", "dateAdded", "source", "pricePaid", "notes", "coverUrl", "binding", "seriesName", "seriesNumber", "curatedShelf", "pageCount",
+  "recordId:id", "title", "subtitle", "creator", "contributors", "format", "edition", "year", "publisher", "identifier", "genre", "subjects", "description", "location", "callNumber", "accessionNumber", "materialNumbers", "status", "dateAcquired", "dateAdded", "source", "pricePaid", "notes", "coverUrl", "binding", "seriesName", "seriesNumber", "curatedShelf", "pageCount",
 ];
 
 function switchIlsTab(tab) {
@@ -100,32 +113,39 @@ function savePatrons(patrons) {
   saveSettings(state.settings);
 }
 
-function renderPatronSelect() {
-  if (!els.checkOutPatronSelect) return;
-  const patrons = getPatrons();
-  const current = els.checkOutPatronSelect.value;
-  const options = patrons
-    .slice()
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .map((patron) => `<option value="${patron.id}">${patron.name}${patron.email ? ` (${patron.email})` : ""}</option>`)
-    .join("");
-
-  els.checkOutPatronSelect.innerHTML = `<option value="">Select a patron</option>${options}`;
-  if (patrons.some((patron) => patron.id === current)) els.checkOutPatronSelect.value = current;
+function switchCirculationTab(tab) {
+  state.circulationTab = tab;
+  els.circulationTabButtons.forEach((button) => button.classList.toggle("is-active", button.dataset.circulationTab === tab));
+  els.circulationPanels.forEach((panel) => panel.classList.toggle("hidden", panel.dataset.circulationPanel !== tab));
 }
 
-function renderAvailableItemsSelect() {
-  if (!els.checkOutRecordSelect) return;
-  const available = state.records
-    .filter((record) => String(record.status || "Available") !== "On Loan")
-    .sort((a, b) => a.title.localeCompare(b.title));
-  const current = els.checkOutRecordSelect.value;
-  const options = available
-    .map((record) => `<option value="${record.id}">${record.title} — ${record.creator || "Unknown creator"}</option>`)
-    .join("");
+function parseMaterialNumbersInput(value) {
+  return [...new Set(String(value || "").split(/[\n,]/).map((entry) => entry.trim()).filter(Boolean))];
+}
 
-  els.checkOutRecordSelect.innerHTML = `<option value="">Select an available item</option>${options}`;
-  if (available.some((record) => record.id === current)) els.checkOutRecordSelect.value = current;
+function getRecordByMaterialNumber(materialNumber) {
+  const normalized = String(materialNumber || "").trim();
+  if (!normalized) return null;
+  return state.records.find((record) => (record.materialNumbers || []).includes(normalized)) || null;
+}
+
+function renderCheckoutQueue() {
+  if (!els.checkOutQueue) return;
+  els.checkOutQueue.innerHTML = "";
+  if (!state.queuedCheckoutItems.length) {
+    els.checkOutQueue.innerHTML = "<li>No items scanned yet.</li>";
+    return;
+  }
+
+  state.queuedCheckoutItems.forEach((entry) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span>${entry.materialNumber}: ${entry.title}</span> <button class="button button-secondary" type="button">Remove</button>`;
+    li.querySelector("button").addEventListener("click", () => {
+      state.queuedCheckoutItems = state.queuedCheckoutItems.filter((item) => item.materialNumber !== entry.materialNumber);
+      renderCheckoutQueue();
+    });
+    els.checkOutQueue.appendChild(li);
+  });
 }
 
 function renderPatronsTable() {
@@ -136,7 +156,7 @@ function renderPatronsTable() {
 
   if (!patrons.length) {
     const tr = document.createElement("tr");
-    tr.innerHTML = '<td colspan="4">No patrons added yet.</td>';
+    tr.innerHTML = '<td colspan="5">No patrons added yet.</td>';
     els.patronsBody.appendChild(tr);
     return;
   }
@@ -144,7 +164,7 @@ function renderPatronsTable() {
   patrons.forEach((patron) => {
     const loansCount = state.records.filter((record) => record.checkedOutTo === patron.id && String(record.status) === "On Loan").length;
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${patron.name}</td><td>${patron.email || ""}</td><td>${loansCount}</td><td><button class="button button-secondary" type="button" data-patron-id="${patron.id}">Delete</button></td>`;
+    tr.innerHTML = `<td>${patron.name}</td><td>${patron.cardNumber || ""}</td><td>${patron.email || ""}</td><td>${loansCount}</td><td><button class="button button-secondary" type="button" data-patron-id="${patron.id}">Delete</button></td>`;
 
     tr.querySelector("button").addEventListener("click", () => removePatron(patron.id));
     els.patronsBody.appendChild(tr);
@@ -182,14 +202,22 @@ function setCirculationMessage(message, isError = false) {
 function addPatron(event) {
   event.preventDefault();
   const name = els.patronName.value.trim();
+  const middleName = els.patronMiddleName.value.trim();
+  const cardNumber = els.patronCardNumber.value.trim();
   const email = els.patronEmail.value.trim();
-  if (!name) return;
+  const address = els.patronAddress.value.trim();
+  const phone = els.patronPhone.value.trim();
+  const birthDay = els.patronBirthDay.value;
+  if (!name || !cardNumber) return;
 
   const patrons = getPatrons();
-  const duplicate = patrons.some((patron) => patron.name.toLowerCase() === name.toLowerCase() && (!email || patron.email.toLowerCase() === email.toLowerCase()));
-  if (duplicate) return;
+  const duplicate = patrons.some((patron) => patron.cardNumber?.toLowerCase() === cardNumber.toLowerCase());
+  if (duplicate) {
+    setCirculationMessage("That card number is already assigned to another patron.", true);
+    return;
+  }
 
-  patrons.push({ id: crypto.randomUUID(), name, email });
+  patrons.push({ id: crypto.randomUUID(), name, middleName, cardNumber, email, address, phone, birthDay });
   savePatrons(patrons);
   els.patronForm.reset();
   render();
@@ -206,36 +234,62 @@ function removePatron(patronId) {
   render();
 }
 
+function queueCheckoutItem() {
+  const materialNumber = els.checkOutMaterialNumber.value.trim();
+  if (!materialNumber) return;
+  const record = getRecordByMaterialNumber(materialNumber);
+  if (!record) {
+    setCirculationMessage(`No item found with material number ${materialNumber}.`, true);
+    return;
+  }
+  if (String(record.status) === "On Loan") {
+    setCirculationMessage(`Item ${materialNumber} is already checked out.`, true);
+    return;
+  }
+  if (state.queuedCheckoutItems.some((entry) => entry.materialNumber === materialNumber)) {
+    setCirculationMessage(`Item ${materialNumber} is already queued.`, true);
+    return;
+  }
+
+  state.queuedCheckoutItems.push({ recordId: record.id, materialNumber, title: record.title });
+  els.checkOutMaterialNumber.value = "";
+  setCirculationMessage(`Queued ${record.title}.`);
+  renderCheckoutQueue();
+}
+
 function checkOutRecord(event) {
   event.preventDefault();
-  const recordId = els.checkOutRecordSelect.value;
-  const patronId = els.checkOutPatronSelect.value;
+  const cardNumber = els.checkOutCardNumber.value.trim();
   const dueDate = els.checkOutDueDate.value;
 
-  if (!recordId || !patronId || !dueDate) {
-    setCirculationMessage("Please choose an item, patron, and due date.", true);
+  if (!cardNumber || !dueDate || !state.queuedCheckoutItems.length) {
+    setCirculationMessage("Scan a patron card, add items, and choose a due date.", true);
     return;
   }
 
-  const patron = getPatrons().find((entry) => entry.id === patronId);
-  const idx = state.records.findIndex((entry) => entry.id === recordId);
-  if (!patron || idx < 0) {
-    setCirculationMessage("Could not complete checkout. Try again.", true);
+  const patron = getPatrons().find((entry) => String(entry.cardNumber || "").toLowerCase() === cardNumber.toLowerCase());
+  if (!patron) {
+    setCirculationMessage("No patron found with that card number.", true);
     return;
   }
 
-  state.records[idx] = {
-    ...state.records[idx],
-    status: "On Loan",
-    checkedOutTo: patron.id,
-    checkedOutToName: patron.name,
-    checkedOutAt: new Date().toISOString(),
-    dueDate,
-  };
+  state.records = state.records.map((record) => {
+    const queued = state.queuedCheckoutItems.find((entry) => entry.recordId === record.id);
+    if (!queued) return record;
+    return {
+      ...record,
+      status: "On Loan",
+      checkedOutTo: patron.id,
+      checkedOutToName: patron.name,
+      checkedOutAt: new Date().toISOString(),
+      dueDate,
+    };
+  });
 
   saveRecords(state.records);
+  state.queuedCheckoutItems = [];
   els.checkOutForm.reset();
-  setCirculationMessage(`Checked out to ${patron.name} until ${dueDate}.`);
+  setCirculationMessage(`Checked out items to ${patron.name} until ${dueDate}.`);
   render();
 }
 
@@ -255,6 +309,19 @@ function checkInRecord(recordId) {
   saveRecords(state.records);
   setCirculationMessage(`Checked in "${state.records[idx].title}".`);
   render();
+}
+
+function checkInByMaterialNumber(event) {
+  event.preventDefault();
+  const materialNumber = els.checkInMaterialNumber.value.trim();
+  if (!materialNumber) return;
+  const record = getRecordByMaterialNumber(materialNumber);
+  if (!record) {
+    setCirculationMessage(`No item found with material number ${materialNumber}.`, true);
+    return;
+  }
+  checkInRecord(record.id);
+  els.checkInMaterialNumber.value = "";
 }
 
 function getManagedGenres() {
@@ -523,7 +590,8 @@ function renderTable() {
 function populateForm(record) {
   FORM_FIELDS.forEach((pair) => {
     const [elId, prop] = pair.includes(":") ? pair.split(":") : [pair, pair];
-    $(`#${elId}`).value = record[prop] || "";
+    const value = prop === "materialNumbers" ? (record.materialNumbers || []).join("\n") : (record[prop] || "");
+    $(`#${elId}`).value = value;
   });
 
   const selected = [...new Set(asArray(record.genres?.length ? record.genres : record.genre))];
@@ -563,6 +631,7 @@ function saveFormRecord(event) {
     location: $("#location").value.trim(),
     callNumber: $("#callNumber").value.trim(),
     accessionNumber: $("#accessionNumber").value.trim(),
+    materialNumbers: parseMaterialNumbersInput($("#materialNumbers").value),
     status: $("#status").value || "Available",
     dateAcquired: $("#dateAcquired").value,
     dateAdded,
@@ -577,6 +646,12 @@ function saveFormRecord(event) {
     pageCount: $("#pageCount").value.trim(),
     addedAt: new Date(dateAdded).getTime() || Date.now(),
   });
+
+  const duplicateMaterial = (record.materialNumbers || []).find((materialNumber) => state.records.some((entry) => entry.id !== id && (entry.materialNumbers || []).includes(materialNumber)));
+  if (duplicateMaterial) {
+    setCirculationMessage(`Material number ${duplicateMaterial} is already assigned to another item.`, true);
+    return;
+  }
 
   const idx = state.records.findIndex((entry) => entry.id === id);
   if (idx >= 0) state.records[idx] = record;
@@ -771,6 +846,10 @@ function bindEvents() {
   els.bulkGenreAddBtn.addEventListener("click", bulkAddGenres);
   if (els.patronForm) els.patronForm.addEventListener("submit", addPatron);
   if (els.checkOutForm) els.checkOutForm.addEventListener("submit", checkOutRecord);
+  if (els.queueCheckoutItemBtn) els.queueCheckoutItemBtn.addEventListener("click", queueCheckoutItem);
+  if (els.checkOutMaterialNumber) els.checkOutMaterialNumber.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); queueCheckoutItem(); } });
+  if (els.checkInForm) els.checkInForm.addEventListener("submit", checkInByMaterialNumber);
+  els.circulationTabButtons.forEach((button) => button.addEventListener("click", () => switchCirculationTab(button.dataset.circulationTab)));
   els.ilsTabButtons.forEach((btn) => btn.addEventListener("click", () => switchIlsTab(btn.dataset.ilsTab)));
   els.dashboardTiles.forEach((tile) => tile.addEventListener("click", () => {
     const { ilsTarget, ilsEmpty } = tile.dataset;
@@ -794,8 +873,7 @@ function render() {
   fillCuratedShelves();
   renderTable();
   renderPatronsTable();
-  renderAvailableItemsSelect();
-  renderPatronSelect();
+  renderCheckoutQueue();
   renderLoansTable();
   renderStatsPanel();
 }
@@ -829,6 +907,7 @@ function init() {
   });
 
   switchIlsTab("dashboard");
+  switchCirculationTab("checkout");
   render();
 }
 

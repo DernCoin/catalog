@@ -111,7 +111,9 @@ input, select, textarea {
 .badge-format[data-format="other"] { background: #5d6272; }
 .badge-status { background: #f1ecf8; color: #4a3960; }
 .badge-status[data-status="on-order"] { background: #ffe6c8; color: #7a3e00; }
-.record-card.status-on-order, .wall-item.status-on-order, .arrival-item.status-on-order, .availability-card.status-on-order { background: #fff4e6; border-color: #f6cf9e; }
+.record-card.status-on-order, .wall-item.status-on-order, .availability-card.status-on-order { background: #fff4e6; border-color: #f6cf9e; }
+.record-card.status-on-loan, .wall-item.status-on-loan, .availability-card.status-on-loan { background: #ffe9e9; border-color: #f4b2b2; }
+.badge-status[data-status="on-loan"] { background: #ffdada; color: #7a1010; }
 .record-title { margin: .22rem 0; font-size: 1.18rem; line-height: 1.2; }
 .record-meta, .record-location, .record-subjects, .muted { margin: .22rem 0; color: var(--muted); }
 .subject-link {
