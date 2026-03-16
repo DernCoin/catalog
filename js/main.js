@@ -418,6 +418,14 @@ function handleCoverDrop(e) {
   reader.readAsDataURL(file);
 }
 
+function parseMaterialNumbersInput(value) {
+  return [...new Set(String(value || "").split(/[\n,]/).map((entry) => entry.trim()).filter(Boolean))];
+}
+
+function isMaterialNumberInUse(materialNumber, recordId = "") {
+  return state.records.some((record) => record.id !== recordId && (record.materialNumbers || []).includes(materialNumber));
+}
+
 function saveFormRecord(e) {
   e.preventDefault();
   const id = $("#recordId").value || crypto.randomUUID();
@@ -432,11 +440,14 @@ function saveFormRecord(e) {
     title: $("#title").value.trim(), subtitle: $("#subtitle").value.trim(), creator: $("#creator").value.trim(), contributors: $("#contributors").value.trim(),
     format: $("#format").value, edition: $("#edition").value.trim(), year: $("#year").value.trim(), publisher: $("#publisher").value.trim(), identifier: $("#identifier").value.trim(),
     genre: genres.join(", "), genres, subjects: $("#subjects").value.trim(), description: $("#description").value.trim(),
-    location: $("#location").value, callNumber: $("#callNumber").value.trim(), accessionNumber: $("#accessionNumber").value.trim(), status: $("#status").value,
+    location: $("#location").value, callNumber: $("#callNumber").value.trim(), accessionNumber: $("#accessionNumber").value.trim(), materialNumbers: parseMaterialNumbersInput($("#materialNumbers").value), status: $("#status").value,
     dateAcquired: $("#dateAcquired").value, dateAdded, source: $("#source").value.trim(), pricePaid: $("#pricePaid").value.trim(), notes: $("#notes").value.trim(), coverUrl: $("#coverUrl").value.trim(),
     binding: $("#binding").value, seriesName: $("#seriesName").value.trim(), seriesNumber: $("#seriesNumber").value.trim(), curatedShelf: $("#curatedShelf").value,
     pageCount: $("#pageCount").value.trim(), addedAt: new Date(dateAdded).getTime() || Date.now(),
   });
+
+  const duplicateMaterial = (record.materialNumbers || []).find((materialNumber) => isMaterialNumberInUse(materialNumber, id));
+  if (duplicateMaterial) { flash(`Material number ${duplicateMaterial} is already assigned to another item.`, true); return; }
 
   const idx = state.records.findIndex((r) => r.id === id);
   if (idx >= 0) state.records[idx] = record; else state.records.unshift(record);
@@ -502,7 +513,7 @@ function renderArrivals() {
   const recent = getRecentArrivals(); const perPage = 5; const pages = Math.max(Math.ceil(recent.length / perPage), 1); state.arrivalsPage = Math.min(state.arrivalsPage, pages - 1);
   const pageItems = recent.slice(state.arrivalsPage * perPage, state.arrivalsPage * perPage + perPage);
   els.newArrivals.innerHTML = "";
-  pageItems.forEach((r) => { const b = document.createElement("button"); b.className = "arrival-item"; b.type = "button"; b.innerHTML = `<img class="arrival-cover" src="${r.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${r.title}"><span class="arrival-title">${r.title}</span>`; b.classList.toggle("status-on-order", String(r.status||"").toLowerCase()==="on order"); b.addEventListener("click", () => openDetail(r)); els.newArrivals.appendChild(b); });
+  pageItems.forEach((r) => { const b = document.createElement("button"); b.className = "arrival-item"; b.type = "button"; b.innerHTML = `<img class="arrival-cover" src="${r.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${r.title}"><span class="arrival-title">${r.title}</span>`; b.addEventListener("click", () => openDetail(r)); els.newArrivals.appendChild(b); });
   els.arrivalsPrevBtn.disabled = state.arrivalsPage === 0; els.arrivalsNextBtn.disabled = state.arrivalsPage >= pages - 1;
 }
 
@@ -513,6 +524,7 @@ function highlight(text, term) { if (!term) return text; const re = new RegExp(`
 function renderCard(r, term) {
   const node = els.template.content.firstElementChild.cloneNode(true);
   node.classList.toggle("status-on-order", String(r.status || "").toLowerCase() === "on order");
+  node.classList.toggle("status-on-loan", String(r.status || "").toLowerCase() === "on loan");
   node.querySelector(".cover").src = r.coverUrl || PLACEHOLDER_COVER; node.querySelector(".cover").alt = `Cover for ${r.title}`;
   const formatBadge = node.querySelector(".badge-format");
   const statusBadge = node.querySelector(".badge-status");
@@ -536,7 +548,7 @@ function openDetail(record) {
   const related = getRelated(state.records, record);
   const genres = asArray(record.genres?.length ? record.genres : record.genre);
   const decade = record.year ? `${Math.floor(Number(record.year) / 10) * 10}s` : "";
-  els.recordDetailsBody.innerHTML = `<article class="opac-record-layout"><div class="record-columns"><div class="record-image-column"><img src="${record.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${record.title}" class="details-cover" /></div><section class="record-main-column"><h4>${record.title}</h4><p class="muted">${record.subtitle || ""}</p><dl class="metadata-grid"><dt>Author / Creator</dt><dd><button class="subject-link" id="authorPageBtn" type="button">${record.creator}</button></dd><dt>Publisher</dt><dd>${record.publisher || "Unknown"}</dd><dt>Published</dt><dd>${record.year || "n.d."}</dd><dt>Genres</dt><dd>${genres.join(", ") || "n/a"}</dd><dt>Binding</dt><dd>${record.binding || "n/a"}</dd><dt>Series</dt><dd>${record.seriesName ? `${record.seriesName}${record.seriesNumber ? ` #${record.seriesNumber}` : ""}` : "n/a"}</dd><dt>Identifier</dt><dd>${record.identifier || "n/a"}</dd>${record.pageCount ? `<dt>Pages</dt><dd>${record.pageCount}</dd>` : ""}<dt>Date acquired</dt><dd>${record.dateAcquired || "n/a"}${record.pricePaid ? ` • $${record.pricePaid}` : ""}</dd></dl></section><aside class="record-availability-column"><div class="availability-card ${String(record.status||"").toLowerCase()==="on order"?"status-on-order":""}"><h5>Availability</h5><p><strong>Status:</strong> ${record.status}</p><p><strong>Location:</strong> ${record.location || "n/a"}</p><p><strong>Call Number:</strong> ${record.callNumber || "n/a"}</p><p><strong>Format:</strong> ${record.format}</p></div></aside></div><section class="detail-section"><h5>Description</h5><p>${record.description || "No description"}</p></section><section class="detail-section"><h5>Collection Pathways</h5><p class="muted"><button class="subject-link" id="decadeBtn" type="button">More from ${decade || "this era"}</button> <button class="subject-link" id="genreBtn" type="button">More ${genres[0] || "in this category"}</button></p></section><section class="detail-section"><h5>Series & Related</h5><p class="muted">Series items: ${related.bySeries.map((r)=>r.title).join(", ") || "None"}</p><p class="muted">By creator: ${related.byCreator.map((r)=>r.title).join(", ") || "None"}</p></section><section class="detail-section nearby-section"><h5>Browse a Shelf</h5><div class="nearby-spines" role="list">${related.virtualShelf.map((item)=>`<button class="book-spine ${item.id===record.id?"selected":""}" data-record-id="${item.id}" style="--spine-width:${getSpineWidth(item)}px" type="button"><span class="spine-title"><span>${item.title}</span><span>${item.creator || "Unknown"}</span></span><span class="spine-call">${item.callNumber || "No call #"}</span></button>`).join("")}</div></section></article>`;
+  els.recordDetailsBody.innerHTML = `<article class="opac-record-layout"><div class="record-columns"><div class="record-image-column"><img src="${record.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${record.title}" class="details-cover" /></div><section class="record-main-column"><h4>${record.title}</h4><p class="muted">${record.subtitle || ""}</p><dl class="metadata-grid"><dt>Author / Creator</dt><dd><button class="subject-link" id="authorPageBtn" type="button">${record.creator}</button></dd><dt>Publisher</dt><dd>${record.publisher || "Unknown"}</dd><dt>Published</dt><dd>${record.year || "n.d."}</dd><dt>Genres</dt><dd>${genres.join(", ") || "n/a"}</dd><dt>Binding</dt><dd>${record.binding || "n/a"}</dd><dt>Series</dt><dd>${record.seriesName ? `${record.seriesName}${record.seriesNumber ? ` #${record.seriesNumber}` : ""}` : "n/a"}</dd><dt>Identifier</dt><dd>${record.identifier || "n/a"}</dd>${record.pageCount ? `<dt>Pages</dt><dd>${record.pageCount}</dd>` : ""}<dt>Date acquired</dt><dd>${record.dateAcquired || "n/a"}${record.pricePaid ? ` • $${record.pricePaid}` : ""}</dd></dl></section><aside class="record-availability-column"><div class="availability-card ${String(record.status||"").toLowerCase()==="on order"?"status-on-order":""} ${String(record.status||"").toLowerCase()==="on loan"?"status-on-loan":""}"><h5>Availability</h5><p><strong>Status:</strong> ${record.status}</p><p><strong>Location:</strong> ${record.location || "n/a"}</p><p><strong>Call Number:</strong> ${record.callNumber || "n/a"}</p><p><strong>Format:</strong> ${record.format}</p></div></aside></div><section class="detail-section"><h5>Description</h5><p>${record.description || "No description"}</p></section><section class="detail-section"><h5>Collection Pathways</h5><p class="muted"><button class="subject-link" id="decadeBtn" type="button">More from ${decade || "this era"}</button> <button class="subject-link" id="genreBtn" type="button">More ${genres[0] || "in this category"}</button></p></section><section class="detail-section"><h5>Series & Related</h5><p class="muted">Series items: ${related.bySeries.map((r)=>r.title).join(", ") || "None"}</p><p class="muted">By creator: ${related.byCreator.map((r)=>r.title).join(", ") || "None"}</p></section><section class="detail-section nearby-section"><h5>Browse a Shelf</h5><div class="nearby-spines" role="list">${related.virtualShelf.map((item)=>`<button class="book-spine ${item.id===record.id?"selected":""}" data-record-id="${item.id}" style="--spine-width:${getSpineWidth(item)}px" type="button"><span class="spine-title"><span>${item.title}</span><span>${item.creator || "Unknown"}</span></span><span class="spine-call">${item.callNumber || "No call #"}</span></button>`).join("")}</div></section></article>`;
   els.recordDetailsBody.querySelectorAll(".book-spine").forEach((spine) => spine.addEventListener("click", () => openDetail(state.records.find((r) => r.id === spine.dataset.recordId))));
   $("#authorPageBtn")?.addEventListener("click", ()=>renderAuthorPage(record.creator));
   $("#decadeBtn")?.addEventListener("click", ()=>{els.keywordSearch.value=decade.slice(0,4); switchView('search'); renderPublic();});
@@ -565,7 +577,7 @@ function renderRecentPage() {
 }
 function renderCoverWall() {
   const shuffled = [...state.records].sort(() => Math.random() - 0.5);
-  els.coverWall.innerHTML = shuffled.map((r)=>`<button class="wall-item ${String(r.status||"").toLowerCase()==="on order"?"status-on-order":""}" data-id="${r.id}" type="button"><img src="${r.coverUrl || PLACEHOLDER_COVER}" alt="${r.title}" /><span>${r.title}</span></button>`).join("");
+  els.coverWall.innerHTML = shuffled.map((r)=>`<button class="wall-item ${String(r.status||"").toLowerCase()==="on order"?"status-on-order":""} ${String(r.status||"").toLowerCase()==="on loan"?"status-on-loan":""}" data-id="${r.id}" type="button"><img src="${r.coverUrl || PLACEHOLDER_COVER}" alt="${r.title}" /><span>${r.title}</span></button>`).join("");
   els.coverWall.querySelectorAll(".wall-item").forEach((b)=>b.addEventListener("click",()=>openDetail(state.records.find((r)=>r.id===b.dataset.id))));
 }
 function renderStatsPage() {
@@ -612,6 +624,7 @@ function populateForm(r) {
   const fields = ["recordId:id", "title", "subtitle", "creator", "contributors", "format", "edition", "year", "publisher", "identifier", "genre", "subjects", "description", "location", "callNumber", "accessionNumber", "status", "dateAcquired", "dateAdded", "source", "pricePaid", "notes", "coverUrl", "binding", "seriesName", "seriesNumber", "curatedShelf", "pageCount"];
   fields.forEach((pair) => { const [elId, prop] = pair.includes(":") ? pair.split(":") : [pair, pair]; $(`#${elId}`).value = r[prop] || ""; });
   [...els.genres.options].forEach((option)=>{ option.selected = (r.genres || asArray(r.genre)).includes(option.value); });
+  $("#materialNumbers").value = (r.materialNumbers || []).join("\n");
   switchAdminTab("catalog");
   window.scrollTo({ top: els.adminSection.offsetTop - 20, behavior: "smooth" });
 }

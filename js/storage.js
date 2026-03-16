@@ -9,6 +9,11 @@ export function normalizeRecord(record) {
     : String(record.genres || record.genre || "").split(",").map((g) => g.trim()).filter(Boolean);
   const genres = [...new Set(parsedGenres.map((genre) => String(genre || "").trim()).filter(Boolean))];
 
+  const parsedMaterialNumbers = Array.isArray(record.materialNumbers)
+    ? record.materialNumbers
+    : String(record.materialNumbers || record.materialNumber || "").split(/[\n,]/).map((value) => value.trim()).filter(Boolean);
+  const materialNumbers = [...new Set(parsedMaterialNumbers.map((value) => String(value || "").trim()).filter(Boolean))];
+
   return {
     ...record,
     id: record.id || `id-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
