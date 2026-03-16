@@ -39,6 +39,7 @@ const els = {
   applyBulkBtn: $("#applyBulkBtn"),
   bulkGenreSelect: $("#bulkGenreSelect"),
   bulkGenreAddBtn: $("#bulkGenreAddBtn"),
+  bulkMarcExportBtn: $("#bulkMarcExportBtn"),
   formatSelect: $("#format"),
   bindingSelect: $("#binding"),
   locationSelect: $("#location"),
@@ -562,7 +563,7 @@ function renderTable() {
   els.recordsBody.innerHTML = "";
   rows.forEach((r) => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td><input type="checkbox" ${state.selectedIds.has(r.id) ? "checked" : ""}></td><td>${r.title}</td><td>${r.creator}</td><td>${r.format}</td><td>${r.year || ""}</td><td>${r.status || "Available"}</td><td><button class="button button-secondary" data-act="edit" type="button">Edit</button> <button class="button button-secondary" data-act="dup" type="button">Duplicate</button> <button class="button" data-act="del" type="button">Delete</button></td>`;
+    tr.innerHTML = `<td><input type="checkbox" ${state.selectedIds.has(r.id) ? "checked" : ""}></td><td>${r.title}</td><td>${r.creator}</td><td>${r.format}</td><td>${r.year || ""}</td><td>${r.curatedShelf || "—"}</td><td>${r.status || "Available"}</td><td><button class="button button-secondary" data-act="edit" type="button">Edit</button> <button class="button button-secondary" data-act="dup" type="button">Duplicate</button> <button class="button" data-act="del" type="button">Delete</button></td>`;
 
     tr.querySelector('input[type="checkbox"]').addEventListener("change", (event) => {
       if (event.target.checked) state.selectedIds.add(r.id);
@@ -700,6 +701,64 @@ function bulkAddGenres() {
 
   saveRecords(state.records);
   render();
+}
+
+function marcSafe(value) {
+  return String(value || "").replaceAll("\n", " ").replaceAll("|", "\u01c0").trim();
+}
+
+function toMarcMrk(record) {
+  const stamp = new Date();
+  const year = String(record.year || "").trim();
+  const yearField = year ? year.slice(0, 4).padEnd(4, " ") : "    ";
+  const lines = [
+    "=LDR  00000nam a2200000 i 4500",
+    `=001  ${marcSafe(record.id || record.permalink || crypto.randomUUID())}`,
+    `=005  ${stamp.toISOString().replace(/[-:T.Z]/g, "").slice(0, 14)}.0`,
+    `=008  ${stamp.toISOString().slice(2, 10).replaceAll("-", "")}s${yearField}\\xx\\\\\\\\\\\\\\\eng\\d`,
+  ];
+
+  if (record.identifier) lines.push(`=020  \\$a${marcSafe(record.identifier)}`);
+  if (record.creator) lines.push(`=100  1\\$a${marcSafe(record.creator)}`);
+  lines.push(`=245  10$a${marcSafe(record.title)}${record.subtitle ? `$b${marcSafe(record.subtitle)}` : ""}`);
+  if (record.edition) lines.push(`=250  \\$a${marcSafe(record.edition)}`);
+  if (record.publisher || record.year) lines.push(`=260  \\$b${marcSafe(record.publisher)}${record.year ? `$c${marcSafe(record.year)}` : ""}`);
+  lines.push(`=300  \\$a${record.pageCount ? `${marcSafe(record.pageCount)} pages` : "1 item"}`);
+  if (record.notes) lines.push(`=500  \\$a${marcSafe(record.notes)}`);
+  if (record.genre || (record.genres || []).length) lines.push(`=650  \\0$a${marcSafe(record.genre || (record.genres || []).join(", "))}`);
+  if (record.subjects) lines.push(`=650  \\0$a${marcSafe(record.subjects)}`);
+  if (record.callNumber || record.location || record.curatedShelf) {
+    lines.push(`=852  \\$h${marcSafe(record.callNumber)}$b${marcSafe(record.location)}$x${marcSafe(record.curatedShelf)}`);
+  }
+
+  return lines;
+}
+
+
+function exportSelectedMarc() {
+  const selected = state.records.filter((record) => state.selectedIds.has(record.id));
+  if (!selected.length) {
+    setCirculationMessage("Select at least one record to export as MARC.", true);
+    return;
+  }
+
+  const marcText = selected.map((record) => {
+    const required = {
+      ...record,
+      title: record.title || "Untitled",
+      creator: record.creator || "Unknown creator",
+    };
+    return toMarcMrk(required).join("\n");
+  }).join("\n\n");
+
+  const blob = new Blob([marcText], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `catalog-marc-export-${new Date().toISOString().slice(0, 10)}.mrk`;
+  link.click();
+  URL.revokeObjectURL(url);
+  setCirculationMessage(`Exported ${selected.length} record(s) as MARC (.mrk).`);
 }
 
 async function fetchMetadata() {
@@ -844,6 +903,7 @@ function bindEvents() {
 
   els.applyBulkBtn.addEventListener("click", applyBulkStatus);
   els.bulkGenreAddBtn.addEventListener("click", bulkAddGenres);
+  if (els.bulkMarcExportBtn) els.bulkMarcExportBtn.addEventListener("click", exportSelectedMarc);
   if (els.patronForm) els.patronForm.addEventListener("submit", addPatron);
   if (els.checkOutForm) els.checkOutForm.addEventListener("submit", checkOutRecord);
   if (els.queueCheckoutItemBtn) els.queueCheckoutItemBtn.addEventListener("click", queueCheckoutItem);
