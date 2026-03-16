@@ -310,7 +310,16 @@ mark { background:#ffe8f6; color:inherit; padding:0 .15em; border-radius:3px; }
 .arrival-cover, .wall-item img, .details-cover { object-fit: contain; object-position: center; }
 
 .ils-layout {
-  grid-template-columns: minmax(280px, 360px) 1fr;
+  max-width: 1580px;
+  grid-template-columns: 1fr;
+}
+
+.ils-layout .catalog-form-layout {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ils-layout .form-grid {
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
 }
 
 .simple-form {

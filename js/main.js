@@ -29,6 +29,8 @@ const els = {
   recordDetailsModal: $("#recordDetailsModal"), closeRecordDetailsBtn: $("#closeRecordDetailsBtn"), recordDetailsBody: $("#recordDetailsBody"), copyCitationBtn: $("#copyCitationBtn"),
   fetchMetadataBtn: $("#fetchMetadataBtn"), genres: $("#genres"), coverUpload: $("#coverUpload"), locationSelect: $("#location"),
   newLocationInput: $("#newLocationInput"), addLocationBtn: $("#addLocationBtn"), locationList: $("#locationList"), newGenreInput: $("#newGenreInput"), addGenreBtn: $("#addGenreBtn"), genreList: $("#genreList"),
+  newFormatInput: $("#newFormatInput"), addFormatBtn: $("#addFormatBtn"), formatList: $("#formatList"),
+  newBindingInput: $("#newBindingInput"), addBindingBtn: $("#addBindingBtn"), bindingList: $("#bindingList"),
   recentBuckets: $("#recentBuckets"), coverWall: $("#coverWall"), statsPage: $("#statsPage"), shelfPages: $("#shelfPages"),
   adminTabButtons: $$(".admin-tab-btn"), adminTabPanels: $$(".admin-tab-panel"), curatedShelfSelect: $("#curatedShelf"),
   newCuratedShelfInput: $("#newCuratedShelfInput"), addCuratedShelfBtn: $("#addCuratedShelfBtn"), curatedShelfList: $("#curatedShelfList"),
@@ -85,6 +87,17 @@ function bindEvents() {
   els.exportBtn.addEventListener("click", () => exportRecords(state.records));
   els.importInput.addEventListener("change", async (e) => { if (!e.target.files?.[0]) return; state.records = await importRecords(e.target.files[0]); saveRecords(state.records); render(); });
   els.closeRecordDetailsBtn.addEventListener("click", () => els.recordDetailsModal.classList.add("hidden"));
+  els.recordDetailsModal.addEventListener("click", (event) => {
+    if (event.target === els.recordDetailsModal) {
+      els.recordDetailsModal.classList.add("hidden");
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      els.recordDetailsModal.classList.add("hidden");
+      els.loginModal.classList.add("hidden");
+    }
+  });
 }
 
 function switchView(view) {
@@ -146,6 +159,7 @@ function fillFormats() {
   const current = els.formatSelect.value || "";
   els.formatSelect.innerHTML = formats.map((format) => `<option value="${format}">${format}</option>`).join("");
   els.formatSelect.value = formats.includes(current) ? current : (formats[0] || "Other");
+  renderFormatList(formats);
 }
 
 function getManagedBindings() {
@@ -157,6 +171,37 @@ function fillBindings() {
   const current = els.bindingSelect.value || "";
   els.bindingSelect.innerHTML = ['<option value="">None</option>', ...bindings.map((binding) => `<option value="${binding}">${binding}</option>`)].join("");
   els.bindingSelect.value = bindings.includes(current) ? current : "";
+  renderBindingList(bindings);
+}
+
+function renderFormatList(formats) {
+  els.formatList.innerHTML = "";
+  formats.forEach((format) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span>${format}</span><div><button class="button button-secondary" data-act="rename" type="button">Edit</button> <button class="button button-secondary" data-act="delete" type="button">Delete</button></div>`;
+    li.querySelector('[data-act="rename"]').addEventListener("click", () => {
+      const next = window.prompt("Rename format", format);
+      if (!next || next.trim() === format) return;
+      renameFormat(format, next.trim());
+    });
+    li.querySelector('[data-act="delete"]').addEventListener("click", () => deleteFormat(format));
+    els.formatList.appendChild(li);
+  });
+}
+
+function renderBindingList(bindings) {
+  els.bindingList.innerHTML = "";
+  bindings.forEach((binding) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span>${binding || "None"}</span><div><button class="button button-secondary" data-act="rename" type="button">Edit</button> <button class="button button-secondary" data-act="delete" type="button">Delete</button></div>`;
+    li.querySelector('[data-act="rename"]').addEventListener("click", () => {
+      const next = window.prompt("Rename binding", binding);
+      if (!next || next.trim() === binding) return;
+      renameBinding(binding, next.trim());
+    });
+    li.querySelector('[data-act="delete"]').addEventListener("click", () => deleteBinding(binding));
+    els.bindingList.appendChild(li);
+  });
 }
 
 function renderLocationList(locations) {
@@ -246,6 +291,58 @@ function addCuratedShelf() {
   saveSettings(state.settings);
   els.newCuratedShelfInput.value = "";
   fillCuratedShelves();
+}
+
+function addFormat() {
+  const value = els.newFormatInput.value.trim();
+  if (!value) return;
+  const set = new Set(state.settings.formats || []);
+  set.add(value);
+  state.settings.formats = [...set].sort((a,b)=>a.localeCompare(b));
+  saveSettings(state.settings);
+  els.newFormatInput.value = "";
+  fillFormats();
+}
+
+function renameFormat(prev, next) {
+  state.records = state.records.map((record) => (record.format === prev ? { ...record, format: next } : record));
+  const set = new Set((state.settings.formats || []).map((format) => format === prev ? next : format));
+  state.settings.formats = [...set].sort((a,b)=>a.localeCompare(b));
+  saveSettings(state.settings);
+  saveRecords(state.records);
+  render();
+}
+
+function deleteFormat(target) {
+  state.settings.formats = (state.settings.formats || []).filter((format) => format !== target);
+  saveSettings(state.settings);
+  fillFormats();
+}
+
+function addBinding() {
+  const value = els.newBindingInput.value.trim();
+  if (!value) return;
+  const set = new Set(state.settings.bindings || []);
+  set.add(value);
+  state.settings.bindings = [...set].sort((a,b)=>a.localeCompare(b));
+  saveSettings(state.settings);
+  els.newBindingInput.value = "";
+  fillBindings();
+}
+
+function renameBinding(prev, next) {
+  state.records = state.records.map((record) => (record.binding === prev ? { ...record, binding: next } : record));
+  const set = new Set((state.settings.bindings || []).map((binding) => binding === prev ? next : binding));
+  state.settings.bindings = [...set].sort((a,b)=>a.localeCompare(b));
+  saveSettings(state.settings);
+  saveRecords(state.records);
+  render();
+}
+
+function deleteBinding(target) {
+  state.settings.bindings = (state.settings.bindings || []).filter((binding) => binding !== target);
+  saveSettings(state.settings);
+  fillBindings();
 }
 
 function renameCuratedShelf(prev, next) {
