@@ -32,6 +32,7 @@ const els = {
   recentBuckets: $("#recentBuckets"), coverWall: $("#coverWall"), statsPage: $("#statsPage"), shelfPages: $("#shelfPages"),
   adminTabButtons: $$(".admin-tab-btn"), adminTabPanels: $$(".admin-tab-panel"), curatedShelfSelect: $("#curatedShelf"),
   newCuratedShelfInput: $("#newCuratedShelfInput"), addCuratedShelfBtn: $("#addCuratedShelfBtn"), curatedShelfList: $("#curatedShelfList"),
+  formatSelect: $("#format"), bindingSelect: $("#binding"),
 };
 
 function q() {
@@ -131,6 +132,29 @@ function fillCuratedShelves() {
   els.curatedShelfSelect.innerHTML = ['<option value="">None</option>', ...shelves.map((shelf) => `<option value="${shelf}">${shelf}</option>`)].join("");
   els.curatedShelfSelect.value = shelves.includes(current) ? current : "";
   renderCuratedShelfList(shelves);
+}
+
+function getManagedFormats() {
+  const defaults = ["Book", "Vinyl", "Board Game", "CD", "Zine", "Magazine", "Other"];
+  return [...new Set([...(state.settings.formats || []), ...defaults, ...state.records.map((r) => r.format).filter(Boolean)])].sort((a,b)=>a.localeCompare(b));
+}
+
+function fillFormats() {
+  const formats = getManagedFormats();
+  const current = els.formatSelect.value || "";
+  els.formatSelect.innerHTML = formats.map((format) => `<option value="${format}">${format}</option>`).join("");
+  els.formatSelect.value = formats.includes(current) ? current : (formats[0] || "Other");
+}
+
+function getManagedBindings() {
+  return [...new Set([...(state.settings.bindings || []), "Paperback", "Hardcover", ...state.records.map((r) => r.binding).filter(Boolean)])].sort((a,b)=>a.localeCompare(b));
+}
+
+function fillBindings() {
+  const bindings = getManagedBindings();
+  const current = els.bindingSelect.value || "";
+  els.bindingSelect.innerHTML = ['<option value="">None</option>', ...bindings.map((binding) => `<option value="${binding}">${binding}</option>`)].join("");
+  els.bindingSelect.value = bindings.includes(current) ? current : "";
 }
 
 function renderLocationList(locations) {
@@ -237,6 +261,9 @@ function deleteCuratedShelf(target) {
   fillCuratedShelves();
 }
 
+
+
+
 function addLocation() {
   const value = els.newLocationInput.value.trim();
   if (!value) return;
@@ -335,6 +362,8 @@ function render() {
   fillGenres();
   fillLocations();
   fillCuratedShelves();
+  fillFormats();
+  fillBindings();
   renderPublic();
   renderAdminTable();
 }
