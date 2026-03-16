@@ -32,6 +32,8 @@ const els = {
   recentBuckets: $("#recentBuckets"), coverWall: $("#coverWall"), statsPage: $("#statsPage"), shelfPages: $("#shelfPages"),
   adminTabButtons: $$(".admin-tab-btn"), adminTabPanels: $$(".admin-tab-panel"), curatedShelfSelect: $("#curatedShelf"),
   newCuratedShelfInput: $("#newCuratedShelfInput"), addCuratedShelfBtn: $("#addCuratedShelfBtn"), curatedShelfList: $("#curatedShelfList"),
+  formatSelect: $("#format"), newFormatInput: $("#newFormatInput"), addFormatBtn: $("#addFormatBtn"), formatList: $("#formatList"),
+  bindingSelect: $("#binding"), newBindingInput: $("#newBindingInput"), addBindingBtn: $("#addBindingBtn"), bindingList: $("#bindingList"),
 };
 
 function q() {
@@ -78,6 +80,8 @@ function bindEvents() {
   els.addLocationBtn.addEventListener("click", addLocation);
   els.addGenreBtn.addEventListener("click", addGenre);
   els.addCuratedShelfBtn.addEventListener("click", addCuratedShelf);
+  els.addFormatBtn.addEventListener("click", addFormat);
+  els.addBindingBtn.addEventListener("click", addBinding);
   els.adminTabButtons.forEach((btn) => btn.addEventListener("click", () => switchAdminTab(btn.dataset.adminTab)));
   els.exportBtn.addEventListener("click", () => exportRecords(state.records));
   els.importInput.addEventListener("change", async (e) => { if (!e.target.files?.[0]) return; state.records = await importRecords(e.target.files[0]); saveRecords(state.records); render(); });
@@ -131,6 +135,31 @@ function fillCuratedShelves() {
   els.curatedShelfSelect.innerHTML = ['<option value="">None</option>', ...shelves.map((shelf) => `<option value="${shelf}">${shelf}</option>`)].join("");
   els.curatedShelfSelect.value = shelves.includes(current) ? current : "";
   renderCuratedShelfList(shelves);
+}
+
+function getManagedFormats() {
+  const defaults = ["Book", "Vinyl", "Board Game", "CD", "Zine", "Magazine", "Other"];
+  return [...new Set([...(state.settings.formats || []), ...defaults, ...state.records.map((r) => r.format).filter(Boolean)])].sort((a,b)=>a.localeCompare(b));
+}
+
+function fillFormats() {
+  const formats = getManagedFormats();
+  const current = els.formatSelect.value || "";
+  els.formatSelect.innerHTML = formats.map((format) => `<option value="${format}">${format}</option>`).join("");
+  els.formatSelect.value = formats.includes(current) ? current : (formats[0] || "Other");
+  renderFormatList(formats);
+}
+
+function getManagedBindings() {
+  return [...new Set([...(state.settings.bindings || []), "Paperback", "Hardcover", ...state.records.map((r) => r.binding).filter(Boolean)])].sort((a,b)=>a.localeCompare(b));
+}
+
+function fillBindings() {
+  const bindings = getManagedBindings();
+  const current = els.bindingSelect.value || "";
+  els.bindingSelect.innerHTML = ['<option value="">None</option>', ...bindings.map((binding) => `<option value="${binding}">${binding}</option>`)].join("");
+  els.bindingSelect.value = bindings.includes(current) ? current : "";
+  renderBindingList(bindings);
 }
 
 function renderLocationList(locations) {
@@ -237,6 +266,89 @@ function deleteCuratedShelf(target) {
   fillCuratedShelves();
 }
 
+
+function renderFormatList(formats) {
+  els.formatList.innerHTML = "";
+  formats.forEach((format) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span>${format}</span><div><button class="button button-secondary" data-act="rename" type="button">Edit</button> <button class="button button-secondary" data-act="delete" type="button">Delete</button></div>`;
+    li.querySelector('[data-act="rename"]').addEventListener("click", () => {
+      const next = window.prompt("Rename format", format);
+      if (!next || next.trim() === format) return;
+      renameFormat(format, next.trim());
+    });
+    li.querySelector('[data-act="delete"]').addEventListener("click", () => deleteFormat(format));
+    els.formatList.appendChild(li);
+  });
+}
+
+function addFormat() {
+  const value = els.newFormatInput.value.trim();
+  if (!value) return;
+  const set = new Set(state.settings.formats || []);
+  set.add(value);
+  state.settings.formats = [...set].sort((a,b)=>a.localeCompare(b));
+  saveSettings(state.settings);
+  els.newFormatInput.value = "";
+  fillFormats();
+}
+
+function renameFormat(prev, next) {
+  state.records = state.records.map((record) => (record.format === prev ? { ...record, format: next } : record));
+  const set = new Set((state.settings.formats || []).map((format) => format === prev ? next : format));
+  state.settings.formats = [...set].sort((a,b)=>a.localeCompare(b));
+  saveSettings(state.settings);
+  saveRecords(state.records);
+  render();
+}
+
+function deleteFormat(target) {
+  state.settings.formats = (state.settings.formats || []).filter((format) => format !== target);
+  saveSettings(state.settings);
+  fillFormats();
+}
+
+function renderBindingList(bindings) {
+  els.bindingList.innerHTML = "";
+  bindings.forEach((binding) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span>${binding}</span><div><button class="button button-secondary" data-act="rename" type="button">Edit</button> <button class="button button-secondary" data-act="delete" type="button">Delete</button></div>`;
+    li.querySelector('[data-act="rename"]').addEventListener("click", () => {
+      const next = window.prompt("Rename binding", binding);
+      if (!next || next.trim() === binding) return;
+      renameBinding(binding, next.trim());
+    });
+    li.querySelector('[data-act="delete"]').addEventListener("click", () => deleteBinding(binding));
+    els.bindingList.appendChild(li);
+  });
+}
+
+function addBinding() {
+  const value = els.newBindingInput.value.trim();
+  if (!value) return;
+  const set = new Set(state.settings.bindings || []);
+  set.add(value);
+  state.settings.bindings = [...set].sort((a,b)=>a.localeCompare(b));
+  saveSettings(state.settings);
+  els.newBindingInput.value = "";
+  fillBindings();
+}
+
+function renameBinding(prev, next) {
+  state.records = state.records.map((record) => (record.binding === prev ? { ...record, binding: next } : record));
+  const set = new Set((state.settings.bindings || []).map((binding) => binding === prev ? next : binding));
+  state.settings.bindings = [...set].sort((a,b)=>a.localeCompare(b));
+  saveSettings(state.settings);
+  saveRecords(state.records);
+  render();
+}
+
+function deleteBinding(target) {
+  state.settings.bindings = (state.settings.bindings || []).filter((binding) => binding !== target);
+  saveSettings(state.settings);
+  fillBindings();
+}
+
 function addLocation() {
   const value = els.newLocationInput.value.trim();
   if (!value) return;
@@ -335,6 +447,8 @@ function render() {
   fillGenres();
   fillLocations();
   fillCuratedShelves();
+  fillFormats();
+  fillBindings();
   renderPublic();
   renderAdminTable();
 }

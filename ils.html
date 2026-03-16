@@ -47,7 +47,7 @@
               <label>Subtitle <input id="subtitle" /></label>
               <label>Creator / Author / Artist* <input id="creator" required /></label>
               <label>Additional Contributors <input id="contributors" placeholder="Editor, narrator, illustrator..." /></label>
-              <label>Format* <input id="format" value="Book" required /></label>
+              <label>Format* <select id="format" required></select></label>
               <label>Edition <input id="edition" /></label>
               <label>Publication Year <input id="year" type="number" min="0" /></label>
               <label>Publisher / Label <input id="publisher" /></label>
@@ -55,10 +55,10 @@
               <button id="fetchMetadataBtn" class="button button-secondary" type="button">Fetch Metadata</button>
               <label>Genres <select id="genres" multiple size="6"></select></label>
               <label>Custom Genre / Category <input id="genre" placeholder="Optional custom" /></label>
-              <label>Binding <input id="binding" placeholder="Paperback, Hardcover, etc" /></label>
+              <label>Binding <select id="binding"></select></label>
               <label>Series Name <input id="seriesName" /></label>
               <label>Series Number <input id="seriesNumber" type="number" min="0" /></label>
-              <label>Curated Shelf <input id="curatedShelf" /></label>
+              <label>Curated Shelf <select id="curatedShelf"></select></label>
               <label>Page count <input id="pageCount" type="number" min="1" step="1" /></label>
               <label>Subjects / Tags <input id="subjects" placeholder="Comma-separated" /></label>
             </div>
@@ -67,8 +67,17 @@
           <fieldset>
             <legend>Holdings & Local Data</legend>
             <div class="form-grid">
-              <label>Status <input id="status" value="Available" /></label>
-              <label>Location <input id="location" /></label>
+              <label>Status
+                <select id="status">
+                  <option>Available</option>
+                  <option>Checked In</option>
+                  <option>On Loan</option>
+                  <option>On Order</option>
+                  <option>Reference Only</option>
+                  <option>Missing</option>
+                </select>
+              </label>
+              <label>Location <select id="location"></select></label>
               <label>Call Number <input id="callNumber" /></label>
               <label>Accession Number <input id="accessionNumber" /></label>
               <label>Date Acquired <input id="dateAcquired" type="date" /></label>
