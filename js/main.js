@@ -1,6 +1,7 @@
 import { PAGE_SIZE, PLACEHOLDER_COVER } from "./config.js";
-import { loadRecords, saveRecords, exportRecords, importRecords, normalizeRecord, loadSettings, saveSettings } from "./storage.js";
+import { loadRecords, saveRecords, exportRecords, importRecords, normalizeRecord, loadSettings, saveSettings, loadRecordsFromRemote } from "./storage.js";
 import { login, logout, isAdminSessionActive } from "./auth.js";
+import { isFirebaseConfigured, subscribeToFirebaseRecords } from "./firebase.js";
 import { buildFacets, queryRecords, getStats, duplicateCandidates, getRelated, PRELOADED_GENRES, didYouMean, asArray, normalizeAuthor } from "./catalog.js";
 
 const state = {
@@ -47,7 +48,7 @@ function q() {
 function bindEvents() {
   $$(".nav-btn").forEach((btn) => btn.addEventListener("click", () => switchView(btn.dataset.view)));
   els.adminToggleBtn.addEventListener("click", () => { if (state.isAdmin) { state.isAdmin = false; logout(); if (state.view === "admin") switchView("search"); render(); return; } els.loginModal.classList.remove("hidden"); $("#username").focus(); });
-  els.adminPageBtn.addEventListener("click", () => { if (!state.isAdmin) { els.loginModal.classList.remove("hidden"); $("#username").focus(); return; } switchView("admin"); });
+  els.adminPageBtn.addEventListener("click", () => { window.location.href = "./ils.html"; });
   els.closeLoginBtn.addEventListener("click", () => els.loginModal.classList.add("hidden"));
   els.loginForm.addEventListener("submit", (e) => { e.preventDefault(); const ok = login($("#username").value.trim(), $("#password").value); if (!ok) { els.loginError.textContent = "Login failed."; return; } els.loginError.textContent = ""; els.loginModal.classList.add("hidden"); els.loginForm.reset(); state.isAdmin = true; render(); if (location.hash === "#admin") switchView("admin"); });
 
@@ -330,7 +331,7 @@ function checkDuplicateDraft() {
 
 function render() {
   els.adminToggleBtn.textContent = state.isAdmin ? "Logout Admin" : "Admin Login";
-  els.adminPageBtn.classList.toggle("hidden", !state.isAdmin);
+  els.adminPageBtn.classList.remove("hidden");
   fillGenres();
   fillLocations();
   fillCuratedShelves();
@@ -489,8 +490,26 @@ function populateForm(r) {
 }
 function flash(msg, isError = false) { els.adminMessage.textContent = msg; els.adminMessage.classList.toggle("error", isError); setTimeout(() => { els.adminMessage.textContent = ""; }, 2400); }
 
+
+async function hydrateRemoteRecords() {
+  if (!isFirebaseConfigured()) return;
+  const remoteRecords = await loadRecordsFromRemote();
+  if (remoteRecords.length) {
+    state.records = remoteRecords;
+    saveRecords(state.records);
+    render();
+  }
+
+  subscribeToFirebaseRecords((records) => {
+    state.records = records.map(normalizeRecord);
+    localStorage.setItem("catalogRecordsV2", JSON.stringify(state.records));
+    render();
+  });
+}
+
 bindEvents();
 render();
+hydrateRemoteRecords();
 switchView("search");
 if (location.hash === "#admin") switchView("admin");
 if (location.hash.startsWith("#record-")) { const id = location.hash.replace("#record-", ""); const hit = state.records.find((r) => r.id === id); if (hit) openDetail(hit); }

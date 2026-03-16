@@ -1,7 +1,7 @@
 # Willow Creek Personal OPAC
 
 A front-end-only personal catalog/OPAC app built with plain HTML, CSS, and JavaScript.
-It now includes a polished public catalog experience and a distinct cataloging/admin workspace.
+It now includes a polished public catalog experience and a distinct Firebase-ready ILS workspace.
 
 ## Features
 
@@ -15,14 +15,11 @@ It now includes a polished public catalog experience and a distinct cataloging/a
 - Full-record modal with OPAC-style bibliographic display, related-item suggestions, and citation copy.
 - Hash-based permalink support (`#record-<id>`) for future route-friendly URLs.
 
-### Admin / Cataloging
-- Coded login with session persistence and logout toggle.
-- Structured cataloging form with expanded bibliographic + holdings fields.
-- Required-field validation and duplicate warnings.
-- Searchable records table with quick actions: edit, duplicate, delete.
-- Bulk status update for selected records.
-- JSON import/export and sample data seeding.
-- LocalStorage persistence.
+### ILS (Integrated Library System)
+- Separate `ils.html` staff workspace for add/edit/delete record management.
+- Firebase Auth email/password login for staff access.
+- Firebase Firestore-backed record storage shared with the OPAC.
+- LocalStorage fallback for offline/dev use.
 
 ## Project structure
 
@@ -49,3 +46,12 @@ Then open <http://localhost:8000>.
 - **Database replacement:** swap `loadRecords` / `saveRecords` in `js/storage.js` with Firestore reads/writes.
 - **Real-time sync:** add listeners in `js/main.js` where `state.records` is loaded/refreshed.
 - **File uploads:** keep `coverUrl` today, later map to Firebase Storage download URLs.
+
+## Firebase setup
+
+1. Open `js/config.js` and fill in `FIREBASE_CONFIG` with your project values.
+2. Ensure Firestore has a collection matching `FIREBASE_COLLECTION` (default: `records`).
+3. Create at least one Firebase Auth email/password user for staff login.
+4. Open `index.html` for OPAC and `ils.html` for cataloging.
+
+When Firebase is configured, OPAC and ILS use the same Firestore records so you do not need to recreate items manually.
