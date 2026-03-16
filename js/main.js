@@ -103,13 +103,12 @@ function bindEvents() {
 function switchView(view) {
   state.view = view;
   if (view === "admin") history.replaceState(null, "", "#admin");
-  ["Search", "Recent", "Covers", "Stats", "Shelves"].forEach((v) => $(`#view${v}`).classList.toggle("hidden", view !== v.toLowerCase()));
+  ["Search", "Recent", "Covers", "Shelves"].forEach((v) => $(`#view${v}`).classList.toggle("hidden", view !== v.toLowerCase()));
   if (view === "admin" && !state.isAdmin) { location.hash = "#admin"; els.loginModal.classList.remove("hidden"); $("#username").focus(); state.view = "search"; view = "search"; }
   els.adminSection.classList.toggle("hidden", view !== "admin" || !state.isAdmin);
   if (view !== "admin" && location.hash === "#admin") history.replaceState(null, "", "#search");
   if (view === "recent") renderRecentPage();
   if (view === "covers") renderCoverWall();
-  if (view === "stats") renderStatsPage();
   if (view === "shelves") renderShelfPages();
   if (view === "admin") switchAdminTab(state.adminTab);
 }
