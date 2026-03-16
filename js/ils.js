@@ -1,4 +1,4 @@
-import { duplicateCandidates, PRELOADED_GENRES, asArray } from "./catalog.js";
+import { duplicateCandidates, PRELOADED_GENRES, asArray, getStats } from "./catalog.js";
 import { normalizeRecord, loadRecords, saveRecords, loadSettings, saveSettings } from "./storage.js";
 import { isFirebaseConfigured, loginWithFirebase, logoutFirebase, onFirebaseAuthStateChanged, subscribeToFirebaseRecords } from "./firebase.js";
 
@@ -7,7 +7,7 @@ const state = {
   settings: loadSettings(),
   query: "",
   selectedIds: new Set(),
-  ilsTab: "catalog",
+  ilsTab: "dashboard",
   unsubscribeRecords: null,
 };
 
@@ -57,6 +57,7 @@ const els = {
   newBindingInput: $("#newBindingInput"),
   addBindingBtn: $("#addBindingBtn"),
   bindingList: $("#bindingList"),
+  ilsStatsPage: $("#ilsStatsPage"),
 };
 
 const FORM_FIELDS = [
@@ -472,6 +473,18 @@ function handleCoverUpload() {
   reader.readAsDataURL(file);
 }
 
+
+function renderStatsPanel() {
+  if (!els.ilsStatsPage) return;
+  const stats = getStats(state.records);
+  const formats = Object.entries(stats.byFormat).map(([name, count]) => `${name} (${count})`).join(" • ") || "None";
+  const years = Object.entries(stats.byYear).map(([year, count]) => `${year}: ${count}`).join(" • ") || "None";
+  const topCreators = stats.mostOwnedAuthors.map((entry) => `${entry.author} (${entry.count})`).join(", ") || "None";
+  const newest = stats.newest.map((record) => record.title).join(", ") || "None";
+
+  els.ilsStatsPage.innerHTML = `<p>Total items: <strong>${stats.total}</strong></p><p>Formats: ${formats}</p><p>Most owned authors: ${topCreators}</p><p>Publication year distribution: ${years}</p><p>Newest additions: ${newest}</p>`;
+}
+
 function bindEvents() {
   els.loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -525,6 +538,7 @@ function render() {
   fillLocations();
   fillCuratedShelves();
   renderTable();
+  renderStatsPanel();
 }
 
 function init() {
@@ -555,7 +569,7 @@ function init() {
     });
   });
 
-  switchIlsTab("catalog");
+  switchIlsTab("dashboard");
   render();
 }
 
