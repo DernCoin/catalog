@@ -59,6 +59,7 @@ const els = {
   addBindingBtn: $("#addBindingBtn"),
   bindingList: $("#bindingList"),
   ilsStatsPage: $("#ilsStatsPage"),
+  dashboardTiles: $$(".dashboard-tile"),
 };
 
 const FORM_FIELDS = [
@@ -591,6 +592,12 @@ function bindEvents() {
   els.applyBulkBtn.addEventListener("click", applyBulkStatus);
   els.bulkGenreAddBtn.addEventListener("click", bulkAddGenres);
   els.ilsTabButtons.forEach((btn) => btn.addEventListener("click", () => switchIlsTab(btn.dataset.ilsTab)));
+  els.dashboardTiles.forEach((tile) => tile.addEventListener("click", () => {
+    const { ilsTarget, ilsEmpty } = tile.dataset;
+    if (ilsEmpty === "true") return;
+    if (!ilsTarget) return;
+    switchIlsTab(ilsTarget);
+  }));
 
   els.addGenreBtn.addEventListener("click", addGenre);
   els.addFormatBtn.addEventListener("click", addFormat);
