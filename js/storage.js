@@ -4,9 +4,10 @@ import { fetchAllFirebaseRecords, isFirebaseConfigured, syncFirebaseRecords } fr
 let syncQueue = Promise.resolve();
 
 export function normalizeRecord(record) {
-  const genres = Array.isArray(record.genres)
+  const parsedGenres = Array.isArray(record.genres)
     ? record.genres
     : String(record.genres || record.genre || "").split(",").map((g) => g.trim()).filter(Boolean);
+  const genres = [...new Set(parsedGenres.map((genre) => String(genre || "").trim()).filter(Boolean))];
 
   return {
     ...record,

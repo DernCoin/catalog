@@ -135,6 +135,14 @@ input, select, textarea {
 .arrival-title { display: block; margin-top: .3rem; font-size: .8rem; }
 
 .catalog-form fieldset { border: 1px solid var(--border); border-radius: 12px; padding: .7rem; margin: 0 0 .8rem; }
+
+.catalog-form-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: .8rem;
+  align-items: start;
+}
+
 .form-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(210px,1fr)); gap: .65rem; }
 .actions { display: flex; gap: .5rem; }
 .warning { color: #975f00; min-height: 1.2em; }
@@ -251,6 +259,7 @@ th, td { border-bottom: 1px solid var(--border); padding: .5rem; text-align: lef
 @media (max-width: 760px) {
   .record-columns { grid-template-columns: 1fr; }
   .nearby-spines { max-width: 100%; }
+  .catalog-form-layout { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 620px) {
