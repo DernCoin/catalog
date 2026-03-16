@@ -465,3 +465,27 @@ mark { background:#ffe8f6; color:inherit; padding:0 .15em; border-radius:3px; }
     grid-template-columns: 1fr;
   }
 }
+
+
+.circulation-panel-block {
+  margin-top: .8rem;
+}
+
+.circulation-form {
+  max-width: 520px;
+}
+
+#loansTable,
+#patronsTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+#loansTable th,
+#loansTable td,
+#patronsTable th,
+#patronsTable td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.5rem;
+  text-align: left;
+}
