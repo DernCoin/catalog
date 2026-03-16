@@ -33,31 +33,88 @@
 
       <section class="card hidden" id="ilsCard">
         <div class="section-header">
-          <h2>Basic Record Management</h2>
+          <h2>Record Management</h2>
           <p id="recordCount" class="muted"></p>
         </div>
 
-        <form id="recordForm" class="simple-form">
+        <form id="recordForm" class="catalog-form">
           <input id="recordId" type="hidden" />
-          <label>Title <input id="title" required /></label>
-          <label>Creator <input id="creator" required /></label>
-          <label>Format <input id="format" placeholder="Book, Vinyl, etc" /></label>
-          <label>Year <input id="year" type="number" min="0" /></label>
-          <label>Genre <input id="genre" /></label>
-          <label>Status <input id="status" value="Available" /></label>
-          <button class="button" type="submit">Save Record</button>
-          <button id="cancelEditBtn" class="button button-secondary" type="button">Cancel Edit</button>
+
+          <fieldset>
+            <legend>Core Bibliographic Details</legend>
+            <div class="form-grid">
+              <label>Title* <input id="title" required /></label>
+              <label>Subtitle <input id="subtitle" /></label>
+              <label>Creator / Author / Artist* <input id="creator" required /></label>
+              <label>Additional Contributors <input id="contributors" placeholder="Editor, narrator, illustrator..." /></label>
+              <label>Format* <input id="format" value="Book" required /></label>
+              <label>Edition <input id="edition" /></label>
+              <label>Publication Year <input id="year" type="number" min="0" /></label>
+              <label>Publisher / Label <input id="publisher" /></label>
+              <label>ISBN / UPC / Catalog Number <input id="identifier" /></label>
+              <button id="fetchMetadataBtn" class="button button-secondary" type="button">Fetch Metadata</button>
+              <label>Genres <select id="genres" multiple size="6"></select></label>
+              <label>Custom Genre / Category <input id="genre" placeholder="Optional custom" /></label>
+              <label>Binding <input id="binding" placeholder="Paperback, Hardcover, etc" /></label>
+              <label>Series Name <input id="seriesName" /></label>
+              <label>Series Number <input id="seriesNumber" type="number" min="0" /></label>
+              <label>Curated Shelf <input id="curatedShelf" /></label>
+              <label>Page count <input id="pageCount" type="number" min="1" step="1" /></label>
+              <label>Subjects / Tags <input id="subjects" placeholder="Comma-separated" /></label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Holdings & Local Data</legend>
+            <div class="form-grid">
+              <label>Status <input id="status" value="Available" /></label>
+              <label>Location <input id="location" /></label>
+              <label>Call Number <input id="callNumber" /></label>
+              <label>Accession Number <input id="accessionNumber" /></label>
+              <label>Date Acquired <input id="dateAcquired" type="date" /></label>
+              <label>Date Added <input id="dateAdded" type="date" /></label>
+              <label>Source <input id="source" /></label>
+              <label>Price Paid <input id="pricePaid" type="number" min="0" step="0.01" /></label>
+              <label>Cover Image URL <input id="coverUrl" type="url" placeholder="https://..." /></label>
+              <label>Cover Upload <input id="coverUpload" type="file" accept="image/*" /></label>
+            </div>
+            <label>Description / Summary <textarea id="description" rows="3"></textarea></label>
+            <label>Personal Notes <textarea id="notes" rows="2"></textarea></label>
+          </fieldset>
+
+          <div id="duplicateWarning" class="warning"></div>
+
+          <div class="actions">
+            <button class="button" type="submit">Save Record</button>
+            <button id="cancelEditBtn" class="button button-secondary" type="button">Cancel Edit</button>
+          </div>
         </form>
 
-        <div class="admin-table-wrap">
-          <input id="searchInput" type="search" placeholder="Filter records" />
+        <section class="admin-table-wrap">
+          <h3>Edit/search records</h3>
+          <div class="admin-tools">
+            <input id="searchInput" type="search" placeholder="Search records in admin table" />
+            <label><input id="selectAllRows" type="checkbox" /> Select all</label>
+            <select id="bulkStatusSelect">
+              <option value="">Bulk status…</option>
+              <option value="Available">Available</option>
+              <option value="Checked In">Checked In</option>
+              <option value="On Loan">On Loan</option>
+              <option value="On Order">On Order</option>
+              <option value="Reference Only">Reference Only</option>
+              <option value="Missing">Missing</option>
+            </select>
+            <button id="applyBulkBtn" class="button button-secondary" type="button">Apply Status</button>
+            <select id="bulkGenreSelect" multiple size="4"></select>
+            <button id="bulkGenreAddBtn" class="button button-secondary" type="button">Add Genre(s)</button>
+          </div>
           <table id="recordsTable">
             <thead>
-              <tr><th>Title</th><th>Creator</th><th>Format</th><th>Year</th><th>Actions</th></tr>
+              <tr><th></th><th>Title</th><th>Creator</th><th>Format</th><th>Year</th><th>Status</th><th>Actions</th></tr>
             </thead>
             <tbody id="recordsBody"></tbody>
           </table>
-        </div>
+        </section>
       </section>
     </main>
 
