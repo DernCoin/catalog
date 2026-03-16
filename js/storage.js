@@ -66,11 +66,17 @@ export function saveRecords(records) {
 export function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return { locations: [], genres: [], curatedShelves: [] };
+    if (!raw) return { locations: [], genres: [], curatedShelves: [], formats: [], bindings: [] };
     const parsed = JSON.parse(raw);
-    return { locations: parsed.locations || [], genres: parsed.genres || [], curatedShelves: parsed.curatedShelves || [] };
+    return {
+      locations: parsed.locations || [],
+      genres: parsed.genres || [],
+      curatedShelves: parsed.curatedShelves || [],
+      formats: parsed.formats || [],
+      bindings: parsed.bindings || [],
+    };
   } catch {
-    return { locations: [], genres: [], curatedShelves: [] };
+    return { locations: [], genres: [], curatedShelves: [], formats: [], bindings: [] };
   }
 }
 

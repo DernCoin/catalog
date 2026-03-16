@@ -156,17 +156,7 @@
               <label>Subtitle <input id="subtitle" /></label>
               <label>Creator / Author / Artist* <input id="creator" required /></label>
               <label>Additional Contributors <input id="contributors" placeholder="Editor, narrator, illustrator..." /></label>
-              <label>Format*
-                <select id="format" required>
-                  <option value="Book">Book</option>
-                  <option value="Vinyl">Vinyl</option>
-                  <option value="Board Game">Board Game</option>
-                  <option value="CD">CD</option>
-                  <option value="Zine">Zine</option>
-                  <option value="Magazine">Magazine</option>
-                  <option value="Other">Other</option>
-                </select>
-              </label>
+              <label>Format* <select id="format" required></select></label>
               <label>Edition <input id="edition" /></label>
               <label>Publication Year <input id="year" type="number" min="0" /></label>
               <label>Publisher / Label <input id="publisher" /></label>
@@ -174,13 +164,7 @@
               <button id="fetchMetadataBtn" class="button button-secondary" type="button">Fetch Metadata</button>
               <label>Genres <select id="genres" multiple size="6"></select></label>
               <label>Custom Genre / Category <input id="genre" placeholder="Optional custom" /></label>
-              <label>Binding
-                <select id="binding">
-                  <option value="">None</option>
-                  <option value="Paperback">Paperback</option>
-                  <option value="Hardcover">Hardcover</option>
-                </select>
-              </label>
+              <label>Binding <select id="binding"></select></label>
               <label>Series Name <input id="seriesName" /></label>
               <label>Series Number <input id="seriesNumber" type="number" min="0" /></label>
               <label>Curated shelf <select id="curatedShelf"></select></label>
@@ -286,6 +270,24 @@
             <ul id="genreList" class="location-list"></ul>
           </section>
 
+
+          <section class="location-manager admin-block">
+            <h3>Formats</h3>
+            <div class="admin-tools">
+              <input id="newFormatInput" placeholder="Add format" />
+              <button id="addFormatBtn" class="button button-secondary" type="button">Add format</button>
+            </div>
+            <ul id="formatList" class="location-list"></ul>
+          </section>
+
+          <section class="location-manager admin-block">
+            <h3>Bindings</h3>
+            <div class="admin-tools">
+              <input id="newBindingInput" placeholder="Add binding" />
+              <button id="addBindingBtn" class="button button-secondary" type="button">Add binding</button>
+            </div>
+            <ul id="bindingList" class="location-list"></ul>
+          </section>
           <section class="location-manager admin-block">
             <h3>Curated shelves</h3>
             <div class="admin-tools">
