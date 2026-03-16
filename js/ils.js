@@ -27,6 +27,7 @@ const els = {
   duplicateWarning: $("#duplicateWarning"),
   fetchMetadataBtn: $("#fetchMetadataBtn"),
   coverUpload: $("#coverUpload"),
+  coverUploadStatus: $("#coverUploadStatus"),
   searchInput: $("#searchInput"),
   recordsBody: $("#recordsBody"),
   recordCount: $("#recordCount"),
@@ -253,6 +254,7 @@ function deleteBinding(target) {
 
 function resetForm() {
   els.recordForm.reset();
+  if (els.coverUploadStatus) els.coverUploadStatus.textContent = "";
   $("#recordId").value = "";
   $("#status").value = "Available";
   $("#format").value = "Book";
@@ -306,7 +308,7 @@ function populateForm(record) {
     $(`#${elId}`).value = record[prop] || "";
   });
 
-  const selected = record.genres || asArray(record.genre);
+  const selected = [...new Set(asArray(record.genres?.length ? record.genres : record.genre))];
   [...$("#genres").options].forEach((option) => {
     option.selected = selected.includes(option.value);
   });
@@ -449,9 +451,23 @@ function handleCoverUpload() {
   const file = els.coverUpload.files?.[0];
   if (!file) return;
 
+  if (!file.type.startsWith("image/")) {
+    if (els.coverUploadStatus) els.coverUploadStatus.textContent = "Please choose an image file.";
+    return;
+  }
+
   const reader = new FileReader();
   reader.onload = () => {
-    $("#coverUrl").value = reader.result;
+    const dataUrl = typeof reader.result === "string" ? reader.result : "";
+    if (!dataUrl) {
+      if (els.coverUploadStatus) els.coverUploadStatus.textContent = "Could not read image. Please try another file.";
+      return;
+    }
+    $("#coverUrl").value = dataUrl;
+    if (els.coverUploadStatus) els.coverUploadStatus.textContent = "Cover image loaded. It will save as part of this record.";
+  };
+  reader.onerror = () => {
+    if (els.coverUploadStatus) els.coverUploadStatus.textContent = "Could not read image. Please try another file.";
   };
   reader.readAsDataURL(file);
 }
