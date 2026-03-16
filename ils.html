@@ -49,7 +49,19 @@
           </div>
         </div>
 
-        <section class="admin-tab-panel hidden" data-ils-panel="dashboard"></section>
+        <section class="admin-tab-panel hidden" data-ils-panel="dashboard">
+          <h2>Dashboard</h2>
+          <div class="dashboard-tile-grid" aria-label="ILS dashboard shortcuts">
+            <button class="dashboard-tile" type="button" data-ils-target="stats">Daily reports</button>
+            <button class="dashboard-tile" type="button" data-ils-target="catalog">Acquisitions</button>
+            <button class="dashboard-tile" type="button" data-ils-target="records">Serials</button>
+            <button class="dashboard-tile" type="button" data-ils-target="circulation">Circulation Rules</button>
+            <button class="dashboard-tile" type="button" data-ils-empty="true">EMPTY</button>
+            <button class="dashboard-tile" type="button" data-ils-empty="true">EMPTY</button>
+            <button class="dashboard-tile" type="button" data-ils-empty="true">EMPTY</button>
+            <button class="dashboard-tile" type="button" data-ils-empty="true">EMPTY</button>
+          </div>
+        </section>
 
         <section class="admin-tab-panel" data-ils-panel="catalog">
         <h2>Record Management</h2>

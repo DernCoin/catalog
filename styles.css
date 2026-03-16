@@ -303,6 +303,34 @@ mark { background:#ffe8f6; color:inherit; padding:0 .15em; border-radius:3px; }
 
 .admin-block { margin-top: 1rem; padding-top: .5rem; border-top: 1px solid var(--border); }
 .admin-block h3 { margin: .2rem 0 .7rem; }
+
+.dashboard-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: .9rem;
+  margin-top: .8rem;
+}
+
+.dashboard-tile {
+  min-height: 100px;
+  border: 2px solid #9fc6cf;
+  border-radius: 12px;
+  background: #f1f5f7;
+  color: #111;
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-align: left;
+  padding: 1rem 1.1rem;
+  cursor: pointer;
+  transition: background .15s ease, transform .15s ease;
+}
+
+.dashboard-tile:hover,
+.dashboard-tile:focus-visible {
+  background: #e3edf1;
+  transform: translateY(-1px);
+}
+
 .circulation-actions {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
