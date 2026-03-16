@@ -8,6 +8,7 @@ const state = {
   query: "",
   selectedIds: new Set(),
   ilsTab: "catalog",
+  unsubscribeRecords: null,
 };
 
 const $ = (s) => document.querySelector(s);
@@ -250,35 +251,6 @@ function deleteBinding(target) {
   fillBindings();
 }
 
-function fillFormats() {
-  const defaults = ["Book", "Vinyl", "Board Game", "CD", "Zine", "Magazine", "Other"];
-  const managed = [...new Set([...(state.settings.formats || []), ...defaults, ...state.records.map((r) => r.format).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
-  const current = $("#format").value || "";
-  $("#format").innerHTML = managed.map((format) => `<option value="${format}">${format}</option>`).join("");
-  $("#format").value = managed.includes(current) ? current : (managed[0] || "Other");
-}
-
-function fillBindings() {
-  const managed = [...new Set([...(state.settings.bindings || []), "Paperback", "Hardcover", ...state.records.map((r) => r.binding).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
-  const current = $("#binding").value || "";
-  $("#binding").innerHTML = ['<option value="">None</option>', ...managed.map((binding) => `<option value="${binding}">${binding}</option>`)].join("");
-  $("#binding").value = managed.includes(current) ? current : "";
-}
-
-function fillLocations() {
-  const managed = [...new Set([...(state.settings.locations || []), ...state.records.map((r) => r.location).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
-  const current = $("#location").value || "";
-  $("#location").innerHTML = ['<option value="">Unspecified</option>', ...managed.map((location) => `<option value="${location}">${location}</option>`)].join("");
-  $("#location").value = managed.includes(current) ? current : "";
-}
-
-function fillCuratedShelves() {
-  const managed = [...new Set([...(state.settings.curatedShelves || []), ...state.records.map((r) => r.curatedShelf).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
-  const current = $("#curatedShelf").value || "";
-  $("#curatedShelf").innerHTML = ['<option value="">None</option>', ...managed.map((shelf) => `<option value="${shelf}">${shelf}</option>`)].join("");
-  $("#curatedShelf").value = managed.includes(current) ? current : "";
-}
-
 function resetForm() {
   els.recordForm.reset();
   $("#recordId").value = "";
@@ -492,8 +464,8 @@ function bindEvents() {
     try {
       await loginWithFirebase(els.email.value.trim(), els.password.value);
       els.loginForm.reset();
-    } catch {
-      els.loginError.textContent = "Unable to log in. Check credentials and Firebase setup.";
+    } catch (error) {
+      els.loginError.textContent = `Unable to log in. ${error?.message || "Check credentials and Firebase setup."}`;
     }
   });
 
@@ -548,13 +520,23 @@ function init() {
   }
 
   onFirebaseAuthStateChanged((user) => {
-    setAuthenticatedUI(Boolean(user));
-  });
+    const isAuthed = Boolean(user);
+    setAuthenticatedUI(isAuthed);
 
-  subscribeToFirebaseRecords((records) => {
-    state.records = records.map(normalizeRecord);
-    saveRecords(state.records);
-    render();
+    if (state.unsubscribeRecords) {
+      state.unsubscribeRecords();
+      state.unsubscribeRecords = null;
+    }
+
+    if (!isAuthed) return;
+
+    state.unsubscribeRecords = subscribeToFirebaseRecords((records) => {
+      state.records = records.map(normalizeRecord);
+      saveRecords(state.records);
+      render();
+    }, (error) => {
+      els.loginError.textContent = `Could not load Firebase records. ${error?.message || "Check Firestore permissions."}`;
+    });
   });
 
   switchIlsTab("catalog");
