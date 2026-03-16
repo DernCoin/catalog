@@ -36,6 +36,8 @@
           <nav class="admin-tab-nav" aria-label="ILS sections">
             <button class="button button-secondary admin-tab-btn is-active" data-ils-tab="dashboard" type="button">Dashboard</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="catalog" type="button">Catalog</button>
+            <button class="button button-secondary admin-tab-btn" data-ils-tab="circulation" type="button">Circulation</button>
+            <button class="button button-secondary admin-tab-btn" data-ils-tab="patrons" type="button">Patrons</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="records" type="button">Records</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="stats" type="button">Statistics and Reports</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="utilities" type="button">Utilities</button>
@@ -117,6 +119,18 @@
           </div>
         </form>
 
+        </section>
+
+        <section class="admin-tab-panel hidden" data-ils-panel="circulation">
+          <h2>Circulation</h2>
+          <div class="circulation-actions">
+            <div class="circulation-box circulation-check-in">Check In</div>
+            <div class="circulation-box circulation-check-out">Check Out</div>
+          </div>
+        </section>
+
+        <section class="admin-tab-panel hidden" data-ils-panel="patrons">
+          <h2>Patrons</h2>
         </section>
 
         <section class="admin-tab-panel hidden" data-ils-panel="records">
