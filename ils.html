@@ -32,23 +32,28 @@
       </section>
 
       <section class="card hidden" id="ilsCard">
-        <nav class="admin-tab-nav" aria-label="ILS sections">
-          <button class="button button-secondary admin-tab-btn is-active" data-ils-tab="dashboard" type="button">Dashboard</button>
-          <button class="button button-secondary admin-tab-btn" data-ils-tab="catalog" type="button">Catalog</button>
-          <button class="button button-secondary admin-tab-btn" data-ils-tab="stats" type="button">Statistics and Reports</button>
-          <button class="button button-secondary admin-tab-btn" data-ils-tab="utilities" type="button">Utilities</button>
-        </nav>
+        <div class="ils-toolbar">
+          <nav class="admin-tab-nav" aria-label="ILS sections">
+            <button class="button button-secondary admin-tab-btn is-active" data-ils-tab="dashboard" type="button">Dashboard</button>
+            <button class="button button-secondary admin-tab-btn" data-ils-tab="catalog" type="button">Catalog</button>
+            <button class="button button-secondary admin-tab-btn" data-ils-tab="records" type="button">Records</button>
+            <button class="button button-secondary admin-tab-btn" data-ils-tab="stats" type="button">Statistics and Reports</button>
+            <button class="button button-secondary admin-tab-btn" data-ils-tab="utilities" type="button">Utilities</button>
+          </nav>
+          <div class="ils-toolbar-search">
+            <label class="sr-only" for="searchInput">Search records</label>
+            <input id="searchInput" type="search" placeholder="Search records to edit" autocomplete="off" />
+            <div id="searchResultsPopover" class="search-popover hidden" role="listbox" aria-label="Matching records"></div>
+          </div>
+        </div>
 
         <section class="admin-tab-panel hidden" data-ils-panel="dashboard"></section>
 
-        <div class="section-header">
-          <h2>Record Management</h2>
-          <p id="recordCount" class="muted"></p>
-        </div>
-
         <section class="admin-tab-panel" data-ils-panel="catalog">
-        <div class="admin-tools top-space">
+        <h2>Record Management</h2>
+        <div class="admin-tools top-space isbn-import-row">
           <button id="fetchMetadataBtn" class="button button-secondary" type="button">Attempt importing record by ISBN</button>
+          <label>ISBN / UPC / Catalog Number <input id="identifier" /></label>
         </div>
         <form id="recordForm" class="catalog-form">
           <input id="recordId" type="hidden" />
@@ -64,7 +69,6 @@
                 <label>Edition <input id="edition" /></label>
                 <label>Publication Year <input id="year" type="number" min="0" /></label>
                 <label>Publisher / Label <input id="publisher" /></label>
-                <label>ISBN / UPC / Catalog Number <input id="identifier" /></label>
                 <label>Genres <select id="genres" multiple size="6"></select></label>
                 <label>Custom Genre / Category <input id="genre" placeholder="Optional custom" /></label>
                 <label>Binding <select id="binding"></select></label>
@@ -113,10 +117,12 @@
           </div>
         </form>
 
+        </section>
+
+        <section class="admin-tab-panel hidden" data-ils-panel="records">
         <section class="admin-table-wrap">
           <h3>Edit/search records</h3>
           <div class="admin-tools">
-            <input id="searchInput" type="search" placeholder="Search records in admin table" />
             <label><input id="selectAllRows" type="checkbox" /> Select all</label>
             <select id="bulkStatusSelect">
               <option value="">Bulk status…</option>

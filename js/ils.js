@@ -8,6 +8,7 @@ const state = {
   query: "",
   selectedIds: new Set(),
   ilsTab: "dashboard",
+  activeSearchIndex: -1,
   unsubscribeRecords: null,
 };
 
@@ -29,8 +30,8 @@ const els = {
   coverUpload: $("#coverUpload"),
   coverUploadStatus: $("#coverUploadStatus"),
   searchInput: $("#searchInput"),
+  searchResultsPopover: $("#searchResultsPopover"),
   recordsBody: $("#recordsBody"),
-  recordCount: $("#recordCount"),
   selectAllRows: $("#selectAllRows"),
   bulkStatusSelect: $("#bulkStatusSelect"),
   applyBulkBtn: $("#applyBulkBtn"),
@@ -68,6 +69,7 @@ function switchIlsTab(tab) {
   state.ilsTab = tab;
   els.ilsTabButtons.forEach((btn) => btn.classList.toggle("is-active", btn.dataset.ilsTab === tab));
   els.ilsTabPanels.forEach((panel) => panel.classList.toggle("hidden", panel.dataset.ilsPanel !== tab));
+  if (tab !== "catalog") hideSearchPopover();
 }
 
 function setAuthenticatedUI(isAuthed) {
@@ -271,9 +273,45 @@ function getAdminFiltered() {
   return state.records.filter((r) => `${r.title} ${r.creator} ${r.identifier || ""}`.toLowerCase().includes(term));
 }
 
-function renderTable() {
+function hideSearchPopover() {
+  if (!els.searchResultsPopover) return;
+  els.searchResultsPopover.classList.add("hidden");
+  els.searchResultsPopover.innerHTML = "";
+  state.activeSearchIndex = -1;
+}
+
+function renderSearchPopover() {
+  if (!els.searchResultsPopover) return;
   const rows = getAdminFiltered().sort((a, b) => Number(b.addedAt || 0) - Number(a.addedAt || 0));
-  els.recordCount.textContent = `${rows.length} record${rows.length === 1 ? "" : "s"}`;
+  if (!state.query.trim()) {
+    hideSearchPopover();
+    return;
+  }
+
+  if (!rows.length) {
+    els.searchResultsPopover.innerHTML = '<p class="search-popover-empty">No matching records.</p>';
+    els.searchResultsPopover.classList.remove("hidden");
+    return;
+  }
+
+  state.activeSearchIndex = -1;
+  els.searchResultsPopover.innerHTML = rows.slice(0, 12).map((record, index) => (
+    `<button class="search-result-item" type="button" data-search-index="${index}" data-record-id="${record.id}"><strong>${record.title}</strong><span>${record.creator || "Unknown creator"}</span></button>`
+  )).join("");
+  els.searchResultsPopover.classList.remove("hidden");
+
+  [...els.searchResultsPopover.querySelectorAll(".search-result-item")].forEach((button) => {
+    button.addEventListener("click", () => {
+      const found = state.records.find((entry) => entry.id === button.dataset.recordId);
+      if (!found) return;
+      populateForm(found);
+      hideSearchPopover();
+    });
+  });
+}
+
+function renderTable() {
+  const rows = state.records.slice().sort((a, b) => Number(b.addedAt || 0) - Number(a.addedAt || 0));
 
   els.recordsBody.innerHTML = "";
   rows.forEach((r) => {
@@ -511,12 +549,42 @@ function bindEvents() {
 
   els.searchInput.addEventListener("input", () => {
     state.query = els.searchInput.value;
-    renderTable();
+    renderSearchPopover();
+  });
+
+  els.searchInput.addEventListener("focus", renderSearchPopover);
+  els.searchInput.addEventListener("keydown", (event) => {
+    const items = [...els.searchResultsPopover.querySelectorAll(".search-result-item")];
+    if (!items.length || els.searchResultsPopover.classList.contains("hidden")) return;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      state.activeSearchIndex = Math.min(state.activeSearchIndex + 1, items.length - 1);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      state.activeSearchIndex = Math.max(state.activeSearchIndex - 1, 0);
+    } else if (event.key === "Enter" && state.activeSearchIndex >= 0) {
+      event.preventDefault();
+      items[state.activeSearchIndex].click();
+      return;
+    } else if (event.key === "Escape") {
+      hideSearchPopover();
+      return;
+    } else {
+      return;
+    }
+
+    items.forEach((item, index) => item.classList.toggle("is-active", index === state.activeSearchIndex));
+  });
+
+  document.addEventListener("click", (event) => {
+    if (event.target === els.searchInput || els.searchResultsPopover.contains(event.target)) return;
+    hideSearchPopover();
   });
 
   els.selectAllRows.addEventListener("change", (event) => {
     state.selectedIds.clear();
-    if (event.target.checked) getAdminFiltered().forEach((record) => state.selectedIds.add(record.id));
+    if (event.target.checked) state.records.forEach((record) => state.selectedIds.add(record.id));
     renderTable();
   });
 
