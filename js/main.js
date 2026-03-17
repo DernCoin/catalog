@@ -21,7 +21,7 @@ const els = {
   adminToggleBtn: $("#adminToggleBtn"), adminPageBtn: $("#adminPageBtn"), adminSection: $("#adminSection"), loginModal: $("#loginModal"), closeLoginBtn: $("#closeLoginBtn"), loginForm: $("#loginForm"), loginError: $("#loginError"),
   keywordSearch: $("#keywordSearch"), searchSuggestions: $("#searchSuggestions"), didYouMean: $("#didYouMean"),
   toggleAdvancedBtn: $("#toggleAdvancedBtn"), advancedSearch: $("#advancedSearch"), sortFilter: $("#sortFilter"), resultsSummary: $("#resultsSummary"), publicResults: $("#publicResults"), emptyState: $("#emptyState"),
-  loadMoreBtn: $("#loadMoreBtn"), template: $("#recordTemplate"), catalogStats: $("#catalogStats"), newArrivals: $("#newArrivals"), arrivalsPrevBtn: $("#arrivalsPrevBtn"), arrivalsNextBtn: $("#arrivalsNextBtn"), randomItemBtn: $("#randomItemBtn"),
+  loadMoreBtn: $("#loadMoreBtn"), template: $("#recordTemplate"), newArrivals: $("#newArrivals"), arrivalsPrevBtn: $("#arrivalsPrevBtn"), arrivalsNextBtn: $("#arrivalsNextBtn"), randomItemBtn: $("#randomItemBtn"),
   facets: { format: $("#facetFormat"), genre: $("#facetGenre"), year: $("#facetYear"), status: $("#facetStatus"), location: $("#facetLocation"), binding: $("#facetBinding") },
   clearFiltersBtn: $("#clearFiltersBtn"), adminSearch: $("#adminSearch"), adminTableBody: $("#adminTableBody"), selectAllRows: $("#selectAllRows"), applyBulkBtn: $("#applyBulkBtn"), bulkStatusSelect: $("#bulkStatusSelect"),
   bulkGenreSelect: $("#bulkGenreSelect"), bulkGenreAddBtn: $("#bulkGenreAddBtn"),
@@ -493,8 +493,6 @@ function renderPublic() {
   els.resultsSummary.textContent = hasSearchInput ? `${results.length} results` : "Search to view catalog records.";
   els.emptyState.classList.toggle("hidden", results.length > 0 && hasSearchInput);
   els.loadMoreBtn.classList.toggle("hidden", !hasSearchInput || results.length <= visible.length);
-  const stats = getStats(state.records);
-  els.catalogStats.innerHTML = `<span>Total: <strong>${stats.total}</strong></span><span>Recently added (30d): <strong>${stats.recentlyAdded}</strong></span>${Object.entries(stats.byFormat).map(([k, v]) => `<span>${k}: <strong>${v}</strong></span>`).join("")}`;
 }
 
 function renderSuggestions() {

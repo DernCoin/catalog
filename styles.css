@@ -275,7 +275,21 @@ th, td { border-bottom: 1px solid var(--border); padding: .5rem; text-align: lef
   .modal-content { box-shadow: none; border: 1px solid #999; }
 }
 
-.public-nav { display:flex; gap:.45rem; flex-wrap:wrap; margin:.35rem 0 .8rem; }
+.catalog-tab-bar {
+  width: 100%;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: #fff;
+  padding: .6rem 1rem;
+}
+
+.public-nav {
+  display:flex;
+  gap:.45rem;
+  flex-wrap:wrap;
+  max-width: 1320px;
+  margin: 0 auto;
+}
 .view-panel { width: 100%; }
 .results-summary, .results-list, .pagination-row { width: 100%; }
 .empty-state { width: min(100%, calc((100% - .8rem) * 1.35 / 2)); margin-top: .5rem; }
