@@ -96,6 +96,22 @@ const els = {
   serialSubscriptionMessage: $("#serialSubscriptionMessage"),
   subscriptionsBody: $("#subscriptionsBody"),
   serialIssuesBody: $("#serialIssuesBody"),
+  acquisitionItemForm: $("#acquisitionItemForm"),
+  acqOrderName: $("#acqOrderName"),
+  acqVendor: $("#acqVendor"),
+  acqOrderDate: $("#acqOrderDate"),
+  acqTitle: $("#acqTitle"),
+  acqCreator: $("#acqCreator"),
+  acqFormat: $("#acqFormat"),
+  acqMaterialNumber: $("#acqMaterialNumber"),
+  acqCallNumber: $("#acqCallNumber"),
+  acqLocation: $("#acqLocation"),
+  acqCoverUrl: $("#acqCoverUrl"),
+  acqCoverUpload: $("#acqCoverUpload"),
+  acqNotes: $("#acqNotes"),
+  acquisitionMessage: $("#acquisitionMessage"),
+  acquisitionOrdersBody: $("#acquisitionOrdersBody"),
+  pendingMaterialsBody: $("#pendingMaterialsBody"),
   checkOutForm: $("#checkOutForm"),
   checkOutCardNumber: $("#checkOutCardNumber"),
   checkOutMaterialNumber: $("#checkOutMaterialNumber"),
@@ -166,6 +182,30 @@ function setSubscriptionMessage(message, isError = false) {
   if (!els.serialSubscriptionMessage) return;
   els.serialSubscriptionMessage.textContent = message;
   els.serialSubscriptionMessage.classList.toggle("warning", isError);
+}
+
+function setAcquisitionMessage(message, isError = false) {
+  if (!els.acquisitionMessage) return;
+  els.acquisitionMessage.textContent = message;
+  els.acquisitionMessage.classList.toggle("warning", isError);
+}
+
+function getAcquisitionOrders() {
+  return Array.isArray(state.settings.acquisitionOrders) ? state.settings.acquisitionOrders : [];
+}
+
+function saveAcquisitionOrders(orders) {
+  state.settings.acquisitionOrders = orders;
+  saveSettings(state.settings);
+}
+
+function getPendingMaterials() {
+  return Array.isArray(state.settings.pendingMaterials) ? state.settings.pendingMaterials : [];
+}
+
+function savePendingMaterials(materials) {
+  state.settings.pendingMaterials = materials;
+  saveSettings(state.settings);
 }
 
 function switchCirculationTab(tab) {
@@ -606,6 +646,158 @@ function renderSerialIssuesTable() {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${issue.title.split(" — ")[0]}</td><td>${issueLabel}</td><td>${issue.dateAdded || ""}</td><td>${material}</td><td>${issue.location || ""}</td>`;
     els.serialIssuesBody.appendChild(tr);
+  });
+}
+
+function addAcquisitionItem(event) {
+  event.preventDefault();
+  const orderName = String(els.acqOrderName?.value || "").trim();
+  const title = String(els.acqTitle?.value || "").trim();
+  const materialNumber = String(els.acqMaterialNumber?.value || "").trim();
+  const creator = String(els.acqCreator?.value || "").trim();
+  const format = String(els.acqFormat?.value || "Book").trim() || "Book";
+  const vendor = String(els.acqVendor?.value || "").trim();
+  const orderDate = els.acqOrderDate?.value || "";
+  const callNumber = String(els.acqCallNumber?.value || "").trim();
+  const location = String(els.acqLocation?.value || "").trim();
+  const coverUrl = String(els.acqCoverUrl?.value || "").trim();
+  const notes = String(els.acqNotes?.value || "").trim();
+
+  if (!orderName || !title || !materialNumber) {
+    setAcquisitionMessage("Order name, title, and material number are required.", true);
+    return;
+  }
+
+  const duplicatePending = getPendingMaterials().some((entry) => String(entry.materialNumber || "").toLowerCase() === materialNumber.toLowerCase());
+  const duplicateCatalog = state.records.some((entry) => (entry.materialNumbers || []).some((value) => String(value).toLowerCase() === materialNumber.toLowerCase()));
+  if (duplicatePending || duplicateCatalog) {
+    setAcquisitionMessage(`Material number ${materialNumber} is already in use.`, true);
+    return;
+  }
+
+  const orders = getAcquisitionOrders();
+  let order = orders.find((entry) => String(entry.name || "").toLowerCase() === orderName.toLowerCase());
+  if (!order) {
+    order = { id: crypto.randomUUID(), name: orderName, vendor, orderDate, createdAt: Date.now() };
+    orders.push(order);
+    saveAcquisitionOrders(orders);
+  }
+
+  const pendingMaterials = getPendingMaterials();
+  pendingMaterials.push({
+    id: crypto.randomUUID(),
+    orderId: order.id,
+    orderName,
+    title,
+    creator,
+    format,
+    materialNumber,
+    callNumber,
+    location,
+    coverUrl,
+    notes,
+    status: "Pending Material",
+    createdAt: Date.now(),
+    activatedAt: "",
+    linkedRecordId: "",
+  });
+  savePendingMaterials(pendingMaterials);
+
+  if (els.acquisitionItemForm) els.acquisitionItemForm.reset();
+  setAcquisitionMessage(`${title} added to ${orderName} as a pending material.`);
+  renderAcquisitionOrdersTable();
+  renderPendingMaterialsTable();
+}
+
+function activatePendingMaterial(materialId) {
+  const pendingMaterials = getPendingMaterials();
+  const material = pendingMaterials.find((entry) => entry.id === materialId);
+  if (!material) return;
+  if (material.linkedRecordId) {
+    setAcquisitionMessage("This pending material has already been activated.", true);
+    return;
+  }
+
+  const now = new Date();
+  const dateAdded = now.toISOString().slice(0, 10);
+  const newRecord = normalizeRecord({
+    id: crypto.randomUUID(),
+    title: material.title,
+    creator: material.creator || "Unknown creator",
+    format: material.format || "Book",
+    status: "On Order",
+    source: "Acquisitions",
+    materialNumbers: [material.materialNumber],
+    callNumber: material.callNumber || "",
+    location: material.location || "",
+    coverUrl: material.coverUrl || "",
+    notes: material.notes || `Activated from order ${material.orderName}`,
+    dateAdded,
+    addedAt: now.getTime(),
+  });
+
+  state.records.unshift(newRecord);
+  saveRecords(state.records);
+
+  const updatedPending = pendingMaterials.map((entry) => (
+    entry.id === materialId
+      ? { ...entry, status: "Active", activatedAt: now.toISOString(), linkedRecordId: newRecord.id }
+      : entry
+  ));
+  savePendingMaterials(updatedPending);
+
+  setAcquisitionMessage(`${material.title} is now active and was added to the catalog as On Order.`);
+  render();
+}
+
+function removePendingMaterial(materialId) {
+  savePendingMaterials(getPendingMaterials().filter((entry) => entry.id !== materialId));
+  setAcquisitionMessage("Pending material removed.");
+  renderPendingMaterialsTable();
+}
+
+function renderAcquisitionOrdersTable() {
+  if (!els.acquisitionOrdersBody) return;
+  const orders = getAcquisitionOrders().slice().sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+  const pendingMaterials = getPendingMaterials();
+  els.acquisitionOrdersBody.innerHTML = "";
+
+  if (!orders.length) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = '<td colspan="4">No acquisition orders yet.</td>';
+    els.acquisitionOrdersBody.appendChild(tr);
+    return;
+  }
+
+  orders.forEach((order) => {
+    const tr = document.createElement("tr");
+    const count = pendingMaterials.filter((entry) => entry.orderId === order.id).length;
+    tr.innerHTML = `<td>${order.name}</td><td>${order.vendor || ""}</td><td>${order.orderDate || ""}</td><td>${count}</td>`;
+    els.acquisitionOrdersBody.appendChild(tr);
+  });
+}
+
+function renderPendingMaterialsTable() {
+  if (!els.pendingMaterialsBody) return;
+  const pending = getPendingMaterials().slice().sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+  els.pendingMaterialsBody.innerHTML = "";
+
+  if (!pending.length) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = '<td colspan="6">No pending materials yet.</td>';
+    els.pendingMaterialsBody.appendChild(tr);
+    return;
+  }
+
+  pending.forEach((material) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${material.title}</td><td>${material.orderName || ""}</td><td>${material.materialNumber || ""}</td><td>${material.status || "Pending Material"}</td><td>${material.coverUrl ? "Yes" : "No"}</td><td><button class="button button-secondary" data-act="activate" type="button">Set Active</button> <button class="button" data-act="remove" type="button">Remove</button></td>`;
+    const activateBtn = tr.querySelector('[data-act="activate"]');
+    const removeBtn = tr.querySelector('[data-act="remove"]');
+    if (material.linkedRecordId) activateBtn.disabled = true;
+    activateBtn.addEventListener("click", () => activatePendingMaterial(material.id));
+    removeBtn.addEventListener("click", () => removePendingMaterial(material.id));
+    els.pendingMaterialsBody.appendChild(tr);
   });
 }
 
@@ -1194,6 +1386,14 @@ function handleSerialCoverUpload() {
   reader.readAsDataURL(file);
 }
 
+function handleAcquisitionCoverUpload() {
+  const file = els.acqCoverUpload?.files?.[0];
+  if (!file || !els.acqCoverUrl) return;
+  const reader = new FileReader();
+  reader.onload = () => { els.acqCoverUrl.value = typeof reader.result === "string" ? reader.result : ""; };
+  reader.readAsDataURL(file);
+}
+
 function renderStatsPanel() {
   if (!els.ilsStatsPage) return;
   const stats = getStats(state.records);
@@ -1231,6 +1431,7 @@ function bindEvents() {
   els.fetchMetadataBtn.addEventListener("click", fetchMetadata);
   els.coverUpload.addEventListener("change", handleCoverUpload);
   if (els.serialCoverUpload) els.serialCoverUpload.addEventListener("change", handleSerialCoverUpload);
+  if (els.acqCoverUpload) els.acqCoverUpload.addEventListener("change", handleAcquisitionCoverUpload);
 
   els.searchInput.addEventListener("input", () => {
     state.query = els.searchInput.value;
@@ -1286,6 +1487,7 @@ function bindEvents() {
   if (els.patronForm) els.patronForm.addEventListener("submit", addPatron);
   if (els.serialIssueForm) els.serialIssueForm.addEventListener("submit", addSerialIssue);
   if (els.serialSubscriptionForm) els.serialSubscriptionForm.addEventListener("submit", saveSubscription);
+  if (els.acquisitionItemForm) els.acquisitionItemForm.addEventListener("submit", addAcquisitionItem);
   if (els.checkOutForm) els.checkOutForm.addEventListener("submit", checkOutRecord);
   if (els.queueCheckoutItemBtn) els.queueCheckoutItemBtn.addEventListener("click", queueCheckoutItem);
   if (els.checkOutMaterialNumber) els.checkOutMaterialNumber.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); queueCheckoutItem(); } });
@@ -1317,6 +1519,8 @@ function render() {
   renderPatronsTable();
   renderSubscriptionsTable();
   renderSerialIssuesTable();
+  renderAcquisitionOrdersTable();
+  renderPendingMaterialsTable();
   renderCheckoutQueue();
   renderLoansTable();
   renderHoldsTable();
