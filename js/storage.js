@@ -48,6 +48,8 @@ export function normalizeRecord(record) {
     dueDate: record.dueDate || "",
     pageCount: record.pageCount || "",
     pricePaid: record.pricePaid || "",
+    retailPrice: record.retailPrice || "",
+    circulationHistory: record.circulationHistory || "",
     dateAdded: record.dateAdded || new Date().toISOString().slice(0, 10),
     addedAt: Number(record.addedAt) || Date.now(),
     permalink: record.permalink || `record-${record.id || crypto.randomUUID()}`,
@@ -89,7 +91,7 @@ export function saveRecords(records) {
 export function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return { locations: [], genres: [], curatedShelves: [], formats: [], bindings: [], patrons: [], subscriptions: [] };
+    if (!raw) return { locations: [], genres: [], curatedShelves: [], formats: [], bindings: [], patrons: [], subscriptions: [], holds: [] };
     const parsed = JSON.parse(raw);
     return {
       locations: parsed.locations || [],
@@ -99,9 +101,10 @@ export function loadSettings() {
       bindings: parsed.bindings || [],
       patrons: parsed.patrons || [],
       subscriptions: parsed.subscriptions || [],
+      holds: parsed.holds || [],
     };
   } catch {
-    return { locations: [], genres: [], curatedShelves: [], formats: [], bindings: [], patrons: [], subscriptions: [] };
+    return { locations: [], genres: [], curatedShelves: [], formats: [], bindings: [], patrons: [], subscriptions: [], holds: [] };
   }
 }
 

@@ -37,7 +37,6 @@
             <button class="button button-secondary admin-tab-btn is-active" data-ils-tab="dashboard" type="button">Dashboard</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="circulation" type="button">Circulation</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="patrons" type="button">Patrons</button>
-            <button class="button button-secondary admin-tab-btn" data-ils-tab="serials" type="button">Serials</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="records" type="button">Edit Records</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="stats" type="button">Statistics and Reports</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="utilities" type="button">Utilities</button>
@@ -68,6 +67,7 @@
           <div class="admin-tab-nav circulation-subtabs" aria-label="Circulation actions">
             <button class="button button-secondary circulation-tab-btn is-active" type="button" data-circulation-tab="checkout">Check Out</button>
             <button class="button button-secondary circulation-tab-btn" type="button" data-circulation-tab="checkin">Check In</button>
+            <button class="button button-secondary circulation-tab-btn" type="button" data-circulation-tab="holds">Holds & Reserves</button>
           </div>
           <section class="admin-block circulation-panel-block" data-circulation-panel="checkout">
             <h3>Check out items</h3>
@@ -99,6 +99,29 @@
               </label>
               <button class="button" type="submit">Check In Scanned Item</button>
             </form>
+          </section>
+
+          <section class="admin-block circulation-panel-block hidden" data-circulation-panel="holds">
+            <h3>Place hold or reserve</h3>
+            <form id="holdForm" class="simple-form circulation-form">
+              <label>Patron card number
+                <input id="holdCardNumber" required placeholder="Scan card number" />
+              </label>
+              <label>Item material number
+                <input id="holdMaterialNumber" required placeholder="Scan item material number" />
+              </label>
+              <label>Type
+                <select id="holdType">
+                  <option value="Hold">Hold</option>
+                  <option value="Reserve">Reserve</option>
+                </select>
+              </label>
+              <button class="button" type="submit">Place Request</button>
+            </form>
+            <table class="serials-table">
+              <thead><tr><th>Item</th><th>Patron</th><th>Type</th><th>Date</th><th>Actions</th></tr></thead>
+              <tbody id="holdsBody"></tbody>
+            </table>
           </section>
 
           <section class="admin-block circulation-panel-block">
@@ -143,7 +166,8 @@
               <label>Birth day
                 <input id="patronBirthDay" type="date" />
               </label>
-              <button class="button" type="submit">Add Patron</button>
+              <input id="patronId" type="hidden" />
+              <button id="patronSubmitBtn" class="button" type="submit">Add Patron</button>
             </form>
           </section>
 
@@ -179,6 +203,8 @@
               <label>Barcode / Material Number* <input id="serialMaterialNumber" required placeholder="Scan or type material number" /></label>
               <label>Shelf location <input id="serialLocation" placeholder="Periodicals" /></label>
               <label>Call number <input id="serialCallNumber" placeholder="AP2 .N37" /></label>
+              <label>Cover image URL <input id="serialCoverUrl" type="url" placeholder="https://..." /></label>
+              <label>Cover upload <input id="serialCoverUpload" type="file" accept="image/*" /></label>
               <button class="button" type="submit">Add Issue Record</button>
             </form>
             <p id="serialIssueMessage" class="status-message" aria-live="polite"></p>
@@ -320,12 +346,16 @@
                 <label>Date Added <input id="dateAdded" type="date" /></label>
                 <label>Source <input id="source" /></label>
                 <label>Price Paid <input id="pricePaid" type="number" min="0" step="0.01" /></label>
+                <label>Retail Value <input id="retailPrice" type="number" min="0" step="0.01" /></label>
                 <label>Cover Image URL <input id="coverUrl" type="url" placeholder="https://..." /></label>
                 <label>Cover Upload <input id="coverUpload" type="file" accept="image/*" /></label>
               </div>
               <p id="coverUploadStatus" class="status-message"></p>
               <label>Description / Summary <textarea id="description" rows="3"></textarea></label>
               <label>Personal Notes <textarea id="notes" rows="2"></textarea></label>
+              <label>Circulation / Checkout History
+                <textarea id="circulationHistory" rows="4" readonly></textarea>
+              </label>
             </fieldset>
           </div>
 
@@ -349,8 +379,6 @@
               <option value="Missing">Missing</option>
             </select>
             <button id="applyBulkBtn" class="button button-secondary" type="button">Apply Status</button>
-            <select id="bulkGenreSelect" multiple size="4"></select>
-            <button id="bulkGenreAddBtn" class="button button-secondary" type="button">Add Genre(s)</button>
             <button id="bulkMarcExportBtn" class="button button-secondary" type="button">Export Selected as MARC</button>
           </div>
           <table id="recordsTable">
