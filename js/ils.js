@@ -73,6 +73,26 @@ const els = {
   patronPhone: $("#patronPhone"),
   patronBirthDay: $("#patronBirthDay"),
   patronsBody: $("#patronsBody"),
+  serialIssueForm: $("#serialIssueForm"),
+  serialTitle: $("#serialTitle"),
+  serialIssueLabel: $("#serialIssueLabel"),
+  serialIssueDate: $("#serialIssueDate"),
+  serialPublisher: $("#serialPublisher"),
+  serialIdentifier: $("#serialIdentifier"),
+  serialMaterialNumber: $("#serialMaterialNumber"),
+  serialLocation: $("#serialLocation"),
+  serialCallNumber: $("#serialCallNumber"),
+  serialIssueMessage: $("#serialIssueMessage"),
+  serialSubscriptionForm: $("#serialSubscriptionForm"),
+  subscriptionTitle: $("#subscriptionTitle"),
+  subscriptionFrequency: $("#subscriptionFrequency"),
+  subscriptionRenewalDate: $("#subscriptionRenewalDate"),
+  subscriptionVendor: $("#subscriptionVendor"),
+  subscriptionCost: $("#subscriptionCost"),
+  subscriptionStatus: $("#subscriptionStatus"),
+  serialSubscriptionMessage: $("#serialSubscriptionMessage"),
+  subscriptionsBody: $("#subscriptionsBody"),
+  serialIssuesBody: $("#serialIssuesBody"),
   checkOutForm: $("#checkOutForm"),
   checkOutCardNumber: $("#checkOutCardNumber"),
   checkOutMaterialNumber: $("#checkOutMaterialNumber"),
@@ -117,6 +137,27 @@ function getPatrons() {
 function savePatrons(patrons) {
   state.settings.patrons = patrons;
   saveSettings(state.settings);
+}
+
+function getSubscriptions() {
+  return Array.isArray(state.settings.subscriptions) ? state.settings.subscriptions : [];
+}
+
+function saveSubscriptions(subscriptions) {
+  state.settings.subscriptions = subscriptions;
+  saveSettings(state.settings);
+}
+
+function setSerialIssueMessage(message, isError = false) {
+  if (!els.serialIssueMessage) return;
+  els.serialIssueMessage.textContent = message;
+  els.serialIssueMessage.classList.toggle("warning", isError);
+}
+
+function setSubscriptionMessage(message, isError = false) {
+  if (!els.serialSubscriptionMessage) return;
+  els.serialSubscriptionMessage.textContent = message;
+  els.serialSubscriptionMessage.classList.toggle("warning", isError);
 }
 
 function switchCirculationTab(tab) {
@@ -328,6 +369,138 @@ function checkInByMaterialNumber(event) {
   }
   checkInRecord(record.id);
   els.checkInMaterialNumber.value = "";
+}
+
+function addSerialIssue(event) {
+  event.preventDefault();
+  const title = String(els.serialTitle?.value || "").trim();
+  const issueLabel = String(els.serialIssueLabel?.value || "").trim();
+  const issueDate = els.serialIssueDate?.value || "";
+  const publisher = String(els.serialPublisher?.value || "").trim();
+  const identifier = String(els.serialIdentifier?.value || "").trim();
+  const materialNumber = String(els.serialMaterialNumber?.value || "").trim();
+  const location = String(els.serialLocation?.value || "Periodicals").trim();
+  const callNumber = String(els.serialCallNumber?.value || "").trim();
+
+  if (!title || !issueLabel || !materialNumber) {
+    setSerialIssueMessage("Title, issue label, and material number are required.", true);
+    return;
+  }
+
+  const duplicateMaterial = state.records.some((entry) => (entry.materialNumbers || []).includes(materialNumber));
+  if (duplicateMaterial) {
+    setSerialIssueMessage(`Material number ${materialNumber} is already in use.`, true);
+    return;
+  }
+
+  const now = new Date();
+  const dateAdded = now.toISOString().slice(0, 10);
+  const newRecord = normalizeRecord({
+    id: crypto.randomUUID(),
+    title: `${title} — ${issueLabel}`,
+    creator: publisher || title,
+    format: "Magazine",
+    identifier,
+    publisher,
+    source: "Serials",
+    materialNumbers: [materialNumber],
+    location: location || "Periodicals",
+    callNumber,
+    dateAdded,
+    year: issueDate ? issueDate.slice(0, 4) : "",
+    notes: `Serial issue: ${issueLabel}${issueDate ? ` (${issueDate})` : ""}`,
+    summaryNote: `Magazine issue: ${issueLabel}`,
+    status: "Available",
+    addedAt: now.getTime(),
+  });
+
+  state.records.unshift(newRecord);
+  saveRecords(state.records);
+  if (els.serialIssueForm) els.serialIssueForm.reset();
+  setSerialIssueMessage(`Added ${newRecord.title} to catalog records.`);
+  render();
+}
+
+function saveSubscription(event) {
+  event.preventDefault();
+  const title = String(els.subscriptionTitle?.value || "").trim();
+  if (!title) {
+    setSubscriptionMessage("Magazine title is required.", true);
+    return;
+  }
+
+  const subscriptions = getSubscriptions();
+  const existing = subscriptions.find((entry) => String(entry.title || "").toLowerCase() === title.toLowerCase());
+  const payload = {
+    id: existing?.id || crypto.randomUUID(),
+    title,
+    frequency: els.subscriptionFrequency?.value || "Monthly",
+    renewalDate: els.subscriptionRenewalDate?.value || "",
+    vendor: String(els.subscriptionVendor?.value || "").trim(),
+    annualCost: String(els.subscriptionCost?.value || "").trim(),
+    status: els.subscriptionStatus?.value || "Active",
+    updatedAt: Date.now(),
+  };
+
+  const next = existing
+    ? subscriptions.map((entry) => (entry.id === existing.id ? payload : entry))
+    : [...subscriptions, payload];
+
+  saveSubscriptions(next);
+  if (els.serialSubscriptionForm) els.serialSubscriptionForm.reset();
+  setSubscriptionMessage(existing ? `Updated subscription for ${title}.` : `Saved subscription for ${title}.`);
+  renderSubscriptionsTable();
+}
+
+function deleteSubscription(subscriptionId) {
+  const remaining = getSubscriptions().filter((entry) => entry.id !== subscriptionId);
+  saveSubscriptions(remaining);
+  setSubscriptionMessage("Subscription removed.");
+  renderSubscriptionsTable();
+}
+
+function renderSubscriptionsTable() {
+  if (!els.subscriptionsBody) return;
+  const subscriptions = getSubscriptions().slice().sort((a, b) => String(a.title || "").localeCompare(String(b.title || "")));
+  els.subscriptionsBody.innerHTML = "";
+
+  if (!subscriptions.length) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = '<td colspan="7">No subscriptions tracked yet.</td>';
+    els.subscriptionsBody.appendChild(tr);
+    return;
+  }
+
+  subscriptions.forEach((subscription) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${subscription.title}</td><td>${subscription.frequency || ""}</td><td>${subscription.renewalDate || ""}</td><td>${subscription.status || ""}</td><td>${subscription.annualCost ? `$${subscription.annualCost}` : ""}</td><td>${subscription.vendor || ""}</td><td><button class="button button-secondary" type="button">Delete</button></td>`;
+    tr.querySelector("button").addEventListener("click", () => deleteSubscription(subscription.id));
+    els.subscriptionsBody.appendChild(tr);
+  });
+}
+
+function renderSerialIssuesTable() {
+  if (!els.serialIssuesBody) return;
+  const issues = state.records
+    .filter((record) => String(record.format || "").toLowerCase() === "magazine" && String(record.source || "").toLowerCase() === "serials")
+    .sort((a, b) => Number(b.addedAt || 0) - Number(a.addedAt || 0))
+    .slice(0, 12);
+
+  els.serialIssuesBody.innerHTML = "";
+  if (!issues.length) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = '<td colspan="5">No serial issues added yet.</td>';
+    els.serialIssuesBody.appendChild(tr);
+    return;
+  }
+
+  issues.forEach((issue) => {
+    const material = (issue.materialNumbers || [""])[0] || "";
+    const issueLabel = String(issue.notes || "").replace(/^Serial issue:\s*/, "") || "—";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${issue.title.split(" — ")[0]}</td><td>${issueLabel}</td><td>${issue.dateAdded || ""}</td><td>${material}</td><td>${issue.location || ""}</td>`;
+    els.serialIssuesBody.appendChild(tr);
+  });
 }
 
 function getManagedGenres() {
@@ -1007,6 +1180,8 @@ function bindEvents() {
   });
   if (els.exportActiveMarcBtn) els.exportActiveMarcBtn.addEventListener("click", exportActiveMarc);
   if (els.patronForm) els.patronForm.addEventListener("submit", addPatron);
+  if (els.serialIssueForm) els.serialIssueForm.addEventListener("submit", addSerialIssue);
+  if (els.serialSubscriptionForm) els.serialSubscriptionForm.addEventListener("submit", saveSubscription);
   if (els.checkOutForm) els.checkOutForm.addEventListener("submit", checkOutRecord);
   if (els.queueCheckoutItemBtn) els.queueCheckoutItemBtn.addEventListener("click", queueCheckoutItem);
   if (els.checkOutMaterialNumber) els.checkOutMaterialNumber.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); queueCheckoutItem(); } });
@@ -1035,6 +1210,8 @@ function render() {
   fillCuratedShelves();
   renderTable();
   renderPatronsTable();
+  renderSubscriptionsTable();
+  renderSerialIssuesTable();
   renderCheckoutQueue();
   renderLoansTable();
   renderStatsPanel();

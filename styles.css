@@ -540,3 +540,21 @@ mark { background:#ffe8f6; color:inherit; padding:0 .15em; border-radius:3px; }
   .workspace-columns,
   .workspace-grid { grid-template-columns: 1fr; }
 }
+
+.serials-form-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  align-items: end;
+}
+
+.serials-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.6rem;
+}
+
+.serials-table th,
+.serials-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.5rem;
+  text-align: left;
+}
