@@ -165,26 +165,52 @@
 
         <section class="admin-tab-panel hidden" data-ils-panel="records">
         <section class="admin-table-wrap">
-          <h3>Edit Records</h3>
-        <h2>Record Management</h2>
+          <h2>Edit Records</h2>
         <div class="admin-tools top-space isbn-import-row">
           <button id="fetchMetadataBtn" class="button button-secondary" type="button">Attempt importing record by ISBN</button>
           <label>ISBN / UPC / Catalog Number <input id="identifier" /></label>
         </div>
+        <section class="record-workspace" aria-label="Record workspace">
+          <div class="workspace-toolbar-row">
+            <label>Lookup by
+              <select>
+                <option>Material Number</option>
+                <option>Title</option>
+                <option>Creator</option>
+              </select>
+            </label>
+            <input id="workspaceLookupInput" type="search" placeholder="Enter lookup value" />
+            <button id="workspaceLookupBtn" class="button button-secondary" type="button">Lookup</button>
+            <button id="exportActiveMarcBtn" class="button button-secondary" type="button">Export Active Record as MARC</button>
+          </div>
+
+          <div class="workspace-meta-grid">
+            <div><strong>Actions:</strong> Save Record • Copy Record</div>
+            <div><strong>View:</strong> MARC View • Patron View</div>
+            <div><strong>Status:</strong> <span id="workspaceStatus">Available</span></div>
+          </div>
+
         <form id="recordForm" class="catalog-form">
           <input id="recordId" type="hidden" />
-          <div class="catalog-form-layout">
-            <fieldset>
-              <legend>Core Bibliographic Details</legend>
+          <div class="workspace-columns">
+            <fieldset class="workspace-main">
+              <legend>Bibliographic (MARC)</legend>
               <div class="form-grid">
                 <label>Title* <input id="title" required /></label>
                 <label>Subtitle <input id="subtitle" /></label>
                 <label>Creator / Author / Artist* <input id="creator" required /></label>
+                <label>Statement of Responsibility <input id="statementOfResponsibility" placeholder="e.g., by Jane Doe" /></label>
                 <label>Additional Contributors <input id="contributors" placeholder="Editor, narrator, illustrator..." /></label>
                 <label>Format* <select id="format" required></select></label>
                 <label>Edition <input id="edition" /></label>
                 <label>Publication Year <input id="year" type="number" min="0" /></label>
+                <label>Publication Place <input id="publicationPlace" placeholder="City, State/Country" /></label>
                 <label>Publisher / Label <input id="publisher" /></label>
+                <label>Language Code <input id="languageCode" placeholder="eng" maxlength="3" /></label>
+                <label>LCCN <input id="lccn" /></label>
+                <label>OCLC Number <input id="oclcNumber" /></label>
+                <label>Dewey Class <input id="deweyNumber" /></label>
+                <label>LC Class <input id="lcClassNumber" /></label>
                 <label>Genres <select id="genres" multiple size="6"></select></label>
                 <label>Custom Genre / Category <input id="genre" placeholder="Optional custom" /></label>
                 <label>Binding <select id="binding"></select></label>
@@ -192,11 +218,17 @@
                 <label>Series Number <input id="seriesNumber" type="number" min="0" /></label>
                 <label>Curated Shelf <select id="curatedShelf"></select></label>
                 <label>Page count <input id="pageCount" type="number" min="1" step="1" /></label>
+                <label>Physical Details <input id="physicalDetails" placeholder="illustrations ; 24 cm" /></label>
                 <label>Subjects / Tags <input id="subjects" placeholder="Comma-separated" /></label>
+                <label>Summary Note (520) <textarea id="summaryNote" rows="2"></textarea></label>
+                <label>Target Audience (521) <input id="targetAudience" /></label>
+                <label>Bibliography Note (504) <input id="bibliographyNote" /></label>
+                <label>MARC Leader <input id="marcLeader" placeholder="00000nam a2200000 i 4500" /></label>
+                <label>MARC 008 <input id="marc008" placeholder="YYMMDDsYYYY..." /></label>
               </div>
             </fieldset>
 
-            <fieldset>
+            <fieldset class="workspace-holdings">
               <legend>Holdings & Local Data</legend>
               <div class="form-grid">
                 <label>Status
@@ -235,49 +267,7 @@
             <button id="cancelEditBtn" class="button button-secondary" type="button">Cancel Edit</button>
           </div>
         </form>
-
-          <h3>Edit/search records</h3>
-          <section class="record-workspace" aria-label="Record workspace preview">
-            <div class="workspace-toolbar-row">
-              <label>Lookup by
-                <select>
-                  <option>Material Number</option>
-                  <option>Title</option>
-                  <option>Creator</option>
-                </select>
-              </label>
-              <input id="workspaceLookupInput" type="search" placeholder="Enter lookup value" />
-              <button id="workspaceLookupBtn" class="button button-secondary" type="button">Lookup</button>
-              <button id="exportActiveMarcBtn" class="button button-secondary" type="button">Export Active Record as MARC</button>
-            </div>
-            <div class="workspace-meta-grid">
-              <div><strong>Actions:</strong> Save Record • Copy Record</div>
-              <div><strong>View:</strong> MARC View • Patron View</div>
-              <div><strong>Status:</strong> <span id="workspaceStatus">Available</span></div>
-            </div>
-            <div class="workspace-columns">
-              <div class="workspace-main">
-                <h4 id="workspaceTitle">Select a record</h4>
-                <p class="muted" id="workspaceCreator">Use the table below to load a record into this view.</p>
-                <p id="workspaceDescription" class="workspace-text"></p>
-                <dl class="workspace-grid">
-                  <dt>Edition</dt><dd id="workspaceEdition">—</dd>
-                  <dt>Publication</dt><dd id="workspacePublication">—</dd>
-                  <dt>Physical</dt><dd id="workspacePhysical">—</dd>
-                  <dt>Subjects</dt><dd id="workspaceSubjects">—</dd>
-                  <dt>Curated Shelves</dt><dd id="workspaceCuratedShelves">—</dd>
-                </dl>
-              </div>
-              <aside class="workspace-holdings">
-                <h4>Holdings</h4>
-                <p><strong>Material:</strong> <span id="workspaceMaterial">—</span></p>
-                <p><strong>Call #:</strong> <span id="workspaceCallNumber">—</span></p>
-                <p><strong>Type:</strong> <span id="workspaceFormat">—</span></p>
-                <p><strong>Price/Fund:</strong> <span id="workspacePrice">—</span></p>
-                <p><strong>Location:</strong> <span id="workspaceLocation">—</span></p>
-              </aside>
-            </div>
-          </section>
+        </section>
           <div class="admin-tools">
             <label><input id="selectAllRows" type="checkbox" /> Select all</label>
             <select id="bulkStatusSelect">

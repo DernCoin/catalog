@@ -88,24 +88,11 @@ const els = {
   workspaceLookupInput: $("#workspaceLookupInput"),
   workspaceLookupBtn: $("#workspaceLookupBtn"),
   exportActiveMarcBtn: $("#exportActiveMarcBtn"),
-  workspaceTitle: $("#workspaceTitle"),
-  workspaceCreator: $("#workspaceCreator"),
-  workspaceDescription: $("#workspaceDescription"),
-  workspaceEdition: $("#workspaceEdition"),
-  workspacePublication: $("#workspacePublication"),
-  workspacePhysical: $("#workspacePhysical"),
-  workspaceSubjects: $("#workspaceSubjects"),
-  workspaceCuratedShelves: $("#workspaceCuratedShelves"),
   workspaceStatus: $("#workspaceStatus"),
-  workspaceMaterial: $("#workspaceMaterial"),
-  workspaceCallNumber: $("#workspaceCallNumber"),
-  workspaceFormat: $("#workspaceFormat"),
-  workspacePrice: $("#workspacePrice"),
-  workspaceLocation: $("#workspaceLocation"),
 };
 
 const FORM_FIELDS = [
-  "recordId:id", "title", "subtitle", "creator", "contributors", "format", "edition", "year", "publisher", "identifier", "genre", "subjects", "description", "location", "callNumber", "accessionNumber", "materialNumbers", "status", "dateAcquired", "dateAdded", "source", "pricePaid", "notes", "coverUrl", "binding", "seriesName", "seriesNumber", "curatedShelf", "pageCount",
+  "recordId:id", "title", "subtitle", "creator", "statementOfResponsibility", "contributors", "format", "edition", "year", "publicationPlace", "publisher", "languageCode", "lccn", "oclcNumber", "deweyNumber", "lcClassNumber", "identifier", "genre", "subjects", "description", "location", "callNumber", "accessionNumber", "materialNumbers", "status", "dateAcquired", "dateAdded", "source", "pricePaid", "notes", "coverUrl", "binding", "seriesName", "seriesNumber", "curatedShelf", "pageCount", "physicalDetails", "summaryNote", "targetAudience", "bibliographyNote", "marcLeader", "marc008",
 ];
 
 function switchIlsTab(tab) {
@@ -576,34 +563,8 @@ function renderSearchPopover() {
 }
 
 function fillWorkspace(record) {
-  if (!els.workspaceTitle) return;
-  if (!record) {
-    els.workspaceTitle.textContent = "Select a record";
-    els.workspaceCreator.textContent = "Use the table below to load a record into this view.";
-    els.workspaceDescription.textContent = "";
-    ["workspaceEdition","workspacePublication","workspacePhysical","workspaceSubjects","workspaceCuratedShelves","workspaceStatus","workspaceMaterial","workspaceCallNumber","workspaceFormat","workspacePrice","workspaceLocation"].forEach((key) => {
-      if (els[key]) els[key].textContent = "—";
-    });
-    return;
-  }
-
-  const subjects = String(record.subjects || "").trim();
-  const publication = [record.publisher, record.year].filter(Boolean).join(", ");
-  const physical = record.pageCount ? `${record.pageCount} pages` : "1 item";
-  els.workspaceTitle.textContent = record.title || "Untitled";
-  els.workspaceCreator.textContent = record.creator || "Unknown creator";
-  els.workspaceDescription.textContent = record.description || record.notes || "";
-  els.workspaceEdition.textContent = record.edition || "—";
-  els.workspacePublication.textContent = publication || "—";
-  els.workspacePhysical.textContent = physical;
-  els.workspaceSubjects.textContent = subjects || "—";
-  els.workspaceCuratedShelves.textContent = record.curatedShelf || "—";
-  els.workspaceStatus.textContent = record.status || "Available";
-  els.workspaceMaterial.textContent = (record.materialNumbers || []).join(", ") || "—";
-  els.workspaceCallNumber.textContent = record.callNumber || "—";
-  els.workspaceFormat.textContent = record.format || "—";
-  els.workspacePrice.textContent = record.pricePaid ? `$${record.pricePaid}` : "—";
-  els.workspaceLocation.textContent = record.location || "—";
+  if (!els.workspaceStatus) return;
+  els.workspaceStatus.textContent = record?.status || "Available";
 }
 
 function lookupWorkspaceRecord() {
@@ -626,7 +587,7 @@ function lookupWorkspaceRecord() {
     return;
   }
 
-  setActiveWorkspaceRecord(found.id);
+  populateForm(found);
   setCirculationMessage(`Loaded ${found.title} in the workspace.`);
 }
 
@@ -707,15 +668,25 @@ function saveFormRecord(event) {
     title: $("#title").value.trim(),
     subtitle: $("#subtitle").value.trim(),
     creator: $("#creator").value.trim(),
+    statementOfResponsibility: $("#statementOfResponsibility").value.trim(),
     contributors: $("#contributors").value.trim(),
     format: $("#format").value || "Other",
     edition: $("#edition").value.trim(),
     year: $("#year").value.trim(),
+    publicationPlace: $("#publicationPlace").value.trim(),
     publisher: $("#publisher").value.trim(),
+    languageCode: $("#languageCode").value.trim(),
+    lccn: $("#lccn").value.trim(),
+    oclcNumber: $("#oclcNumber").value.trim(),
+    deweyNumber: $("#deweyNumber").value.trim(),
+    lcClassNumber: $("#lcClassNumber").value.trim(),
     identifier: $("#identifier").value.trim(),
     genre: genres.join(", "),
     genres,
     subjects: $("#subjects").value.trim(),
+    summaryNote: $("#summaryNote").value.trim(),
+    targetAudience: $("#targetAudience").value.trim(),
+    bibliographyNote: $("#bibliographyNote").value.trim(),
     description: $("#description").value.trim(),
     location: $("#location").value.trim(),
     callNumber: $("#callNumber").value.trim(),
@@ -733,6 +704,9 @@ function saveFormRecord(event) {
     seriesNumber: $("#seriesNumber").value.trim(),
     curatedShelf: $("#curatedShelf").value.trim(),
     pageCount: $("#pageCount").value.trim(),
+    physicalDetails: $("#physicalDetails").value.trim(),
+    marcLeader: $("#marcLeader").value.trim(),
+    marc008: $("#marc008").value.trim(),
     addedAt: new Date(dateAdded).getTime() || Date.now(),
   });
 
@@ -799,20 +773,28 @@ function toMarcMrk(record) {
   const stamp = new Date();
   const year = String(record.year || "").trim();
   const yearField = year ? year.slice(0, 4).padEnd(4, " ") : "    ";
+  const languageCode = String(record.languageCode || "eng").trim().slice(0, 3).padEnd(3, "\\");
   const lines = [
-    "=LDR  00000nam a2200000 i 4500",
+    `=LDR  ${marcSafe(record.marcLeader || "00000nam a2200000 i 4500")}`,
     `=001  ${marcSafe(record.id || record.permalink || crypto.randomUUID())}`,
     `=005  ${stamp.toISOString().replace(/[-:T.Z]/g, "").slice(0, 14)}.0`,
-    `=008  ${stamp.toISOString().slice(2, 10).replaceAll("-", "")}s${yearField}\\xx\\\\\\\\\\\\\\\eng\\d`,
+    `=008  ${marcSafe(record.marc008 || `${stamp.toISOString().slice(2, 10).replaceAll("-", "")}s${yearField}\\xx\\\\\\${languageCode}\\d`)}`,
   ];
 
+  if (record.lccn) lines.push(`=010  \\$a${marcSafe(record.lccn)}`);
   if (record.identifier) lines.push(`=020  \\$a${marcSafe(record.identifier)}`);
+  if (record.oclcNumber) lines.push(`=035  \\$a(OCoLC)${marcSafe(record.oclcNumber)}`);
   if (record.creator) lines.push(`=100  1\\$a${marcSafe(record.creator)}`);
-  lines.push(`=245  10$a${marcSafe(record.title)}${record.subtitle ? `$b${marcSafe(record.subtitle)}` : ""}`);
+  lines.push(`=245  10$a${marcSafe(record.title)}${record.subtitle ? `$b${marcSafe(record.subtitle)}` : ""}${record.statementOfResponsibility ? `$c${marcSafe(record.statementOfResponsibility)}` : ""}`);
   if (record.edition) lines.push(`=250  \\$a${marcSafe(record.edition)}`);
-  if (record.publisher || record.year) lines.push(`=260  \\$b${marcSafe(record.publisher)}${record.year ? `$c${marcSafe(record.year)}` : ""}`);
-  lines.push(`=300  \\$a${record.pageCount ? `${marcSafe(record.pageCount)} pages` : "1 item"}`);
+  if (record.publicationPlace || record.publisher || record.year) lines.push(`=264  \\1$a${marcSafe(record.publicationPlace)}$b${marcSafe(record.publisher)}${record.year ? `$c${marcSafe(record.year)}` : ""}`);
+  lines.push(`=300  \\$a${record.pageCount ? `${marcSafe(record.pageCount)} pages` : "1 item"}${record.physicalDetails ? `$b${marcSafe(record.physicalDetails)}` : ""}`);
+  if (record.bibliographyNote) lines.push(`=504  \\$a${marcSafe(record.bibliographyNote)}`);
+  if (record.summaryNote) lines.push(`=520  \\$a${marcSafe(record.summaryNote)}`);
+  if (record.targetAudience) lines.push(`=521  \\$a${marcSafe(record.targetAudience)}`);
   if (record.notes) lines.push(`=500  \\$a${marcSafe(record.notes)}`);
+  if (record.lcClassNumber) lines.push(`=050  00$a${marcSafe(record.lcClassNumber)}`);
+  if (record.deweyNumber) lines.push(`=082  04$a${marcSafe(record.deweyNumber)}`);
   if (record.genre || (record.genres || []).length) lines.push(`=650  \\0$a${marcSafe(record.genre || (record.genres || []).join(", "))}`);
   if (record.subjects) lines.push(`=650  \\0$a${marcSafe(record.subjects)}`);
   if (record.callNumber || record.location || record.curatedShelf) {
