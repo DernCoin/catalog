@@ -41,23 +41,6 @@ const els = {
   bulkGenreSelect: $("#bulkGenreSelect"),
   bulkGenreAddBtn: $("#bulkGenreAddBtn"),
   bulkMarcExportBtn: $("#bulkMarcExportBtn"),
-  exportActiveMarcBtn: $("#exportActiveMarcBtn"),
-  workspaceLookupInput: $("#workspaceLookupInput"),
-  workspaceLookupBtn: $("#workspaceLookupBtn"),
-  workspaceTitle: $("#workspaceTitle"),
-  workspaceCreator: $("#workspaceCreator"),
-  workspaceDescription: $("#workspaceDescription"),
-  workspaceEdition: $("#workspaceEdition"),
-  workspacePublication: $("#workspacePublication"),
-  workspacePhysical: $("#workspacePhysical"),
-  workspaceSubjects: $("#workspaceSubjects"),
-  workspaceCuratedShelves: $("#workspaceCuratedShelves"),
-  workspaceStatus: $("#workspaceStatus"),
-  workspaceMaterial: $("#workspaceMaterial"),
-  workspaceCallNumber: $("#workspaceCallNumber"),
-  workspaceFormat: $("#workspaceFormat"),
-  workspacePrice: $("#workspacePrice"),
-  workspaceLocation: $("#workspaceLocation"),
   formatSelect: $("#format"),
   bindingSelect: $("#binding"),
   locationSelect: $("#location"),
@@ -823,33 +806,6 @@ function toMarcMrk(record) {
 }
 
 
-function exportActiveMarc() {
-  if (!state.activeWorkspaceRecordId) {
-    setCirculationMessage("Choose an active record from the table first.", true);
-    return;
-  }
-  const record = state.records.find((entry) => entry.id === state.activeWorkspaceRecordId);
-  if (!record) {
-    setCirculationMessage("Active record is no longer available.", true);
-    return;
-  }
-
-  const marcText = toMarcMrk({
-    ...record,
-    title: record.title || "Untitled",
-    creator: record.creator || "Unknown creator",
-  }).join("\n");
-
-  const blob = new Blob([marcText], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `record-${record.id || "export"}.mrk`;
-  link.click();
-  URL.revokeObjectURL(url);
-  setCirculationMessage(`Exported ${record.title || "record"} as MARC (.mrk).`);
-}
-
 function exportSelectedMarc() {
   const selected = state.records.filter((record) => state.selectedIds.has(record.id));
   if (!selected.length) {
@@ -1019,8 +975,6 @@ function bindEvents() {
   els.applyBulkBtn.addEventListener("click", applyBulkStatus);
   els.bulkGenreAddBtn.addEventListener("click", bulkAddGenres);
   if (els.bulkMarcExportBtn) els.bulkMarcExportBtn.addEventListener("click", exportSelectedMarc);
-  if (els.exportActiveMarcBtn) els.exportActiveMarcBtn.addEventListener("click", exportActiveMarc);
-  if (els.workspaceLookupBtn) els.workspaceLookupBtn.addEventListener("click", lookupWorkspaceRecord);
   if (els.patronForm) els.patronForm.addEventListener("submit", addPatron);
   if (els.checkOutForm) els.checkOutForm.addEventListener("submit", checkOutRecord);
   if (els.queueCheckoutItemBtn) els.queueCheckoutItemBtn.addEventListener("click", queueCheckoutItem);
