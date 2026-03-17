@@ -85,6 +85,23 @@ const els = {
   circulationPanels: $$("[data-circulation-panel]"),
   circulationMessage: $("#circulationMessage"),
   loansBody: $("#loansBody"),
+  workspaceLookupInput: $("#workspaceLookupInput"),
+  workspaceLookupBtn: $("#workspaceLookupBtn"),
+  exportActiveMarcBtn: $("#exportActiveMarcBtn"),
+  workspaceTitle: $("#workspaceTitle"),
+  workspaceCreator: $("#workspaceCreator"),
+  workspaceDescription: $("#workspaceDescription"),
+  workspaceEdition: $("#workspaceEdition"),
+  workspacePublication: $("#workspacePublication"),
+  workspacePhysical: $("#workspacePhysical"),
+  workspaceSubjects: $("#workspaceSubjects"),
+  workspaceCuratedShelves: $("#workspaceCuratedShelves"),
+  workspaceStatus: $("#workspaceStatus"),
+  workspaceMaterial: $("#workspaceMaterial"),
+  workspaceCallNumber: $("#workspaceCallNumber"),
+  workspaceFormat: $("#workspaceFormat"),
+  workspacePrice: $("#workspacePrice"),
+  workspaceLocation: $("#workspaceLocation"),
 };
 
 const FORM_FIELDS = [
@@ -95,7 +112,7 @@ function switchIlsTab(tab) {
   state.ilsTab = tab;
   els.ilsTabButtons.forEach((btn) => btn.classList.toggle("is-active", btn.dataset.ilsTab === tab));
   els.ilsTabPanels.forEach((panel) => panel.classList.toggle("hidden", panel.dataset.ilsPanel !== tab));
-  if (tab !== "catalog") hideSearchPopover();
+  if (tab !== "records") hideSearchPopover();
 }
 
 function setAuthenticatedUI(isAuthed) {
@@ -673,7 +690,7 @@ function populateForm(record) {
   window.scrollTo({ top: 0, behavior: "smooth" });
   checkDuplicateDraft();
   setActiveWorkspaceRecord(record.id);
-  switchIlsTab("catalog");
+  switchIlsTab("records");
 }
 
 function saveFormRecord(event) {
@@ -832,6 +849,30 @@ function exportSelectedMarc() {
   setCirculationMessage(`Exported ${selected.length} record(s) as MARC (.mrk).`);
 }
 
+
+function exportActiveMarc() {
+  const record = state.records.find((entry) => entry.id === state.activeWorkspaceRecordId);
+  if (!record) {
+    setCirculationMessage("Load a record first to export MARC.", true);
+    return;
+  }
+
+  const marcText = toMarcMrk({
+    ...record,
+    title: record.title || "Untitled",
+    creator: record.creator || "Unknown creator",
+  }).join("\n");
+
+  const blob = new Blob([marcText], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${String(record.title || "record").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-${record.id}.mrk`;
+  link.click();
+  URL.revokeObjectURL(url);
+  setCirculationMessage(`Exported MARC for ${record.title || "record"}.`);
+}
+
 async function fetchMetadata() {
   const isbn = $("#identifier").value.trim().replace(/[^0-9Xx]/g, "");
   if (!isbn) return;
@@ -975,6 +1016,14 @@ function bindEvents() {
   els.applyBulkBtn.addEventListener("click", applyBulkStatus);
   els.bulkGenreAddBtn.addEventListener("click", bulkAddGenres);
   if (els.bulkMarcExportBtn) els.bulkMarcExportBtn.addEventListener("click", exportSelectedMarc);
+  if (els.workspaceLookupBtn) els.workspaceLookupBtn.addEventListener("click", lookupWorkspaceRecord);
+  if (els.workspaceLookupInput) els.workspaceLookupInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      lookupWorkspaceRecord();
+    }
+  });
+  if (els.exportActiveMarcBtn) els.exportActiveMarcBtn.addEventListener("click", exportActiveMarc);
   if (els.patronForm) els.patronForm.addEventListener("submit", addPatron);
   if (els.checkOutForm) els.checkOutForm.addEventListener("submit", checkOutRecord);
   if (els.queueCheckoutItemBtn) els.queueCheckoutItemBtn.addEventListener("click", queueCheckoutItem);
