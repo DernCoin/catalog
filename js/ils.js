@@ -13,6 +13,7 @@ const state = {
   circulationTab: "checkout",
   queuedCheckoutItems: [],
   activeWorkspaceRecordId: "",
+  editingPatronId: "",
 };
 
 const $ = (s) => document.querySelector(s);
@@ -38,8 +39,6 @@ const els = {
   selectAllRows: $("#selectAllRows"),
   bulkStatusSelect: $("#bulkStatusSelect"),
   applyBulkBtn: $("#applyBulkBtn"),
-  bulkGenreSelect: $("#bulkGenreSelect"),
-  bulkGenreAddBtn: $("#bulkGenreAddBtn"),
   bulkMarcExportBtn: $("#bulkMarcExportBtn"),
   formatSelect: $("#format"),
   bindingSelect: $("#binding"),
@@ -72,6 +71,8 @@ const els = {
   patronAddress: $("#patronAddress"),
   patronPhone: $("#patronPhone"),
   patronBirthDay: $("#patronBirthDay"),
+  patronId: $("#patronId"),
+  patronSubmitBtn: $("#patronSubmitBtn"),
   patronsBody: $("#patronsBody"),
   serialIssueForm: $("#serialIssueForm"),
   serialTitle: $("#serialTitle"),
@@ -82,6 +83,8 @@ const els = {
   serialMaterialNumber: $("#serialMaterialNumber"),
   serialLocation: $("#serialLocation"),
   serialCallNumber: $("#serialCallNumber"),
+  serialCoverUrl: $("#serialCoverUrl"),
+  serialCoverUpload: $("#serialCoverUpload"),
   serialIssueMessage: $("#serialIssueMessage"),
   serialSubscriptionForm: $("#serialSubscriptionForm"),
   subscriptionTitle: $("#subscriptionTitle"),
@@ -101,6 +104,11 @@ const els = {
   checkOutDueDate: $("#checkOutDueDate"),
   checkInForm: $("#checkInForm"),
   checkInMaterialNumber: $("#checkInMaterialNumber"),
+  holdForm: $("#holdForm"),
+  holdCardNumber: $("#holdCardNumber"),
+  holdMaterialNumber: $("#holdMaterialNumber"),
+  holdType: $("#holdType"),
+  holdsBody: $("#holdsBody"),
   circulationTabButtons: $$(".circulation-tab-btn"),
   circulationPanels: $$("[data-circulation-panel]"),
   circulationMessage: $("#circulationMessage"),
@@ -112,7 +120,7 @@ const els = {
 };
 
 const FORM_FIELDS = [
-  "recordId:id", "title", "subtitle", "creator", "statementOfResponsibility", "contributors", "format", "edition", "year", "publicationPlace", "publisher", "languageCode", "lccn", "oclcNumber", "deweyNumber", "lcClassNumber", "identifier", "genre", "subjects", "description", "location", "callNumber", "accessionNumber", "materialNumbers", "status", "dateAcquired", "dateAdded", "source", "pricePaid", "notes", "coverUrl", "binding", "seriesName", "seriesNumber", "curatedShelf", "pageCount", "physicalDetails", "summaryNote", "targetAudience", "bibliographyNote", "marcLeader", "marc008",
+  "recordId:id", "title", "subtitle", "creator", "statementOfResponsibility", "contributors", "format", "edition", "year", "publicationPlace", "publisher", "languageCode", "lccn", "oclcNumber", "deweyNumber", "lcClassNumber", "identifier", "genre", "subjects", "description", "location", "callNumber", "accessionNumber", "materialNumbers", "status", "dateAcquired", "dateAdded", "source", "pricePaid", "retailPrice", "notes", "coverUrl", "circulationHistory", "binding", "seriesName", "seriesNumber", "curatedShelf", "pageCount", "physicalDetails", "summaryNote", "targetAudience", "bibliographyNote", "marcLeader", "marc008",
 ];
 
 function switchIlsTab(tab) {
@@ -211,9 +219,10 @@ function renderPatronsTable() {
   patrons.forEach((patron) => {
     const loansCount = state.records.filter((record) => record.checkedOutTo === patron.id && String(record.status) === "On Loan").length;
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${patron.name}</td><td>${patron.cardNumber || ""}</td><td>${patron.email || ""}</td><td>${loansCount}</td><td><button class="button button-secondary" type="button" data-patron-id="${patron.id}">Delete</button></td>`;
+    tr.innerHTML = `<td>${patron.name}</td><td>${patron.cardNumber || ""}</td><td>${patron.email || ""}</td><td>${loansCount}</td><td><button class="button button-secondary" type="button" data-act="edit">Edit</button> <button class="button button-secondary" type="button" data-act="delete">Delete</button></td>`;
 
-    tr.querySelector("button").addEventListener("click", () => removePatron(patron.id));
+    tr.querySelector('[data-act="edit"]').addEventListener("click", () => editPatron(patron.id));
+    tr.querySelector('[data-act="delete"]').addEventListener("click", () => removePatron(patron.id));
     els.patronsBody.appendChild(tr);
   });
 }
@@ -246,6 +255,22 @@ function setCirculationMessage(message, isError = false) {
   els.circulationMessage.classList.toggle("warning", isError);
 }
 
+
+function appendCirculationHistory(record, action) {
+  const stamp = new Date().toISOString().replace("T", " ").slice(0, 16);
+  const existing = String(record.circulationHistory || "").trim();
+  const line = `[${stamp}] ${action}`;
+  return existing ? `${existing}\n${line}` : line;
+}
+
+function resetPatronForm() {
+  if (!els.patronForm) return;
+  els.patronForm.reset();
+  if (els.patronId) els.patronId.value = "";
+  state.editingPatronId = "";
+  if (els.patronSubmitBtn) els.patronSubmitBtn.textContent = "Add Patron";
+}
+
 function addPatron(event) {
   event.preventDefault();
   const name = els.patronName.value.trim();
@@ -258,16 +283,39 @@ function addPatron(event) {
   if (!name || !cardNumber) return;
 
   const patrons = getPatrons();
-  const duplicate = patrons.some((patron) => patron.cardNumber?.toLowerCase() === cardNumber.toLowerCase());
+  const editingId = els.patronId?.value || "";
+  const duplicate = patrons.some((patron) => patron.id !== editingId && patron.cardNumber?.toLowerCase() === cardNumber.toLowerCase());
   if (duplicate) {
     setCirculationMessage("That card number is already assigned to another patron.", true);
     return;
   }
 
-  patrons.push({ id: crypto.randomUUID(), name, middleName, cardNumber, email, address, phone, birthDay });
-  savePatrons(patrons);
-  els.patronForm.reset();
+  if (editingId) {
+    savePatrons(patrons.map((patron) => (patron.id === editingId ? { ...patron, name, middleName, cardNumber, email, address, phone, birthDay } : patron)));
+    setCirculationMessage(`Updated patron ${name}.`);
+  } else {
+    patrons.push({ id: crypto.randomUUID(), name, middleName, cardNumber, email, address, phone, birthDay });
+    savePatrons(patrons);
+    setCirculationMessage(`Added patron ${name}.`);
+  }
+
+  resetPatronForm();
   render();
+}
+
+function editPatron(patronId) {
+  const patron = getPatrons().find((entry) => entry.id === patronId);
+  if (!patron) return;
+  els.patronName.value = patron.name || "";
+  els.patronMiddleName.value = patron.middleName || "";
+  els.patronCardNumber.value = patron.cardNumber || "";
+  els.patronEmail.value = patron.email || "";
+  els.patronAddress.value = patron.address || "";
+  els.patronPhone.value = patron.phone || "";
+  els.patronBirthDay.value = patron.birthDay || "";
+  if (els.patronId) els.patronId.value = patron.id;
+  state.editingPatronId = patron.id;
+  if (els.patronSubmitBtn) els.patronSubmitBtn.textContent = "Update Patron";
 }
 
 function removePatron(patronId) {
@@ -330,6 +378,7 @@ function checkOutRecord(event) {
       checkedOutToName: patron.name,
       checkedOutAt: new Date().toISOString(),
       dueDate,
+      circulationHistory: appendCirculationHistory(record, `Checked out to ${patron.name} (Card: ${patron.cardNumber || "N/A"}) due ${dueDate}`),
     };
   });
 
@@ -351,6 +400,7 @@ function checkInRecord(recordId) {
     checkedOutToName: "",
     checkedOutAt: "",
     dueDate: "",
+    circulationHistory: appendCirculationHistory(state.records[idx], "Checked in"),
   };
 
   saveRecords(state.records);
@@ -371,6 +421,59 @@ function checkInByMaterialNumber(event) {
   els.checkInMaterialNumber.value = "";
 }
 
+
+function getHolds() {
+  return Array.isArray(state.settings.holds) ? state.settings.holds : [];
+}
+
+function saveHolds(holds) {
+  state.settings.holds = holds;
+  saveSettings(state.settings);
+}
+
+function placeHold(event) {
+  event.preventDefault();
+  const cardNumber = String(els.holdCardNumber?.value || "").trim();
+  const materialNumber = String(els.holdMaterialNumber?.value || "").trim();
+  const type = String(els.holdType?.value || "Hold");
+  const patron = getPatrons().find((entry) => String(entry.cardNumber || "").toLowerCase() === cardNumber.toLowerCase());
+  if (!patron) return setCirculationMessage("No patron found with that card number.", true);
+  const record = getRecordByMaterialNumber(materialNumber);
+  if (!record) return setCirculationMessage(`No item found with material number ${materialNumber}.`, true);
+
+  const holds = getHolds();
+  holds.push({ id: crypto.randomUUID(), recordId: record.id, materialNumber, title: record.title, patronId: patron.id, patronName: patron.name, type, placedAt: new Date().toISOString() });
+  saveHolds(holds);
+  state.records = state.records.map((entry) => entry.id === record.id ? { ...entry, circulationHistory: appendCirculationHistory(entry, `${type} placed for ${patron.name}`) } : entry);
+  saveRecords(state.records);
+  if (els.holdForm) els.holdForm.reset();
+  setCirculationMessage(`${type} placed for ${patron.name}.`);
+  render();
+}
+
+function cancelHold(holdId) {
+  saveHolds(getHolds().filter((hold) => hold.id !== holdId));
+  renderHoldsTable();
+}
+
+function renderHoldsTable() {
+  if (!els.holdsBody) return;
+  const holds = getHolds().slice().sort((a,b)=>String(b.placedAt||"").localeCompare(String(a.placedAt||"")));
+  els.holdsBody.innerHTML = "";
+  if (!holds.length) {
+    const tr=document.createElement("tr");
+    tr.innerHTML='<td colspan="5">No holds or reserves.</td>';
+    els.holdsBody.appendChild(tr);
+    return;
+  }
+  holds.forEach((hold)=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${hold.title}</td><td>${hold.patronName}</td><td>${hold.type}</td><td>${String(hold.placedAt||"").slice(0,10)}</td><td><button class="button button-secondary" type="button">Cancel</button></td>`;
+    tr.querySelector("button").addEventListener("click",()=>cancelHold(hold.id));
+    els.holdsBody.appendChild(tr);
+  });
+}
+
 function addSerialIssue(event) {
   event.preventDefault();
   const title = String(els.serialTitle?.value || "").trim();
@@ -381,6 +484,7 @@ function addSerialIssue(event) {
   const materialNumber = String(els.serialMaterialNumber?.value || "").trim();
   const location = String(els.serialLocation?.value || "Periodicals").trim();
   const callNumber = String(els.serialCallNumber?.value || "").trim();
+  const coverUrl = String(els.serialCoverUrl?.value || "").trim();
 
   if (!title || !issueLabel || !materialNumber) {
     setSerialIssueMessage("Title, issue label, and material number are required.", true);
@@ -411,6 +515,8 @@ function addSerialIssue(event) {
     notes: `Serial issue: ${issueLabel}${issueDate ? ` (${issueDate})` : ""}`,
     summaryNote: `Magazine issue: ${issueLabel}`,
     status: "Available",
+    coverUrl,
+    circulationHistory: "",
     addedAt: now.getTime(),
   });
 
@@ -530,7 +636,6 @@ function fillGenres() {
   const managed = getManagedGenres();
   const options = managed.map((g) => `<option value="${g}">${g}</option>`).join("");
   $("#genres").innerHTML = options;
-  els.bulkGenreSelect.innerHTML = options;
   renderManagedList(els.genreList, managed, "genre", renameGenre, deleteGenre);
 }
 
@@ -870,7 +975,9 @@ function saveFormRecord(event) {
     dateAdded,
     source: $("#source").value.trim(),
     pricePaid: $("#pricePaid").value.trim(),
+    retailPrice: $("#retailPrice").value.trim(),
     notes: $("#notes").value.trim(),
+    circulationHistory: $("#circulationHistory").value.trim(),
     coverUrl: $("#coverUrl").value.trim(),
     binding: $("#binding").value.trim(),
     seriesName: $("#seriesName").value.trim(),
@@ -920,20 +1027,6 @@ function applyBulkStatus() {
   if (!status || !state.selectedIds.size) return;
 
   state.records = state.records.map((record) => (state.selectedIds.has(record.id) ? { ...record, status } : record));
-  saveRecords(state.records);
-  render();
-}
-
-function bulkAddGenres() {
-  const selectedGenres = [...els.bulkGenreSelect.selectedOptions].map((option) => option.value);
-  if (!selectedGenres.length || !state.selectedIds.size) return;
-
-  state.records = state.records.map((record) => {
-    if (!state.selectedIds.has(record.id)) return record;
-    const merged = [...new Set([...(record.genres || asArray(record.genre)), ...selectedGenres])];
-    return { ...record, genres: merged, genre: merged.join(", ") };
-  });
-
   saveRecords(state.records);
   render();
 }
@@ -1092,6 +1185,15 @@ function handleCoverUpload() {
 }
 
 
+
+function handleSerialCoverUpload() {
+  const file = els.serialCoverUpload?.files?.[0];
+  if (!file || !file.type.startsWith("image/")) return;
+  const reader = new FileReader();
+  reader.onload = () => { if (els.serialCoverUrl) els.serialCoverUrl.value = typeof reader.result === "string" ? reader.result : ""; };
+  reader.readAsDataURL(file);
+}
+
 function renderStatsPanel() {
   if (!els.ilsStatsPage) return;
   const stats = getStats(state.records);
@@ -1099,8 +1201,10 @@ function renderStatsPanel() {
   const years = Object.entries(stats.byYear).map(([year, count]) => `${year}: ${count}`).join(" • ") || "None";
   const topCreators = stats.mostOwnedAuthors.map((entry) => `${entry.author} (${entry.count})`).join(", ") || "None";
   const newest = stats.newest.map((record) => record.title).join(", ") || "None";
+  const paidTotal = state.records.reduce((sum, record) => sum + (Number.parseFloat(record.pricePaid) || 0), 0);
+  const retailTotal = state.records.reduce((sum, record) => sum + (Number.parseFloat(record.retailPrice) || 0), 0);
 
-  els.ilsStatsPage.innerHTML = `<p>Total items: <strong>${stats.total}</strong></p><p>Formats: ${formats}</p><p>Most owned authors: ${topCreators}</p><p>Publication year distribution: ${years}</p><p>Newest additions: ${newest}</p>`;
+  els.ilsStatsPage.innerHTML = `<p>Total items: <strong>${stats.total}</strong></p><p>Formats: ${formats}</p><p>Most owned authors: ${topCreators}</p><p>Publication year distribution: ${years}</p><p>Newest additions: ${newest}</p><p>Collection value (price paid): <strong>$${paidTotal.toFixed(2)}</strong></p><p>Collection value (retail): <strong>$${retailTotal.toFixed(2)}</strong></p>`;
 }
 
 function bindEvents() {
@@ -1126,6 +1230,7 @@ function bindEvents() {
   els.cancelEditBtn.addEventListener("click", resetForm);
   els.fetchMetadataBtn.addEventListener("click", fetchMetadata);
   els.coverUpload.addEventListener("change", handleCoverUpload);
+  if (els.serialCoverUpload) els.serialCoverUpload.addEventListener("change", handleSerialCoverUpload);
 
   els.searchInput.addEventListener("input", () => {
     state.query = els.searchInput.value;
@@ -1169,7 +1274,6 @@ function bindEvents() {
   });
 
   els.applyBulkBtn.addEventListener("click", applyBulkStatus);
-  els.bulkGenreAddBtn.addEventListener("click", bulkAddGenres);
   if (els.bulkMarcExportBtn) els.bulkMarcExportBtn.addEventListener("click", exportSelectedMarc);
   if (els.workspaceLookupBtn) els.workspaceLookupBtn.addEventListener("click", lookupWorkspaceRecord);
   if (els.workspaceLookupInput) els.workspaceLookupInput.addEventListener("keydown", (event) => {
@@ -1186,6 +1290,7 @@ function bindEvents() {
   if (els.queueCheckoutItemBtn) els.queueCheckoutItemBtn.addEventListener("click", queueCheckoutItem);
   if (els.checkOutMaterialNumber) els.checkOutMaterialNumber.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); queueCheckoutItem(); } });
   if (els.checkInForm) els.checkInForm.addEventListener("submit", checkInByMaterialNumber);
+  if (els.holdForm) els.holdForm.addEventListener("submit", placeHold);
   els.circulationTabButtons.forEach((button) => button.addEventListener("click", () => switchCirculationTab(button.dataset.circulationTab)));
   els.ilsTabButtons.forEach((btn) => btn.addEventListener("click", () => switchIlsTab(btn.dataset.ilsTab)));
   els.dashboardTiles.forEach((tile) => tile.addEventListener("click", () => {
@@ -1214,6 +1319,7 @@ function render() {
   renderSerialIssuesTable();
   renderCheckoutQueue();
   renderLoansTable();
+  renderHoldsTable();
   renderStatsPanel();
 }
 
