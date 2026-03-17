@@ -35,6 +35,7 @@
         <div class="ils-toolbar">
           <nav class="admin-tab-nav" aria-label="ILS sections">
             <button class="button button-secondary admin-tab-btn is-active" data-ils-tab="dashboard" type="button">Dashboard</button>
+            <button class="button button-secondary admin-tab-btn" data-ils-tab="acquisitions" type="button">Acquisitions</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="circulation" type="button">Circulation</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="patrons" type="button">Patrons</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="records" type="button">Edit Records</button>
@@ -52,7 +53,7 @@
           <h2>Dashboard</h2>
           <div class="dashboard-tile-grid" aria-label="ILS dashboard shortcuts">
             <button class="dashboard-tile" type="button" data-ils-target="stats">Daily reports</button>
-            <button class="dashboard-tile" type="button" data-ils-target="records">Acquisitions</button>
+            <button class="dashboard-tile" type="button" data-ils-target="acquisitions">Acquisitions</button>
             <button class="dashboard-tile" type="button" data-ils-target="serials">Serials</button>
             <button class="dashboard-tile" type="button" data-ils-target="circulation">Circulation Rules</button>
             <button class="dashboard-tile" type="button" data-ils-empty="true">EMPTY</button>
@@ -60,6 +61,61 @@
             <button class="dashboard-tile" type="button" data-ils-empty="true">EMPTY</button>
             <button class="dashboard-tile" type="button" data-ils-empty="true">EMPTY</button>
           </div>
+        </section>
+
+        <section class="admin-tab-panel hidden" data-ils-panel="acquisitions">
+          <h2>Acquisitions</h2>
+          <p class="muted">Create orders, stage pending materials, and activate them into on-order catalog records.</p>
+
+          <section class="admin-block">
+            <h3>Add item to an order</h3>
+            <form id="acquisitionItemForm" class="simple-form serials-form-grid">
+              <label>Order name* <input id="acqOrderName" required placeholder="Spring 2026 Books" /></label>
+              <label>Vendor / Source <input id="acqVendor" placeholder="Optional" /></label>
+              <label>Order date <input id="acqOrderDate" type="date" /></label>
+              <label>Title* <input id="acqTitle" required placeholder="Item title" /></label>
+              <label>Creator / Author / Artist <input id="acqCreator" placeholder="Optional" /></label>
+              <label>Format
+                <select id="acqFormat">
+                  <option>Book</option>
+                  <option>Vinyl</option>
+                  <option>Board Game</option>
+                  <option>CD</option>
+                  <option>Zine</option>
+                  <option>Magazine</option>
+                  <option>Other</option>
+                </select>
+              </label>
+              <label>Material number* <input id="acqMaterialNumber" required placeholder="Scan or type material number" /></label>
+              <label>Call number <input id="acqCallNumber" /></label>
+              <label>Shelf location <input id="acqLocation" placeholder="Optional" /></label>
+              <label>Cover image URL <input id="acqCoverUrl" type="url" placeholder="https://..." /></label>
+              <label>Cover upload <input id="acqCoverUpload" type="file" accept="image/*" /></label>
+              <label>Order notes <input id="acqNotes" placeholder="Optional" /></label>
+              <button class="button" type="submit">Add as Pending Material</button>
+            </form>
+            <p id="acquisitionMessage" class="status-message" aria-live="polite"></p>
+          </section>
+
+          <section class="admin-block">
+            <h3>Open orders</h3>
+            <table class="serials-table">
+              <thead>
+                <tr><th>Order</th><th>Vendor</th><th>Date</th><th>Items</th></tr>
+              </thead>
+              <tbody id="acquisitionOrdersBody"></tbody>
+            </table>
+          </section>
+
+          <section class="admin-block">
+            <h3>Pending materials</h3>
+            <table class="serials-table">
+              <thead>
+                <tr><th>Title</th><th>Order</th><th>Material #</th><th>Status</th><th>Cover</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="pendingMaterialsBody"></tbody>
+            </table>
+          </section>
         </section>
 
                 <section class="admin-tab-panel hidden" data-ils-panel="circulation">
@@ -331,6 +387,7 @@
                     <option>Available</option>
                     <option>Checked In</option>
                     <option>On Loan</option>
+                    <option>Pending Material</option>
                     <option>On Order</option>
                     <option>Reference Only</option>
                     <option>Missing</option>
@@ -374,6 +431,7 @@
               <option value="Available">Available</option>
               <option value="Checked In">Checked In</option>
               <option value="On Loan">On Loan</option>
+              <option value="Pending Material">Pending Material</option>
               <option value="On Order">On Order</option>
               <option value="Reference Only">Reference Only</option>
               <option value="Missing">Missing</option>

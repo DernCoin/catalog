@@ -91,7 +91,7 @@ export function saveRecords(records) {
 export function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return { locations: [], genres: [], curatedShelves: [], formats: [], bindings: [], patrons: [], subscriptions: [], holds: [] };
+    if (!raw) return { locations: [], genres: [], curatedShelves: [], formats: [], bindings: [], patrons: [], subscriptions: [], holds: [], acquisitionOrders: [], pendingMaterials: [] };
     const parsed = JSON.parse(raw);
     return {
       locations: parsed.locations || [],
@@ -102,9 +102,11 @@ export function loadSettings() {
       patrons: parsed.patrons || [],
       subscriptions: parsed.subscriptions || [],
       holds: parsed.holds || [],
+      acquisitionOrders: parsed.acquisitionOrders || [],
+      pendingMaterials: parsed.pendingMaterials || [],
     };
   } catch {
-    return { locations: [], genres: [], curatedShelves: [], formats: [], bindings: [], patrons: [], subscriptions: [], holds: [] };
+    return { locations: [], genres: [], curatedShelves: [], formats: [], bindings: [], patrons: [], subscriptions: [], holds: [], acquisitionOrders: [], pendingMaterials: [] };
   }
 }
 
