@@ -491,3 +491,52 @@ mark { background:#ffe8f6; color:inherit; padding:0 .15em; border-radius:3px; }
   padding: 0.5rem;
   text-align: left;
 }
+
+.record-workspace {
+  border: 1px solid #cfc5db;
+  border-radius: 10px;
+  background: #fff;
+  padding: .7rem;
+}
+.workspace-toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  align-items: end;
+}
+.workspace-meta-grid {
+  margin-top: .6rem;
+  border: 1px solid var(--border);
+  padding: .4rem .55rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .4rem;
+  background: #faf7ff;
+}
+.workspace-columns {
+  margin-top: .6rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(260px, .9fr);
+  gap: .6rem;
+}
+.workspace-main,
+.workspace-holdings {
+  border: 1px solid #cfc5db;
+  min-height: 280px;
+  padding: .5rem;
+}
+.workspace-grid {
+  margin: .5rem 0 0;
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: .35rem .55rem;
+}
+.workspace-grid dt { font-weight: 700; }
+.workspace-grid dd { margin: 0; }
+.workspace-text { min-height: 4.5rem; }
+
+@media (max-width: 860px) {
+  .workspace-meta-grid,
+  .workspace-columns,
+  .workspace-grid { grid-template-columns: 1fr; }
+}

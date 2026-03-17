@@ -240,6 +240,47 @@
         <section class="admin-tab-panel hidden" data-ils-panel="records">
         <section class="admin-table-wrap">
           <h3>Edit/search records</h3>
+          <section class="record-workspace" aria-label="Record workspace preview">
+            <div class="workspace-toolbar-row">
+              <label>Lookup by
+                <select>
+                  <option>Material Number</option>
+                  <option>Title</option>
+                  <option>Creator</option>
+                </select>
+              </label>
+              <input id="workspaceLookupInput" type="search" placeholder="Enter lookup value" />
+              <button id="workspaceLookupBtn" class="button button-secondary" type="button">Lookup</button>
+              <button id="exportActiveMarcBtn" class="button button-secondary" type="button">Export Active Record as MARC</button>
+            </div>
+            <div class="workspace-meta-grid">
+              <div><strong>Actions:</strong> Save Record • Copy Record</div>
+              <div><strong>View:</strong> MARC View • Patron View</div>
+              <div><strong>Status:</strong> <span id="workspaceStatus">Available</span></div>
+            </div>
+            <div class="workspace-columns">
+              <div class="workspace-main">
+                <h4 id="workspaceTitle">Select a record</h4>
+                <p class="muted" id="workspaceCreator">Use the table below to load a record into this view.</p>
+                <p id="workspaceDescription" class="workspace-text"></p>
+                <dl class="workspace-grid">
+                  <dt>Edition</dt><dd id="workspaceEdition">—</dd>
+                  <dt>Publication</dt><dd id="workspacePublication">—</dd>
+                  <dt>Physical</dt><dd id="workspacePhysical">—</dd>
+                  <dt>Subjects</dt><dd id="workspaceSubjects">—</dd>
+                  <dt>Curated Shelves</dt><dd id="workspaceCuratedShelves">—</dd>
+                </dl>
+              </div>
+              <aside class="workspace-holdings">
+                <h4>Holdings</h4>
+                <p><strong>Material:</strong> <span id="workspaceMaterial">—</span></p>
+                <p><strong>Call #:</strong> <span id="workspaceCallNumber">—</span></p>
+                <p><strong>Type:</strong> <span id="workspaceFormat">—</span></p>
+                <p><strong>Price/Fund:</strong> <span id="workspacePrice">—</span></p>
+                <p><strong>Location:</strong> <span id="workspaceLocation">—</span></p>
+              </aside>
+            </div>
+          </section>
           <div class="admin-tools">
             <label><input id="selectAllRows" type="checkbox" /> Select all</label>
             <select id="bulkStatusSelect">

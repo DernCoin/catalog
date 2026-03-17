@@ -12,6 +12,7 @@ const state = {
   unsubscribeRecords: null,
   circulationTab: "checkout",
   queuedCheckoutItems: [],
+  activeWorkspaceRecordId: "",
 };
 
 const $ = (s) => document.querySelector(s);
@@ -557,6 +558,67 @@ function renderSearchPopover() {
   });
 }
 
+function fillWorkspace(record) {
+  if (!els.workspaceTitle) return;
+  if (!record) {
+    els.workspaceTitle.textContent = "Select a record";
+    els.workspaceCreator.textContent = "Use the table below to load a record into this view.";
+    els.workspaceDescription.textContent = "";
+    ["workspaceEdition","workspacePublication","workspacePhysical","workspaceSubjects","workspaceCuratedShelves","workspaceStatus","workspaceMaterial","workspaceCallNumber","workspaceFormat","workspacePrice","workspaceLocation"].forEach((key) => {
+      if (els[key]) els[key].textContent = "—";
+    });
+    return;
+  }
+
+  const subjects = String(record.subjects || "").trim();
+  const publication = [record.publisher, record.year].filter(Boolean).join(", ");
+  const physical = record.pageCount ? `${record.pageCount} pages` : "1 item";
+  els.workspaceTitle.textContent = record.title || "Untitled";
+  els.workspaceCreator.textContent = record.creator || "Unknown creator";
+  els.workspaceDescription.textContent = record.description || record.notes || "";
+  els.workspaceEdition.textContent = record.edition || "—";
+  els.workspacePublication.textContent = publication || "—";
+  els.workspacePhysical.textContent = physical;
+  els.workspaceSubjects.textContent = subjects || "—";
+  els.workspaceCuratedShelves.textContent = record.curatedShelf || "—";
+  els.workspaceStatus.textContent = record.status || "Available";
+  els.workspaceMaterial.textContent = (record.materialNumbers || []).join(", ") || "—";
+  els.workspaceCallNumber.textContent = record.callNumber || "—";
+  els.workspaceFormat.textContent = record.format || "—";
+  els.workspacePrice.textContent = record.pricePaid ? `$${record.pricePaid}` : "—";
+  els.workspaceLocation.textContent = record.location || "—";
+}
+
+function lookupWorkspaceRecord() {
+  const modeSelect = document.querySelector('.workspace-toolbar-row select');
+  const mode = modeSelect?.value || "Material Number";
+  const query = String(els.workspaceLookupInput?.value || "").trim().toLowerCase();
+  if (!query) {
+    setCirculationMessage("Enter a lookup value first.", true);
+    return;
+  }
+
+  const found = state.records.find((record) => {
+    if (mode === "Title") return String(record.title || "").toLowerCase().includes(query);
+    if (mode === "Creator") return String(record.creator || "").toLowerCase().includes(query);
+    return (record.materialNumbers || []).some((value) => String(value).toLowerCase() == query);
+  });
+
+  if (!found) {
+    setCirculationMessage("No matching record was found.", true);
+    return;
+  }
+
+  setActiveWorkspaceRecord(found.id);
+  setCirculationMessage(`Loaded ${found.title} in the workspace.`);
+}
+
+function setActiveWorkspaceRecord(recordId) {
+  state.activeWorkspaceRecordId = recordId || "";
+  const record = state.records.find((entry) => entry.id === state.activeWorkspaceRecordId);
+  fillWorkspace(record || null);
+}
+
 function renderTable() {
   const rows = state.records.slice().sort((a, b) => Number(b.addedAt || 0) - Number(a.addedAt || 0));
 
@@ -570,7 +632,10 @@ function renderTable() {
       else state.selectedIds.delete(r.id);
     });
 
-    tr.querySelector('[data-act="edit"]').addEventListener("click", () => populateForm(r));
+    tr.querySelector('[data-act="edit"]').addEventListener("click", () => {
+      setActiveWorkspaceRecord(r.id);
+      populateForm(r);
+    });
     tr.querySelector('[data-act="dup"]').addEventListener("click", () => {
       const copy = normalizeRecord({ ...r, id: crypto.randomUUID(), title: `${r.title} (Copy)` });
       state.records.unshift(copy);
@@ -580,12 +645,17 @@ function renderTable() {
     tr.querySelector('[data-act="del"]').addEventListener("click", () => {
       state.records = state.records.filter((entry) => entry.id !== r.id);
       state.selectedIds.delete(r.id);
+      if (state.activeWorkspaceRecordId === r.id) state.activeWorkspaceRecordId = state.records[0]?.id || "";
       saveRecords(state.records);
       render();
     });
 
     els.recordsBody.appendChild(tr);
   });
+
+  if (!rows.length) setActiveWorkspaceRecord("");
+  else if (!state.activeWorkspaceRecordId || !rows.some((row) => row.id === state.activeWorkspaceRecordId)) setActiveWorkspaceRecord(rows[0].id);
+  else fillWorkspace(rows.find((row) => row.id === state.activeWorkspaceRecordId));
 }
 
 function populateForm(record) {
@@ -602,6 +672,7 @@ function populateForm(record) {
 
   window.scrollTo({ top: 0, behavior: "smooth" });
   checkDuplicateDraft();
+  setActiveWorkspaceRecord(record.id);
   switchIlsTab("catalog");
 }
 
