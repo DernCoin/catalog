@@ -89,7 +89,7 @@ export function saveRecords(records) {
 export function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return { locations: [], genres: [], curatedShelves: [], formats: [], bindings: [], patrons: [] };
+    if (!raw) return { locations: [], genres: [], curatedShelves: [], formats: [], bindings: [], patrons: [], subscriptions: [] };
     const parsed = JSON.parse(raw);
     return {
       locations: parsed.locations || [],
@@ -98,9 +98,10 @@ export function loadSettings() {
       formats: parsed.formats || [],
       bindings: parsed.bindings || [],
       patrons: parsed.patrons || [],
+      subscriptions: parsed.subscriptions || [],
     };
   } catch {
-    return { locations: [], genres: [], curatedShelves: [], formats: [], bindings: [], patrons: [] };
+    return { locations: [], genres: [], curatedShelves: [], formats: [], bindings: [], patrons: [], subscriptions: [] };
   }
 }
 

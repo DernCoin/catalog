@@ -37,6 +37,7 @@
             <button class="button button-secondary admin-tab-btn is-active" data-ils-tab="dashboard" type="button">Dashboard</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="circulation" type="button">Circulation</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="patrons" type="button">Patrons</button>
+            <button class="button button-secondary admin-tab-btn" data-ils-tab="serials" type="button">Serials</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="records" type="button">Edit Records</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="stats" type="button">Statistics and Reports</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="utilities" type="button">Utilities</button>
@@ -53,7 +54,7 @@
           <div class="dashboard-tile-grid" aria-label="ILS dashboard shortcuts">
             <button class="dashboard-tile" type="button" data-ils-target="stats">Daily reports</button>
             <button class="dashboard-tile" type="button" data-ils-target="records">Acquisitions</button>
-            <button class="dashboard-tile" type="button" data-ils-target="records">Serials</button>
+            <button class="dashboard-tile" type="button" data-ils-target="serials">Serials</button>
             <button class="dashboard-tile" type="button" data-ils-target="circulation">Circulation Rules</button>
             <button class="dashboard-tile" type="button" data-ils-empty="true">EMPTY</button>
             <button class="dashboard-tile" type="button" data-ils-empty="true">EMPTY</button>
@@ -159,6 +160,74 @@
                 </tr>
               </thead>
               <tbody id="patronsBody"></tbody>
+            </table>
+          </section>
+        </section>
+
+        <section class="admin-tab-panel hidden" data-ils-panel="serials">
+          <h2>Serials</h2>
+          <p class="muted">Track active magazine subscriptions and quickly add newly arrived issues to the catalog.</p>
+
+          <section class="admin-block">
+            <h3>Add magazine issue to catalog</h3>
+            <form id="serialIssueForm" class="simple-form serials-form-grid">
+              <label>Magazine title* <input id="serialTitle" required placeholder="e.g., National Geographic" /></label>
+              <label>Issue label* <input id="serialIssueLabel" required placeholder="Vol. 200, No. 3" /></label>
+              <label>Issue date <input id="serialIssueDate" type="date" /></label>
+              <label>Publisher <input id="serialPublisher" placeholder="Optional" /></label>
+              <label>ISSN / Identifier <input id="serialIdentifier" placeholder="Optional" /></label>
+              <label>Barcode / Material Number* <input id="serialMaterialNumber" required placeholder="Scan or type material number" /></label>
+              <label>Shelf location <input id="serialLocation" placeholder="Periodicals" /></label>
+              <label>Call number <input id="serialCallNumber" placeholder="AP2 .N37" /></label>
+              <button class="button" type="submit">Add Issue Record</button>
+            </form>
+            <p id="serialIssueMessage" class="status-message" aria-live="polite"></p>
+          </section>
+
+          <section class="admin-block">
+            <h3>Subscription tracker</h3>
+            <form id="serialSubscriptionForm" class="simple-form serials-form-grid">
+              <label>Magazine title* <input id="subscriptionTitle" required placeholder="Magazine name" /></label>
+              <label>Frequency
+                <select id="subscriptionFrequency">
+                  <option>Weekly</option>
+                  <option>Biweekly</option>
+                  <option>Monthly</option>
+                  <option>Bimonthly</option>
+                  <option>Quarterly</option>
+                  <option>Annual</option>
+                  <option>Irregular</option>
+                </select>
+              </label>
+              <label>Renewal date <input id="subscriptionRenewalDate" type="date" /></label>
+              <label>Vendor / Source <input id="subscriptionVendor" placeholder="Optional" /></label>
+              <label>Annual cost <input id="subscriptionCost" type="number" min="0" step="0.01" placeholder="0.00" /></label>
+              <label>Status
+                <select id="subscriptionStatus">
+                  <option>Active</option>
+                  <option>Paused</option>
+                  <option>Cancelled</option>
+                </select>
+              </label>
+              <button class="button" type="submit">Save Subscription</button>
+            </form>
+            <p id="serialSubscriptionMessage" class="status-message" aria-live="polite"></p>
+
+            <table id="subscriptionsTable" class="serials-table">
+              <thead>
+                <tr><th>Title</th><th>Frequency</th><th>Renewal</th><th>Status</th><th>Cost</th><th>Vendor</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="subscriptionsBody"></tbody>
+            </table>
+          </section>
+
+          <section class="admin-block">
+            <h3>Recently added issues</h3>
+            <table id="serialIssuesTable" class="serials-table">
+              <thead>
+                <tr><th>Magazine</th><th>Issue</th><th>Date Added</th><th>Material #</th><th>Location</th></tr>
+              </thead>
+              <tbody id="serialIssuesBody"></tbody>
             </table>
           </section>
         </section>
