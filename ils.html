@@ -35,10 +35,9 @@
         <div class="ils-toolbar">
           <nav class="admin-tab-nav" aria-label="ILS sections">
             <button class="button button-secondary admin-tab-btn is-active" data-ils-tab="dashboard" type="button">Dashboard</button>
-            <button class="button button-secondary admin-tab-btn" data-ils-tab="catalog" type="button">Catalog</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="circulation" type="button">Circulation</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="patrons" type="button">Patrons</button>
-            <button class="button button-secondary admin-tab-btn" data-ils-tab="records" type="button">Records</button>
+            <button class="button button-secondary admin-tab-btn" data-ils-tab="records" type="button">Edit Records</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="stats" type="button">Statistics and Reports</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="utilities" type="button">Utilities</button>
           </nav>
@@ -53,7 +52,7 @@
           <h2>Dashboard</h2>
           <div class="dashboard-tile-grid" aria-label="ILS dashboard shortcuts">
             <button class="dashboard-tile" type="button" data-ils-target="stats">Daily reports</button>
-            <button class="dashboard-tile" type="button" data-ils-target="catalog">Acquisitions</button>
+            <button class="dashboard-tile" type="button" data-ils-target="records">Acquisitions</button>
             <button class="dashboard-tile" type="button" data-ils-target="records">Serials</button>
             <button class="dashboard-tile" type="button" data-ils-target="circulation">Circulation Rules</button>
             <button class="dashboard-tile" type="button" data-ils-empty="true">EMPTY</button>
@@ -63,80 +62,7 @@
           </div>
         </section>
 
-        <section class="admin-tab-panel" data-ils-panel="catalog">
-        <h2>Record Management</h2>
-        <div class="admin-tools top-space isbn-import-row">
-          <button id="fetchMetadataBtn" class="button button-secondary" type="button">Attempt importing record by ISBN</button>
-          <label>ISBN / UPC / Catalog Number <input id="identifier" /></label>
-        </div>
-        <form id="recordForm" class="catalog-form">
-          <input id="recordId" type="hidden" />
-          <div class="catalog-form-layout">
-            <fieldset>
-              <legend>Core Bibliographic Details</legend>
-              <div class="form-grid">
-                <label>Title* <input id="title" required /></label>
-                <label>Subtitle <input id="subtitle" /></label>
-                <label>Creator / Author / Artist* <input id="creator" required /></label>
-                <label>Additional Contributors <input id="contributors" placeholder="Editor, narrator, illustrator..." /></label>
-                <label>Format* <select id="format" required></select></label>
-                <label>Edition <input id="edition" /></label>
-                <label>Publication Year <input id="year" type="number" min="0" /></label>
-                <label>Publisher / Label <input id="publisher" /></label>
-                <label>Genres <select id="genres" multiple size="6"></select></label>
-                <label>Custom Genre / Category <input id="genre" placeholder="Optional custom" /></label>
-                <label>Binding <select id="binding"></select></label>
-                <label>Series Name <input id="seriesName" /></label>
-                <label>Series Number <input id="seriesNumber" type="number" min="0" /></label>
-                <label>Curated Shelf <select id="curatedShelf"></select></label>
-                <label>Page count <input id="pageCount" type="number" min="1" step="1" /></label>
-                <label>Subjects / Tags <input id="subjects" placeholder="Comma-separated" /></label>
-              </div>
-            </fieldset>
-
-            <fieldset>
-              <legend>Holdings & Local Data</legend>
-              <div class="form-grid">
-                <label>Status
-                  <select id="status">
-                    <option>Available</option>
-                    <option>Checked In</option>
-                    <option>On Loan</option>
-                    <option>On Order</option>
-                    <option>Reference Only</option>
-                    <option>Missing</option>
-                  </select>
-                </label>
-                <label>Location <select id="location"></select></label>
-                <label>Call Number <input id="callNumber" /></label>
-                <label>Accession Number <input id="accessionNumber" /></label>
-                <label>Material Number(s)
-                  <textarea id="materialNumbers" rows="2" placeholder="One material number per line"></textarea>
-                </label>
-                <label>Date Acquired <input id="dateAcquired" type="date" /></label>
-                <label>Date Added <input id="dateAdded" type="date" /></label>
-                <label>Source <input id="source" /></label>
-                <label>Price Paid <input id="pricePaid" type="number" min="0" step="0.01" /></label>
-                <label>Cover Image URL <input id="coverUrl" type="url" placeholder="https://..." /></label>
-                <label>Cover Upload <input id="coverUpload" type="file" accept="image/*" /></label>
-              </div>
-              <p id="coverUploadStatus" class="status-message"></p>
-              <label>Description / Summary <textarea id="description" rows="3"></textarea></label>
-              <label>Personal Notes <textarea id="notes" rows="2"></textarea></label>
-            </fieldset>
-          </div>
-
-          <div id="duplicateWarning" class="warning"></div>
-
-          <div class="actions">
-            <button class="button" type="submit">Save Record</button>
-            <button id="cancelEditBtn" class="button button-secondary" type="button">Cancel Edit</button>
-          </div>
-        </form>
-
-        </section>
-
-        <section class="admin-tab-panel hidden" data-ils-panel="circulation">
+                <section class="admin-tab-panel hidden" data-ils-panel="circulation">
           <h2>Circulation</h2>
           <div class="admin-tab-nav circulation-subtabs" aria-label="Circulation actions">
             <button class="button button-secondary circulation-tab-btn is-active" type="button" data-circulation-tab="checkout">Check Out</button>
@@ -239,6 +165,77 @@
 
         <section class="admin-tab-panel hidden" data-ils-panel="records">
         <section class="admin-table-wrap">
+          <h3>Edit Records</h3>
+        <h2>Record Management</h2>
+        <div class="admin-tools top-space isbn-import-row">
+          <button id="fetchMetadataBtn" class="button button-secondary" type="button">Attempt importing record by ISBN</button>
+          <label>ISBN / UPC / Catalog Number <input id="identifier" /></label>
+        </div>
+        <form id="recordForm" class="catalog-form">
+          <input id="recordId" type="hidden" />
+          <div class="catalog-form-layout">
+            <fieldset>
+              <legend>Core Bibliographic Details</legend>
+              <div class="form-grid">
+                <label>Title* <input id="title" required /></label>
+                <label>Subtitle <input id="subtitle" /></label>
+                <label>Creator / Author / Artist* <input id="creator" required /></label>
+                <label>Additional Contributors <input id="contributors" placeholder="Editor, narrator, illustrator..." /></label>
+                <label>Format* <select id="format" required></select></label>
+                <label>Edition <input id="edition" /></label>
+                <label>Publication Year <input id="year" type="number" min="0" /></label>
+                <label>Publisher / Label <input id="publisher" /></label>
+                <label>Genres <select id="genres" multiple size="6"></select></label>
+                <label>Custom Genre / Category <input id="genre" placeholder="Optional custom" /></label>
+                <label>Binding <select id="binding"></select></label>
+                <label>Series Name <input id="seriesName" /></label>
+                <label>Series Number <input id="seriesNumber" type="number" min="0" /></label>
+                <label>Curated Shelf <select id="curatedShelf"></select></label>
+                <label>Page count <input id="pageCount" type="number" min="1" step="1" /></label>
+                <label>Subjects / Tags <input id="subjects" placeholder="Comma-separated" /></label>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Holdings & Local Data</legend>
+              <div class="form-grid">
+                <label>Status
+                  <select id="status">
+                    <option>Available</option>
+                    <option>Checked In</option>
+                    <option>On Loan</option>
+                    <option>On Order</option>
+                    <option>Reference Only</option>
+                    <option>Missing</option>
+                  </select>
+                </label>
+                <label>Location <select id="location"></select></label>
+                <label>Call Number <input id="callNumber" /></label>
+                <label>Accession Number <input id="accessionNumber" /></label>
+                <label>Material Number(s)
+                  <textarea id="materialNumbers" rows="2" placeholder="One material number per line"></textarea>
+                </label>
+                <label>Date Acquired <input id="dateAcquired" type="date" /></label>
+                <label>Date Added <input id="dateAdded" type="date" /></label>
+                <label>Source <input id="source" /></label>
+                <label>Price Paid <input id="pricePaid" type="number" min="0" step="0.01" /></label>
+                <label>Cover Image URL <input id="coverUrl" type="url" placeholder="https://..." /></label>
+                <label>Cover Upload <input id="coverUpload" type="file" accept="image/*" /></label>
+              </div>
+              <p id="coverUploadStatus" class="status-message"></p>
+              <label>Description / Summary <textarea id="description" rows="3"></textarea></label>
+              <label>Personal Notes <textarea id="notes" rows="2"></textarea></label>
+            </fieldset>
+          </div>
+
+          <div id="duplicateWarning" class="warning"></div>
+
+          <div class="actions">
+            <button class="button" type="submit">Save Record</button>
+            <button id="cancelEditBtn" class="button button-secondary" type="button">Cancel Edit</button>
+          </div>
+        </form>
+
           <h3>Edit/search records</h3>
           <section class="record-workspace" aria-label="Record workspace preview">
             <div class="workspace-toolbar-row">
