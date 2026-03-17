@@ -12,6 +12,7 @@ const state = {
   unsubscribeRecords: null,
   circulationTab: "checkout",
   queuedCheckoutItems: [],
+  activeWorkspaceRecordId: "",
 };
 
 const $ = (s) => document.querySelector(s);
@@ -39,6 +40,24 @@ const els = {
   applyBulkBtn: $("#applyBulkBtn"),
   bulkGenreSelect: $("#bulkGenreSelect"),
   bulkGenreAddBtn: $("#bulkGenreAddBtn"),
+  bulkMarcExportBtn: $("#bulkMarcExportBtn"),
+  exportActiveMarcBtn: $("#exportActiveMarcBtn"),
+  workspaceLookupInput: $("#workspaceLookupInput"),
+  workspaceLookupBtn: $("#workspaceLookupBtn"),
+  workspaceTitle: $("#workspaceTitle"),
+  workspaceCreator: $("#workspaceCreator"),
+  workspaceDescription: $("#workspaceDescription"),
+  workspaceEdition: $("#workspaceEdition"),
+  workspacePublication: $("#workspacePublication"),
+  workspacePhysical: $("#workspacePhysical"),
+  workspaceSubjects: $("#workspaceSubjects"),
+  workspaceCuratedShelves: $("#workspaceCuratedShelves"),
+  workspaceStatus: $("#workspaceStatus"),
+  workspaceMaterial: $("#workspaceMaterial"),
+  workspaceCallNumber: $("#workspaceCallNumber"),
+  workspaceFormat: $("#workspaceFormat"),
+  workspacePrice: $("#workspacePrice"),
+  workspaceLocation: $("#workspaceLocation"),
   formatSelect: $("#format"),
   bindingSelect: $("#binding"),
   locationSelect: $("#location"),
@@ -556,20 +575,84 @@ function renderSearchPopover() {
   });
 }
 
+function fillWorkspace(record) {
+  if (!els.workspaceTitle) return;
+  if (!record) {
+    els.workspaceTitle.textContent = "Select a record";
+    els.workspaceCreator.textContent = "Use the table below to load a record into this view.";
+    els.workspaceDescription.textContent = "";
+    ["workspaceEdition","workspacePublication","workspacePhysical","workspaceSubjects","workspaceCuratedShelves","workspaceStatus","workspaceMaterial","workspaceCallNumber","workspaceFormat","workspacePrice","workspaceLocation"].forEach((key) => {
+      if (els[key]) els[key].textContent = "—";
+    });
+    return;
+  }
+
+  const subjects = String(record.subjects || "").trim();
+  const publication = [record.publisher, record.year].filter(Boolean).join(", ");
+  const physical = record.pageCount ? `${record.pageCount} pages` : "1 item";
+  els.workspaceTitle.textContent = record.title || "Untitled";
+  els.workspaceCreator.textContent = record.creator || "Unknown creator";
+  els.workspaceDescription.textContent = record.description || record.notes || "";
+  els.workspaceEdition.textContent = record.edition || "—";
+  els.workspacePublication.textContent = publication || "—";
+  els.workspacePhysical.textContent = physical;
+  els.workspaceSubjects.textContent = subjects || "—";
+  els.workspaceCuratedShelves.textContent = record.curatedShelf || "—";
+  els.workspaceStatus.textContent = record.status || "Available";
+  els.workspaceMaterial.textContent = (record.materialNumbers || []).join(", ") || "—";
+  els.workspaceCallNumber.textContent = record.callNumber || "—";
+  els.workspaceFormat.textContent = record.format || "—";
+  els.workspacePrice.textContent = record.pricePaid ? `$${record.pricePaid}` : "—";
+  els.workspaceLocation.textContent = record.location || "—";
+}
+
+function lookupWorkspaceRecord() {
+  const modeSelect = document.querySelector('.workspace-toolbar-row select');
+  const mode = modeSelect?.value || "Material Number";
+  const query = String(els.workspaceLookupInput?.value || "").trim().toLowerCase();
+  if (!query) {
+    setCirculationMessage("Enter a lookup value first.", true);
+    return;
+  }
+
+  const found = state.records.find((record) => {
+    if (mode === "Title") return String(record.title || "").toLowerCase().includes(query);
+    if (mode === "Creator") return String(record.creator || "").toLowerCase().includes(query);
+    return (record.materialNumbers || []).some((value) => String(value).toLowerCase() == query);
+  });
+
+  if (!found) {
+    setCirculationMessage("No matching record was found.", true);
+    return;
+  }
+
+  setActiveWorkspaceRecord(found.id);
+  setCirculationMessage(`Loaded ${found.title} in the workspace.`);
+}
+
+function setActiveWorkspaceRecord(recordId) {
+  state.activeWorkspaceRecordId = recordId || "";
+  const record = state.records.find((entry) => entry.id === state.activeWorkspaceRecordId);
+  fillWorkspace(record || null);
+}
+
 function renderTable() {
   const rows = state.records.slice().sort((a, b) => Number(b.addedAt || 0) - Number(a.addedAt || 0));
 
   els.recordsBody.innerHTML = "";
   rows.forEach((r) => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td><input type="checkbox" ${state.selectedIds.has(r.id) ? "checked" : ""}></td><td>${r.title}</td><td>${r.creator}</td><td>${r.format}</td><td>${r.year || ""}</td><td>${r.status || "Available"}</td><td><button class="button button-secondary" data-act="edit" type="button">Edit</button> <button class="button button-secondary" data-act="dup" type="button">Duplicate</button> <button class="button" data-act="del" type="button">Delete</button></td>`;
+    tr.innerHTML = `<td><input type="checkbox" ${state.selectedIds.has(r.id) ? "checked" : ""}></td><td>${r.title}</td><td>${r.creator}</td><td>${r.format}</td><td>${r.year || ""}</td><td>${r.curatedShelf || "—"}</td><td>${r.status || "Available"}</td><td><button class="button button-secondary" data-act="edit" type="button">Edit</button> <button class="button button-secondary" data-act="dup" type="button">Duplicate</button> <button class="button" data-act="del" type="button">Delete</button></td>`;
 
     tr.querySelector('input[type="checkbox"]').addEventListener("change", (event) => {
       if (event.target.checked) state.selectedIds.add(r.id);
       else state.selectedIds.delete(r.id);
     });
 
-    tr.querySelector('[data-act="edit"]').addEventListener("click", () => populateForm(r));
+    tr.querySelector('[data-act="edit"]').addEventListener("click", () => {
+      setActiveWorkspaceRecord(r.id);
+      populateForm(r);
+    });
     tr.querySelector('[data-act="dup"]').addEventListener("click", () => {
       const copy = normalizeRecord({ ...r, id: crypto.randomUUID(), title: `${r.title} (Copy)` });
       state.records.unshift(copy);
@@ -579,12 +662,17 @@ function renderTable() {
     tr.querySelector('[data-act="del"]').addEventListener("click", () => {
       state.records = state.records.filter((entry) => entry.id !== r.id);
       state.selectedIds.delete(r.id);
+      if (state.activeWorkspaceRecordId === r.id) state.activeWorkspaceRecordId = state.records[0]?.id || "";
       saveRecords(state.records);
       render();
     });
 
     els.recordsBody.appendChild(tr);
   });
+
+  if (!rows.length) setActiveWorkspaceRecord("");
+  else if (!state.activeWorkspaceRecordId || !rows.some((row) => row.id === state.activeWorkspaceRecordId)) setActiveWorkspaceRecord(rows[0].id);
+  else fillWorkspace(rows.find((row) => row.id === state.activeWorkspaceRecordId));
 }
 
 function populateForm(record) {
@@ -601,6 +689,7 @@ function populateForm(record) {
 
   window.scrollTo({ top: 0, behavior: "smooth" });
   checkDuplicateDraft();
+  setActiveWorkspaceRecord(record.id);
   switchIlsTab("catalog");
 }
 
@@ -700,6 +789,91 @@ function bulkAddGenres() {
 
   saveRecords(state.records);
   render();
+}
+
+function marcSafe(value) {
+  return String(value || "").replaceAll("\n", " ").replaceAll("|", "\u01c0").trim();
+}
+
+function toMarcMrk(record) {
+  const stamp = new Date();
+  const year = String(record.year || "").trim();
+  const yearField = year ? year.slice(0, 4).padEnd(4, " ") : "    ";
+  const lines = [
+    "=LDR  00000nam a2200000 i 4500",
+    `=001  ${marcSafe(record.id || record.permalink || crypto.randomUUID())}`,
+    `=005  ${stamp.toISOString().replace(/[-:T.Z]/g, "").slice(0, 14)}.0`,
+    `=008  ${stamp.toISOString().slice(2, 10).replaceAll("-", "")}s${yearField}\\xx\\\\\\\\\\\\\\\eng\\d`,
+  ];
+
+  if (record.identifier) lines.push(`=020  \\$a${marcSafe(record.identifier)}`);
+  if (record.creator) lines.push(`=100  1\\$a${marcSafe(record.creator)}`);
+  lines.push(`=245  10$a${marcSafe(record.title)}${record.subtitle ? `$b${marcSafe(record.subtitle)}` : ""}`);
+  if (record.edition) lines.push(`=250  \\$a${marcSafe(record.edition)}`);
+  if (record.publisher || record.year) lines.push(`=260  \\$b${marcSafe(record.publisher)}${record.year ? `$c${marcSafe(record.year)}` : ""}`);
+  lines.push(`=300  \\$a${record.pageCount ? `${marcSafe(record.pageCount)} pages` : "1 item"}`);
+  if (record.notes) lines.push(`=500  \\$a${marcSafe(record.notes)}`);
+  if (record.genre || (record.genres || []).length) lines.push(`=650  \\0$a${marcSafe(record.genre || (record.genres || []).join(", "))}`);
+  if (record.subjects) lines.push(`=650  \\0$a${marcSafe(record.subjects)}`);
+  if (record.callNumber || record.location || record.curatedShelf) {
+    lines.push(`=852  \\$h${marcSafe(record.callNumber)}$b${marcSafe(record.location)}$x${marcSafe(record.curatedShelf)}`);
+  }
+
+  return lines;
+}
+
+
+function exportActiveMarc() {
+  if (!state.activeWorkspaceRecordId) {
+    setCirculationMessage("Choose an active record from the table first.", true);
+    return;
+  }
+  const record = state.records.find((entry) => entry.id === state.activeWorkspaceRecordId);
+  if (!record) {
+    setCirculationMessage("Active record is no longer available.", true);
+    return;
+  }
+
+  const marcText = toMarcMrk({
+    ...record,
+    title: record.title || "Untitled",
+    creator: record.creator || "Unknown creator",
+  }).join("\n");
+
+  const blob = new Blob([marcText], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `record-${record.id || "export"}.mrk`;
+  link.click();
+  URL.revokeObjectURL(url);
+  setCirculationMessage(`Exported ${record.title || "record"} as MARC (.mrk).`);
+}
+
+function exportSelectedMarc() {
+  const selected = state.records.filter((record) => state.selectedIds.has(record.id));
+  if (!selected.length) {
+    setCirculationMessage("Select at least one record to export as MARC.", true);
+    return;
+  }
+
+  const marcText = selected.map((record) => {
+    const required = {
+      ...record,
+      title: record.title || "Untitled",
+      creator: record.creator || "Unknown creator",
+    };
+    return toMarcMrk(required).join("\n");
+  }).join("\n\n");
+
+  const blob = new Blob([marcText], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `catalog-marc-export-${new Date().toISOString().slice(0, 10)}.mrk`;
+  link.click();
+  URL.revokeObjectURL(url);
+  setCirculationMessage(`Exported ${selected.length} record(s) as MARC (.mrk).`);
 }
 
 async function fetchMetadata() {
@@ -844,6 +1018,9 @@ function bindEvents() {
 
   els.applyBulkBtn.addEventListener("click", applyBulkStatus);
   els.bulkGenreAddBtn.addEventListener("click", bulkAddGenres);
+  if (els.bulkMarcExportBtn) els.bulkMarcExportBtn.addEventListener("click", exportSelectedMarc);
+  if (els.exportActiveMarcBtn) els.exportActiveMarcBtn.addEventListener("click", exportActiveMarc);
+  if (els.workspaceLookupBtn) els.workspaceLookupBtn.addEventListener("click", lookupWorkspaceRecord);
   if (els.patronForm) els.patronForm.addEventListener("submit", addPatron);
   if (els.checkOutForm) els.checkOutForm.addEventListener("submit", checkOutRecord);
   if (els.queueCheckoutItemBtn) els.queueCheckoutItemBtn.addEventListener("click", queueCheckoutItem);
