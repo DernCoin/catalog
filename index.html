@@ -20,18 +20,17 @@
       </div>
     </header>
 
-    <main class="layout">
-      <section id="opacSection" class="card">
-        <div class="section-header">
-          <h2>Public Catalog</h2>
-          <div id="catalogStats" class="stats"></div>
-        </div>
-        <nav class="public-nav">
+    <div class="catalog-tab-bar">
+      <nav class="public-nav" aria-label="Catalog views">
           <button class="button button-secondary nav-btn" data-view="search" type="button">Search</button>
           <button class="button button-secondary nav-btn" data-view="recent" type="button">Recently Added Page</button>
           <button class="button button-secondary nav-btn" data-view="covers" type="button">Cover Wall</button>
           <button class="button button-secondary nav-btn" data-view="shelves" type="button">Curated Shelves</button>
-        </nav>
+      </nav>
+    </div>
+
+    <main class="layout">
+      <section id="opacSection" class="card">
 
         <section id="viewSearch" class="view-panel">
         <section class="arrivals" aria-labelledby="arrivalsTitle">
