@@ -16,6 +16,8 @@ const state = {
   queuedCheckoutItems: [],
   activeWorkspaceRecordId: "",
   authMode: isFirebaseConfigured() ? "firebase" : "local",
+  isLocalAuthActive: false,
+  isFirebaseAuthActive: false,
   editingPatronId: "",
   draftHoldings: [],
 };
@@ -176,10 +178,18 @@ function switchIlsTab(tab) {
   if (tab !== "records") hideSearchPopover();
 }
 
+function isAuthenticated() {
+  return state.isLocalAuthActive || state.isFirebaseAuthActive;
+}
+
 function setAuthenticatedUI(isAuthed) {
   els.loginCard.classList.toggle("hidden", isAuthed);
   els.ilsCard.classList.toggle("hidden", !isAuthed);
   els.logoutBtn.classList.toggle("hidden", !isAuthed);
+}
+
+function syncAuthUI() {
+  setAuthenticatedUI(isAuthenticated());
 }
 
 function getCredentialLabel() {
@@ -189,15 +199,20 @@ function getCredentialLabel() {
 }
 
 function tryLocalAdminLogin(username, password) {
-  return login(username.trim(), password);
+  const ok = login(username.trim(), password);
+  state.isLocalAuthActive = ok;
+  return ok;
 }
 
 async function authenticateStaff(username, password) {
   const trimmedUsername = username.trim();
 
   if (tryLocalAdminLogin(trimmedUsername, password)) {
+    syncAuthUI();
     return "local";
   }
+
+  state.isLocalAuthActive = false;
 
   if (state.authMode === "firebase") {
     await loginWithFirebase(trimmedUsername, password);
@@ -1782,22 +1797,22 @@ function bindEvents() {
     els.loginError.textContent = "";
 
     try {
-      const authSource = await authenticateStaff(els.email.value, els.password.value);
+      await authenticateStaff(els.email.value, els.password.value);
       els.loginForm.reset();
-      if (authSource === "local") {
-        setAuthenticatedUI(true);
-      }
+      syncAuthUI();
     } catch (error) {
       els.loginError.textContent = `Unable to log in. ${error?.message || `Check ${getCredentialLabel()}.`}`;
     }
   });
 
   els.logoutBtn.addEventListener("click", async () => {
+    state.isLocalAuthActive = false;
+    logout();
+
     if (state.authMode === "firebase") {
       await logoutFirebase();
     } else {
-      logout();
-      setAuthenticatedUI(false);
+      syncAuthUI();
     }
   });
 
@@ -1924,13 +1939,16 @@ function init() {
   bindEvents();
   state.draftHoldings = [sanitizeHolding()];
 
+  state.isLocalAuthActive = isAdminSessionActive();
+
   if (state.authMode === "local") {
     els.loginError.textContent = `Firebase is not configured. Sign in with ${getCredentialLabel()}.`;
-    setAuthenticatedUI(isAdminSessionActive());
+    syncAuthUI();
   } else {
+    syncAuthUI();
     onFirebaseAuthStateChanged((user) => {
-      const isAuthed = Boolean(user);
-      setAuthenticatedUI(isAuthed);
+      state.isFirebaseAuthActive = Boolean(user);
+      syncAuthUI();
 
       if (state.unsubscribeRecords) {
         state.unsubscribeRecords();
@@ -1941,7 +1959,7 @@ function init() {
         state.unsubscribeSettings = null;
       }
 
-      if (!isAuthed) return;
+      if (!state.isFirebaseAuthActive) return;
 
       loadSettingsFromRemote().then((settings) => {
         if (settings) {
