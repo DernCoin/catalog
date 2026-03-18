@@ -1,7 +1,18 @@
 import { duplicateCandidates, PRELOADED_GENRES, asArray, getStats } from "./catalog.js";
 import { normalizeRecord, loadRecords, saveRecords, loadSettings, loadSettingsFromRemote, saveSettings } from "./storage.js";
-import { isFirebaseConfigured, loginWithFirebase, logoutFirebase, onFirebaseAuthStateChanged, subscribeToFirebaseRecords, subscribeToFirebaseSettings } from "./firebase.js";
+import { FIREBASE_CONFIG, isFirebaseConfigReady } from "./config.js";
 import { login, logout, isAdminSessionActive } from "./auth.js";
+
+let firebaseModulePromise;
+
+function isFirebaseConfigured() {
+  return isFirebaseConfigReady(FIREBASE_CONFIG);
+}
+
+async function loadFirebaseModule() {
+  firebaseModulePromise ||= import("./firebase.js");
+  return firebaseModulePromise;
+}
 
 const state = {
   records: loadRecords(),
@@ -215,6 +226,7 @@ async function authenticateStaff(username, password) {
   state.isLocalAuthActive = false;
 
   if (state.authMode === "firebase") {
+    const { loginWithFirebase } = await loadFirebaseModule();
     await loginWithFirebase(trimmedUsername, password);
     return "firebase";
   }
@@ -1810,6 +1822,7 @@ function bindEvents() {
     logout();
 
     if (state.authMode === "firebase") {
+      const { logoutFirebase } = await loadFirebaseModule();
       await logoutFirebase();
     } else {
       syncAuthUI();
@@ -1946,7 +1959,7 @@ function init() {
     syncAuthUI();
   } else {
     syncAuthUI();
-    onFirebaseAuthStateChanged((user) => {
+    loadFirebaseModule().then(({ onFirebaseAuthStateChanged, subscribeToFirebaseRecords, subscribeToFirebaseSettings }) => onFirebaseAuthStateChanged((user) => {
       state.isFirebaseAuthActive = Boolean(user);
       syncAuthUI();
 
@@ -1981,6 +1994,11 @@ function init() {
       }, (error) => {
         els.loginError.textContent = `Could not load Firebase records. ${error?.message || "Check Firestore permissions."}`;
       });
+    })).catch((error) => {
+      state.authMode = "local";
+      state.isFirebaseAuthActive = false;
+      els.loginError.textContent = `Could not load Firebase services. ${error?.message || "Check your network connection and Firebase setup."} Sign in with ${getCredentialLabel()}.`;
+      syncAuthUI();
     });
   }
 
