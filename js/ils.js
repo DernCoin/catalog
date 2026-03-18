@@ -183,7 +183,28 @@ function setAuthenticatedUI(isAuthed) {
 }
 
 function getCredentialLabel() {
-  return state.authMode === "firebase" ? "Firebase email/password account" : "local admin credentials (admin / catalog123)";
+  return state.authMode === "firebase"
+    ? "a Firebase email/password account or the local admin fallback (admin / catalog123)"
+    : "local admin credentials (admin / catalog123)";
+}
+
+function tryLocalAdminLogin(username, password) {
+  return login(username.trim(), password);
+}
+
+async function authenticateStaff(username, password) {
+  const trimmedUsername = username.trim();
+
+  if (tryLocalAdminLogin(trimmedUsername, password)) {
+    return "local";
+  }
+
+  if (state.authMode === "firebase") {
+    await loginWithFirebase(trimmedUsername, password);
+    return "firebase";
+  }
+
+  throw new Error(`Use ${getCredentialLabel()}.`);
 }
 
 
@@ -1761,14 +1782,11 @@ function bindEvents() {
     els.loginError.textContent = "";
 
     try {
-      if (state.authMode === "firebase") {
-        await loginWithFirebase(els.email.value.trim(), els.password.value);
-      } else if (!login(els.email.value.trim(), els.password.value)) {
-        throw new Error(`Use ${getCredentialLabel()}.`);
-      }
-
+      const authSource = await authenticateStaff(els.email.value, els.password.value);
       els.loginForm.reset();
-      if (state.authMode === "local") setAuthenticatedUI(true);
+      if (authSource === "local") {
+        setAuthenticatedUI(true);
+      }
     } catch (error) {
       els.loginError.textContent = `Unable to log in. ${error?.message || `Check ${getCredentialLabel()}.`}`;
     }
