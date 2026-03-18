@@ -127,7 +127,8 @@ export function loadRecords() {
 export async function loadRecordsFromRemote() {
   if (!isFirebaseConfigured()) return [];
   try {
-    const { fetchAllFirebaseRecords } = await loadFirebaseModule();
+    const { fetchAllFirebaseRecords, isFirebaseAuthActive } = await loadFirebaseModule();
+    if (!isFirebaseAuthActive()) return [];
     const records = await fetchAllFirebaseRecords();
     return records.map(normalizeRecord);
   } catch (error) {
@@ -142,7 +143,8 @@ export function saveRecords(records) {
 
   syncQueue = syncQueue
     .then(async () => {
-      const { syncFirebaseRecords } = await loadFirebaseModule();
+      const { syncFirebaseRecords, isFirebaseAuthActive } = await loadFirebaseModule();
+      if (!isFirebaseAuthActive()) return null;
       return syncFirebaseRecords(records);
     })
     .catch((error) => {
@@ -161,27 +163,9 @@ export function loadSettings() {
   }
 }
 
-export async function loadSettingsFromRemote() {
-  if (!isFirebaseConfigured()) return null;
-  try {
-    const { fetchFirebaseSettings } = await loadFirebaseModule();
-    const settings = await fetchFirebaseSettings();
-    return settings ? { ...DEFAULT_SETTINGS, ...settings } : null;
-  } catch (error) {
-    console.error("Unable to load Firebase settings", error);
-    return null;
-  }
-}
 
 export function saveSettings(settings) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-  if (!isFirebaseConfigured()) return;
-  syncQueue = syncQueue.then(async () => {
-    const { syncFirebaseSettings } = await loadFirebaseModule();
-    return syncFirebaseSettings(settings);
-  }).catch((error) => {
-    console.error("Unable to sync Firebase settings", error);
-  });
 }
 
 export function exportRecords(records) {

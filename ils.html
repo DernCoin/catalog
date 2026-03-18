@@ -15,23 +15,11 @@
       </div>
       <div class="header-actions">
         <a class="button button-secondary" href="./index.html">Back to OPAC</a>
-        <button id="logoutBtn" class="button button-secondary hidden" type="button">Log out</button>
       </div>
     </header>
 
     <main class="layout ils-layout">
-      <section class="card" id="loginCard">
-        <h2>Staff Login</h2>
-        <p class="muted">Use your Firebase staff login, or sign in locally with <strong>admin</strong> / <strong>catalog123</strong> while Firebase is unavailable.</p>
-        <form id="loginForm" class="simple-form">
-          <label>Email or username <input id="email" type="text" autocomplete="username" required /></label>
-          <label>Password <input id="password" type="password" required /></label>
-          <button class="button" type="submit">Sign in</button>
-          <p id="loginError" class="warning"></p>
-        </form>
-      </section>
-
-      <section class="card hidden" id="ilsCard">
+      <section class="card" id="ilsCard">
         <div class="ils-toolbar">
           <nav class="admin-tab-nav" aria-label="ILS sections">
             <button class="button button-secondary admin-tab-btn is-active" data-ils-tab="dashboard" type="button">Dashboard</button>
