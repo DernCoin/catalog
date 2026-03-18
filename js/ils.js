@@ -49,6 +49,10 @@ const els = {
   newGenreInput: $("#newGenreInput"),
   addGenreBtn: $("#addGenreBtn"),
   genreList: $("#genreList"),
+  materialTypeSelect: $("#materialType"),
+  newMaterialTypeInput: $("#newMaterialTypeInput"),
+  addMaterialTypeBtn: $("#addMaterialTypeBtn"),
+  materialTypeList: $("#materialTypeList"),
   newFormatInput: $("#newFormatInput"),
   addFormatBtn: $("#addFormatBtn"),
   formatList: $("#formatList"),
@@ -118,6 +122,7 @@ const els = {
   queueCheckoutItemBtn: $("#queueCheckoutItemBtn"),
   checkOutQueue: $("#checkOutQueue"),
   checkOutDueDate: $("#checkOutDueDate"),
+  circulationRulesBody: $("#circulationRulesBody"),
   checkInForm: $("#checkInForm"),
   checkInMaterialNumber: $("#checkInMaterialNumber"),
   holdForm: $("#holdForm"),
@@ -152,7 +157,7 @@ const MISSING_REPORT_FIELDS = {
 };
 
 const FORM_FIELDS = [
-  "recordId:id", "title", "subtitle", "creator", "statementOfResponsibility", "contributors", "format", "edition", "year", "publicationPlace", "publisher", "languageCode", "lccn", "oclcNumber", "deweyNumber", "lcClassNumber", "identifier", "genre", "subjects", "description", "location", "callNumber", "accessionNumber", "materialNumbers", "status", "dateAcquired", "dateAdded", "source", "pricePaid", "retailPrice", "notes", "coverUrl", "circulationHistory", "binding", "seriesName", "seriesNumber", "curatedShelf", "pageCount", "physicalDetails", "summaryNote", "targetAudience", "bibliographyNote", "marcLeader", "marc008",
+  "recordId:id", "title", "subtitle", "creator", "statementOfResponsibility", "contributors", "format", "edition", "year", "publicationPlace", "publisher", "languageCode", "lccn", "oclcNumber", "deweyNumber", "lcClassNumber", "identifier", "genre", "subjects", "description", "location", "callNumber", "accessionNumber", "materialNumbers", "status", "dateAcquired", "dateAdded", "source", "pricePaid", "retailPrice", "notes", "coverUrl", "circulationHistory", "binding", "seriesName", "seriesNumber", "curatedShelf", "pageCount", "physicalDetails", "summaryNote", "targetAudience", "bibliographyNote", "marcLeader", "marc008", "materialType",
 ];
 
 function switchIlsTab(tab) {
@@ -233,6 +238,56 @@ function switchCirculationTab(tab) {
 function parseMaterialNumbersInput(value) {
   return [...new Set(String(value || "").split(/[\n,]/).map((entry) => entry.trim()).filter(Boolean))];
 }
+const DEFAULT_MATERIAL_TYPES = ["Fiction", "Young Adult", "Biography"];
+const DEFAULT_CIRCULATION_RULES = [
+  { materialType: "Fiction", loanDays: 21 },
+  { materialType: "Young Adult", loanDays: 21 },
+  { materialType: "Biography", loanDays: 21 },
+];
+
+function addDaysToDate(baseDate, days) {
+  const result = new Date(baseDate);
+  result.setUTCDate(result.getUTCDate() + Number(days || 0));
+  return result.toISOString().slice(0, 10);
+}
+
+function getCirculationRules() {
+  const rules = [...DEFAULT_CIRCULATION_RULES, ...(Array.isArray(state.settings.circulationRules) ? state.settings.circulationRules : [])];
+  const deduped = new Map();
+  rules.forEach((rule) => {
+    const materialType = String(rule.materialType || "").trim();
+    const loanDays = Number(rule.loanDays || 0);
+    if (materialType && Number.isFinite(loanDays) && loanDays > 0) deduped.set(materialType, { materialType, loanDays });
+  });
+  return [...deduped.values()]
+    .map((rule) => ({ materialType: String(rule.materialType || "").trim(), loanDays: Number(rule.loanDays || 0) }))
+    .filter((rule) => rule.materialType && Number.isFinite(rule.loanDays) && rule.loanDays > 0);
+}
+
+function saveCirculationRules(rules) {
+  state.settings.circulationRules = rules
+    .map((rule) => ({ materialType: String(rule.materialType || "").trim(), loanDays: Number(rule.loanDays || 0) }))
+    .filter((rule) => rule.materialType && Number.isFinite(rule.loanDays) && rule.loanDays > 0)
+    .sort((a, b) => a.materialType.localeCompare(b.materialType));
+  saveSettings(state.settings);
+}
+
+function getRuleForMaterialType(materialType) {
+  return getCirculationRules().find((rule) => rule.materialType === materialType) || null;
+}
+
+function getAutoDueDate(record) {
+  const rule = getRuleForMaterialType(record.materialType);
+  if (!rule) return "";
+  return addDaysToDate(new Date(), rule.loanDays);
+}
+
+function refreshQueuedDueDate() {
+  if (!els.checkOutDueDate) return;
+  const suggestions = state.queuedCheckoutItems.map((entry) => entry.autoDueDate).filter(Boolean).sort();
+  if (!els.checkOutDueDate.value) els.checkOutDueDate.value = suggestions[0] || "";
+}
+
 
 function getRecordByMaterialNumber(materialNumber) {
   const normalized = String(materialNumber || "").trim();
@@ -250,9 +305,12 @@ function renderCheckoutQueue() {
 
   state.queuedCheckoutItems.forEach((entry) => {
     const li = document.createElement("li");
-    li.innerHTML = `<span>${entry.materialNumber}: ${entry.title}</span> <button class="button button-secondary" type="button">Remove</button>`;
+    const dueText = entry.autoDueDate ? ` · Auto due ${entry.autoDueDate}` : "";
+    const typeText = entry.materialType ? ` (${entry.materialType})` : "";
+    li.innerHTML = `<span>${entry.materialNumber}: ${entry.title}${typeText}${dueText}</span> <button class="button button-secondary" type="button">Remove</button>`;
     li.querySelector("button").addEventListener("click", () => {
       state.queuedCheckoutItems = state.queuedCheckoutItems.filter((item) => item.materialNumber !== entry.materialNumber);
+      refreshQueuedDueDate();
       renderCheckoutQueue();
     });
     els.checkOutQueue.appendChild(li);
@@ -402,9 +460,11 @@ function queueCheckoutItem() {
     return;
   }
 
-  state.queuedCheckoutItems.push({ recordId: record.id, materialNumber, title: record.title });
+  state.queuedCheckoutItems.push({ recordId: record.id, materialNumber, title: record.title, materialType: record.materialType || "", autoDueDate: getAutoDueDate(record) });
   els.checkOutMaterialNumber.value = "";
-  setCirculationMessage(`Queued ${record.title}.`);
+  refreshQueuedDueDate();
+  const queuedRule = getRuleForMaterialType(record.materialType);
+  setCirculationMessage(queuedRule ? `Queued ${record.title}. ${record.materialType} items default to ${queuedRule.loanDays} day loans.` : `Queued ${record.title}. No circulation rule is set for ${record.materialType || "this material type"}.`);
   renderCheckoutQueue();
 }
 
@@ -413,8 +473,8 @@ function checkOutRecord(event) {
   const cardNumber = els.checkOutCardNumber.value.trim();
   const dueDate = els.checkOutDueDate.value;
 
-  if (!cardNumber || !dueDate || !state.queuedCheckoutItems.length) {
-    setCirculationMessage("Scan a patron card, add items, and choose a due date.", true);
+  if (!cardNumber || !state.queuedCheckoutItems.length) {
+    setCirculationMessage("Scan a patron card and add at least one item.", true);
     return;
   }
 
@@ -424,24 +484,31 @@ function checkOutRecord(event) {
     return;
   }
 
+  const skipped = state.queuedCheckoutItems.filter((entry) => !(dueDate || entry.autoDueDate));
+  if (skipped.length) {
+    setCirculationMessage(`Set a due date or add circulation rules for: ${skipped.map((entry) => entry.title).join(", ")}.`, true);
+    return;
+  }
+
   state.records = state.records.map((record) => {
     const queued = state.queuedCheckoutItems.find((entry) => entry.recordId === record.id);
     if (!queued) return record;
+    const assignedDueDate = dueDate || queued.autoDueDate;
     return {
       ...record,
       status: "On Loan",
       checkedOutTo: patron.id,
       checkedOutToName: patron.name,
       checkedOutAt: new Date().toISOString(),
-      dueDate,
-      circulationHistory: appendCirculationHistory(record, `Checked out to ${patron.name} (Card: ${patron.cardNumber || "N/A"}) due ${dueDate}`),
+      dueDate: assignedDueDate,
+      circulationHistory: appendCirculationHistory(record, `Checked out to ${patron.name} (Card: ${patron.cardNumber || "N/A"}) due ${assignedDueDate}`),
     };
   });
 
   saveRecords(state.records);
   state.queuedCheckoutItems = [];
   els.checkOutForm.reset();
-  setCirculationMessage(`Checked out items to ${patron.name} until ${dueDate}.`);
+  setCirculationMessage(dueDate ? `Checked out items to ${patron.name} until ${dueDate}.` : `Checked out items to ${patron.name} using material type circulation rules.`);
   render();
 }
 
@@ -817,6 +884,10 @@ function renderPendingMaterialsTable() {
   });
 }
 
+function getManagedMaterialTypes() {
+  return [...new Set([...(state.settings.materialTypes || []), ...DEFAULT_MATERIAL_TYPES, ...state.records.map((r) => r.materialType).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
+}
+
 function getManagedGenres() {
   return [...new Set([...(state.settings.genres || []), ...PRELOADED_GENRES, ...state.records.flatMap((r) => asArray(r.genres?.length ? r.genres : r.genre))])]
     .filter(Boolean)
@@ -838,6 +909,16 @@ function getManagedLocations() {
 
 function getManagedCuratedShelves() {
   return [...new Set([...(state.settings.curatedShelves || []), ...state.records.map((r) => r.curatedShelf).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
+}
+
+function fillMaterialTypes() {
+  const managed = getManagedMaterialTypes();
+  const current = els.materialTypeSelect?.value || "";
+  if (els.materialTypeSelect) {
+    els.materialTypeSelect.innerHTML = ['<option value="">Unspecified</option>', ...managed.map((materialType) => `<option value="${materialType}">${materialType}</option>`)].join("");
+    els.materialTypeSelect.value = managed.includes(current) ? current : "";
+  }
+  renderManagedList(els.materialTypeList, managed, "material type", renameMaterialType, deleteMaterialType);
 }
 
 function fillGenres() {
@@ -922,11 +1003,48 @@ function removeFromSettings(key, target) {
   saveSettings(state.settings);
 }
 
+function addMaterialType() { addToManagedList("materialTypes", els.newMaterialTypeInput, fillMaterialTypes); }
 function addGenre() { addToManagedList("genres", els.newGenreInput, fillGenres); }
 function addFormat() { addToManagedList("formats", els.newFormatInput, fillFormats); }
 function addLocation() { addToManagedList("locations", els.newLocationInput, fillLocations); }
 function addCuratedShelf() { addToManagedList("curatedShelves", els.newCuratedShelfInput, fillCuratedShelves); }
 function addBinding() { addToManagedList("bindings", els.newBindingInput, fillBindings); }
+
+function renameMaterialType(prev, next) {
+  renameInRecords("materialType", prev, next);
+  renameInSettings("materialTypes", prev, next);
+  const rules = getCirculationRules().map((rule) => (rule.materialType === prev ? { ...rule, materialType: next } : rule));
+  saveCirculationRules(rules);
+  render();
+}
+
+function deleteMaterialType(target) {
+  removeFromSettings("materialTypes", target);
+  saveCirculationRules(getCirculationRules().filter((rule) => rule.materialType !== target));
+  render();
+}
+
+function updateCirculationRule(materialType, loanDays) {
+  const rules = getCirculationRules().filter((rule) => rule.materialType !== materialType);
+  if (Number(loanDays) > 0) rules.push({ materialType, loanDays: Number(loanDays) });
+  saveCirculationRules(rules);
+  renderCirculationRulesTable();
+}
+
+function renderCirculationRulesTable() {
+  if (!els.circulationRulesBody) return;
+  const managed = getManagedMaterialTypes();
+  const rulesByType = new Map(getCirculationRules().map((rule) => [rule.materialType, rule.loanDays]));
+  els.circulationRulesBody.innerHTML = "";
+  managed.forEach((materialType) => {
+    const tr = document.createElement("tr");
+    const loanDays = rulesByType.get(materialType) || "";
+    tr.innerHTML = `<td>${materialType}</td><td><input type="number" min="1" step="1" value="${loanDays}" aria-label="${materialType} loan days" /></td><td><button class="button button-secondary" type="button">Save Rule</button></td>`;
+    const input = tr.querySelector("input");
+    tr.querySelector("button").addEventListener("click", () => updateCirculationRule(materialType, input.value));
+    els.circulationRulesBody.appendChild(tr);
+  });
+}
 
 function renameGenre(prev, next) {
   state.records = state.records.map((record) => {
@@ -1169,6 +1287,7 @@ function saveFormRecord(event) {
     identifier: $("#identifier").value.trim(),
     genre: genres.join(", "),
     genres,
+    materialType: $("#materialType").value.trim(),
     subjects: $("#subjects").value.trim(),
     summaryNote: $("#summaryNote").value.trim(),
     targetAudience: $("#targetAudience").value.trim(),
@@ -1555,6 +1674,7 @@ function bindEvents() {
     }
   }));
 
+  els.addMaterialTypeBtn.addEventListener("click", addMaterialType);
   els.addGenreBtn.addEventListener("click", addGenre);
   els.addFormatBtn.addEventListener("click", addFormat);
   els.addLocationBtn.addEventListener("click", addLocation);
@@ -1563,6 +1683,7 @@ function bindEvents() {
 }
 
 function render() {
+  fillMaterialTypes();
   fillGenres();
   fillFormats();
   fillBindings();
@@ -1575,6 +1696,7 @@ function render() {
   renderAcquisitionOrdersTable();
   renderPendingMaterialsTable();
   renderCheckoutQueue();
+  renderCirculationRulesTable();
   renderLoansTable();
   renderHoldsTable();
   renderStatsPanel();

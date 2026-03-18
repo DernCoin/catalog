@@ -134,9 +134,10 @@
               <label>Item material number
                 <input id="checkOutMaterialNumber" placeholder="Scan item material number" />
               </label>
-              <label>Due date
-                <input id="checkOutDueDate" type="date" required />
+              <label>Due date override
+                <input id="checkOutDueDate" type="date" />
               </label>
+              <p class="muted">Leave blank to use the circulation rule for each queued item's material type.</p>
               <button id="queueCheckoutItemBtn" class="button button-secondary" type="button">Add Item</button>
               <div>
                 <strong>Queued items</strong>
@@ -364,6 +365,7 @@
                 <label>LC Class <input id="lcClassNumber" /></label>
                 <label>Genres <select id="genres" multiple size="6"></select></label>
                 <label>Custom Genre / Category <input id="genre" placeholder="Optional custom" /></label>
+                <label>Material Type <select id="materialType"></select></label>
                 <label>Binding <select id="binding"></select></label>
                 <label>Series Name <input id="seriesName" /></label>
                 <label>Series Number <input id="seriesNumber" type="number" min="0" /></label>
@@ -483,6 +485,15 @@
 
         <section class="admin-tab-panel hidden" data-ils-panel="utilities">
           <section class="location-manager admin-block">
+            <h3>Material Types</h3>
+            <div class="admin-tools">
+              <input id="newMaterialTypeInput" placeholder="Add material type" />
+              <button id="addMaterialTypeBtn" class="button button-secondary" type="button">Add material type</button>
+            </div>
+            <ul id="materialTypeList" class="location-list"></ul>
+          </section>
+
+          <section class="location-manager admin-block">
             <h3>Genres</h3>
             <div class="admin-tools">
               <input id="newGenreInput" placeholder="Add genre" />
@@ -507,6 +518,15 @@
               <button id="addLocationBtn" class="button button-secondary" type="button">Add location</button>
             </div>
             <ul id="locationList" class="location-list"></ul>
+          </section>
+
+          <section class="location-manager admin-block">
+            <h3>Circulation Rules</h3>
+            <p class="muted">Set loan periods by material type. Checkout will auto-assign due dates from these rules.</p>
+            <table class="serials-table">
+              <thead><tr><th>Material Type</th><th>Loan Days</th><th>Actions</th></tr></thead>
+              <tbody id="circulationRulesBody"></tbody>
+            </table>
           </section>
 
           <section class="location-manager admin-block">
