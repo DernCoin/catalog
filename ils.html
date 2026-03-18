@@ -37,6 +37,7 @@
             <button class="button button-secondary admin-tab-btn is-active" data-ils-tab="dashboard" type="button">Dashboard</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="acquisitions" type="button">Acquisitions</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="circulation" type="button">Circulation</button>
+            <button class="button button-secondary admin-tab-btn" data-ils-tab="circulation-rules" type="button">Circulation Rules</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="patrons" type="button">Patrons</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="records" type="button">Edit Records</button>
             <button class="button button-secondary admin-tab-btn" data-ils-tab="stats" type="button">Statistics and Reports</button>
@@ -55,9 +56,9 @@
             <button class="dashboard-tile" type="button" data-ils-target="stats">Daily reports</button>
             <button class="dashboard-tile" type="button" data-ils-target="acquisitions">Acquisitions</button>
             <button class="dashboard-tile" type="button" data-ils-target="serials">Serials</button>
-            <button class="dashboard-tile" type="button" data-ils-target="circulation">Circulation Rules</button>
+            <button class="dashboard-tile" type="button" data-ils-target="circulation-rules">Circulation Rules</button>
             <button class="dashboard-tile" type="button" data-ils-target="stats" data-report-target="missing-biblio">Missing Biblio Report</button>
-            <button class="dashboard-tile" type="button" data-ils-empty="true">EMPTY</button>
+            <button class="dashboard-tile" type="button" data-ils-target="stats" data-report-target="overdue-60">60+ Days Past Due</button>
             <button class="dashboard-tile" type="button" data-ils-empty="true">EMPTY</button>
             <button class="dashboard-tile" type="button" data-ils-empty="true">EMPTY</button>
           </div>
@@ -131,6 +132,7 @@
               <label>Patron card number
                 <input id="checkOutCardNumber" placeholder="Scan card number" required />
               </label>
+              <p id="checkOutPatronPreview" class="status-message">Scan a card to show patron details.</p>
               <label>Item material number
                 <input id="checkOutMaterialNumber" placeholder="Scan item material number" />
               </label>
@@ -195,6 +197,15 @@
               <tbody id="loansBody"></tbody>
             </table>
           </section>
+        </section>
+
+        <section class="admin-tab-panel hidden" data-ils-panel="circulation-rules">
+          <h2>Circulation Rules</h2>
+          <p class="muted">Set loan periods by material type. Checkout will auto-assign due dates from these rules.</p>
+          <table class="serials-table">
+            <thead><tr><th>Material Type</th><th>Loan Days</th><th>Actions</th></tr></thead>
+            <tbody id="circulationRulesBody"></tbody>
+          </table>
         </section>
 
         <section class="admin-tab-panel hidden" data-ils-panel="patrons">
@@ -383,32 +394,13 @@
 
             <fieldset class="workspace-holdings">
               <legend>Holdings & Local Data</legend>
-              <div class="form-grid">
-                <label>Status
-                  <select id="status">
-                    <option>Available</option>
-                    <option>Checked In</option>
-                    <option>On Loan</option>
-                    <option>Pending Material</option>
-                    <option>On Order</option>
-                    <option>Reference Only</option>
-                    <option>Missing</option>
-                  </select>
-                </label>
-                <label>Location <select id="location"></select></label>
-                <label>Call Number <input id="callNumber" /></label>
-                <label>Accession Number <input id="accessionNumber" /></label>
-                <label>Material Number(s)
-                  <textarea id="materialNumbers" rows="2" placeholder="One material number per line"></textarea>
-                </label>
-                <label>Date Acquired <input id="dateAcquired" type="date" /></label>
+              <div class="workspace-holdings-toolbar">
                 <label>Date Added <input id="dateAdded" type="date" /></label>
-                <label>Source <input id="source" /></label>
-                <label>Price Paid <input id="pricePaid" type="number" min="0" step="0.01" /></label>
-                <label>Retail Value <input id="retailPrice" type="number" min="0" step="0.01" /></label>
                 <label>Cover Image URL <input id="coverUrl" type="url" placeholder="https://..." /></label>
                 <label>Cover Upload <input id="coverUpload" type="file" accept="image/*" /></label>
+                <button id="addHoldingBtn" class="button button-secondary" type="button">Add Holding</button>
               </div>
+              <div id="holdingRows" class="holdings-editor"></div>
               <p id="coverUploadStatus" class="status-message"></p>
               <label>Description / Summary <textarea id="description" rows="3"></textarea></label>
               <label>Personal Notes <textarea id="notes" rows="2"></textarea></label>
@@ -481,6 +473,16 @@
               <tbody id="missingReportBody"></tbody>
             </table>
           </section>
+          <section class="admin-block">
+            <h3>60+ Days Past Due Report</h3>
+            <p id="overdueReportSummary" class="status-message" aria-live="polite"></p>
+            <table class="serials-table">
+              <thead>
+                <tr><th>Title</th><th>Patron</th><th>Material #</th><th>Due Date</th><th>Days Overdue</th></tr>
+              </thead>
+              <tbody id="overdueReportBody"></tbody>
+            </table>
+          </section>
         </section>
 
         <section class="admin-tab-panel hidden" data-ils-panel="utilities">
@@ -518,15 +520,6 @@
               <button id="addLocationBtn" class="button button-secondary" type="button">Add location</button>
             </div>
             <ul id="locationList" class="location-list"></ul>
-          </section>
-
-          <section class="location-manager admin-block">
-            <h3>Circulation Rules</h3>
-            <p class="muted">Set loan periods by material type. Checkout will auto-assign due dates from these rules.</p>
-            <table class="serials-table">
-              <thead><tr><th>Material Type</th><th>Loan Days</th><th>Actions</th></tr></thead>
-              <tbody id="circulationRulesBody"></tbody>
-            </table>
           </section>
 
           <section class="location-manager admin-block">

@@ -1,6 +1,6 @@
 import { duplicateCandidates, PRELOADED_GENRES, asArray, getStats } from "./catalog.js";
-import { normalizeRecord, loadRecords, saveRecords, loadSettings, saveSettings } from "./storage.js";
-import { isFirebaseConfigured, loginWithFirebase, logoutFirebase, onFirebaseAuthStateChanged, subscribeToFirebaseRecords } from "./firebase.js";
+import { normalizeRecord, loadRecords, saveRecords, loadSettings, loadSettingsFromRemote, saveSettings } from "./storage.js";
+import { isFirebaseConfigured, loginWithFirebase, logoutFirebase, onFirebaseAuthStateChanged, subscribeToFirebaseRecords, subscribeToFirebaseSettings } from "./firebase.js";
 
 const state = {
   records: loadRecords(),
@@ -10,10 +10,12 @@ const state = {
   ilsTab: "dashboard",
   activeSearchIndex: -1,
   unsubscribeRecords: null,
+  unsubscribeSettings: null,
   circulationTab: "checkout",
   queuedCheckoutItems: [],
   activeWorkspaceRecordId: "",
   editingPatronId: "",
+  draftHoldings: [],
 };
 
 const $ = (s) => document.querySelector(s);
@@ -118,10 +120,13 @@ const els = {
   pendingMaterialsBody: $("#pendingMaterialsBody"),
   checkOutForm: $("#checkOutForm"),
   checkOutCardNumber: $("#checkOutCardNumber"),
+  checkOutPatronPreview: $("#checkOutPatronPreview"),
   checkOutMaterialNumber: $("#checkOutMaterialNumber"),
   queueCheckoutItemBtn: $("#queueCheckoutItemBtn"),
   checkOutQueue: $("#checkOutQueue"),
   checkOutDueDate: $("#checkOutDueDate"),
+  holdingRows: $("#holdingRows"),
+  addHoldingBtn: $("#addHoldingBtn"),
   circulationRulesBody: $("#circulationRulesBody"),
   checkInForm: $("#checkInForm"),
   checkInMaterialNumber: $("#checkInMaterialNumber"),
@@ -142,6 +147,8 @@ const els = {
   runMissingReportBtn: $("#runMissingReportBtn"),
   missingReportSummary: $("#missingReportSummary"),
   missingReportBody: $("#missingReportBody"),
+  overdueReportSummary: $("#overdueReportSummary"),
+  overdueReportBody: $("#overdueReportBody"),
 };
 
 
@@ -157,7 +164,7 @@ const MISSING_REPORT_FIELDS = {
 };
 
 const FORM_FIELDS = [
-  "recordId:id", "title", "subtitle", "creator", "statementOfResponsibility", "contributors", "format", "edition", "year", "publicationPlace", "publisher", "languageCode", "lccn", "oclcNumber", "deweyNumber", "lcClassNumber", "identifier", "genre", "subjects", "description", "location", "callNumber", "accessionNumber", "materialNumbers", "status", "dateAcquired", "dateAdded", "source", "pricePaid", "retailPrice", "notes", "coverUrl", "circulationHistory", "binding", "seriesName", "seriesNumber", "curatedShelf", "pageCount", "physicalDetails", "summaryNote", "targetAudience", "bibliographyNote", "marcLeader", "marc008", "materialType",
+  "recordId:id", "title", "subtitle", "creator", "statementOfResponsibility", "contributors", "format", "edition", "year", "publicationPlace", "publisher", "languageCode", "lccn", "oclcNumber", "deweyNumber", "lcClassNumber", "identifier", "genre", "subjects", "description", "dateAdded", "notes", "coverUrl", "circulationHistory", "binding", "seriesName", "seriesNumber", "curatedShelf", "pageCount", "physicalDetails", "summaryNote", "targetAudience", "bibliographyNote", "marcLeader", "marc008", "materialType",
 ];
 
 function switchIlsTab(tab) {
@@ -238,6 +245,109 @@ function switchCirculationTab(tab) {
 function parseMaterialNumbersInput(value) {
   return [...new Set(String(value || "").split(/[\n,]/).map((entry) => entry.trim()).filter(Boolean))];
 }
+
+function sanitizeHolding(holding = {}) {
+  return {
+    id: holding.id || crypto.randomUUID(),
+    status: String(holding.status || "Available").trim() || "Available",
+    location: String(holding.location || "").trim(),
+    callNumber: String(holding.callNumber || "").trim(),
+    accessionNumber: String(holding.accessionNumber || "").trim(),
+    materialNumbers: parseMaterialNumbersInput(holding.materialNumbers || []),
+    dateAcquired: String(holding.dateAcquired || "").trim(),
+    source: String(holding.source || "").trim(),
+    pricePaid: String(holding.pricePaid || "").trim(),
+    retailPrice: String(holding.retailPrice || "").trim(),
+    checkedOutTo: String(holding.checkedOutTo || "").trim(),
+    checkedOutToName: String(holding.checkedOutToName || "").trim(),
+    checkedOutAt: String(holding.checkedOutAt || "").trim(),
+    dueDate: String(holding.dueDate || "").trim(),
+  };
+}
+
+function collectDraftHoldings() {
+  const rows = [...document.querySelectorAll(".holding-row")];
+  if (!rows.length) return [];
+  return rows.map((row) => sanitizeHolding({
+    id: row.dataset.holdingId,
+    status: row.querySelector('[data-holding-field="status"]')?.value,
+    location: row.querySelector('[data-holding-field="location"]')?.value,
+    callNumber: row.querySelector('[data-holding-field="callNumber"]')?.value,
+    accessionNumber: row.querySelector('[data-holding-field="accessionNumber"]')?.value,
+    materialNumbers: row.querySelector('[data-holding-field="materialNumbers"]')?.value,
+    dateAcquired: row.querySelector('[data-holding-field="dateAcquired"]')?.value,
+    source: row.querySelector('[data-holding-field="source"]')?.value,
+    pricePaid: row.querySelector('[data-holding-field="pricePaid"]')?.value,
+    retailPrice: row.querySelector('[data-holding-field="retailPrice"]')?.value,
+    checkedOutTo: row.dataset.checkedOutTo || "",
+    checkedOutToName: row.dataset.checkedOutToName || "",
+    checkedOutAt: row.dataset.checkedOutAt || "",
+    dueDate: row.dataset.dueDate || "",
+  }));
+}
+
+function renderHoldingsEditor(holdings = state.draftHoldings) {
+  if (!els.holdingRows) return;
+  state.draftHoldings = (holdings.length ? holdings : [sanitizeHolding()]).map((holding) => sanitizeHolding(holding));
+  const locationOptions = ['<option value="">Unspecified</option>', ...getManagedLocations().map((location) => `<option value="${location}">${location}</option>`)].join("");
+  els.holdingRows.innerHTML = "";
+  state.draftHoldings.forEach((holding, index) => {
+    const article = document.createElement("article");
+    article.className = "holding-row";
+    article.dataset.holdingId = holding.id;
+    article.dataset.checkedOutTo = holding.checkedOutTo || "";
+    article.dataset.checkedOutToName = holding.checkedOutToName || "";
+    article.dataset.checkedOutAt = holding.checkedOutAt || "";
+    article.dataset.dueDate = holding.dueDate || "";
+    article.innerHTML = `
+      <div class="holding-row-header">
+        <strong>Holding ${index + 1}</strong>
+        <button class="button button-secondary" type="button" data-act="remove-holding">Remove</button>
+      </div>
+      <div class="form-grid">
+        <label>Status
+          <select data-holding-field="status">
+            <option ${holding.status === "Available" ? "selected" : ""}>Available</option>
+            <option ${holding.status === "Checked In" ? "selected" : ""}>Checked In</option>
+            <option ${holding.status === "On Loan" ? "selected" : ""}>On Loan</option>
+            <option ${holding.status === "Pending Material" ? "selected" : ""}>Pending Material</option>
+            <option ${holding.status === "On Order" ? "selected" : ""}>On Order</option>
+            <option ${holding.status === "Reference Only" ? "selected" : ""}>Reference Only</option>
+            <option ${holding.status === "Missing" ? "selected" : ""}>Missing</option>
+          </select>
+        </label>
+        <label>Location <select data-holding-field="location">${locationOptions}</select></label>
+        <label>Call Number <input data-holding-field="callNumber" value="${holding.callNumber || ""}" /></label>
+        <label>Accession Number <input data-holding-field="accessionNumber" value="${holding.accessionNumber || ""}" /></label>
+        <label>Material Number(s)<textarea data-holding-field="materialNumbers" rows="2" placeholder="One material number per line">${(holding.materialNumbers || []).join("\n")}</textarea></label>
+        <label>Date Acquired <input data-holding-field="dateAcquired" type="date" value="${holding.dateAcquired || ""}" /></label>
+        <label>Source <input data-holding-field="source" value="${holding.source || ""}" /></label>
+        <label>Price Paid <input data-holding-field="pricePaid" type="number" min="0" step="0.01" value="${holding.pricePaid || ""}" /></label>
+        <label>Retail Value <input data-holding-field="retailPrice" type="number" min="0" step="0.01" value="${holding.retailPrice || ""}" /></label>
+      </div>
+      <p class="muted holding-meta">${holding.checkedOutToName ? `Checked out to ${holding.checkedOutToName}${holding.dueDate ? ` · Due ${holding.dueDate}` : ""}` : "Not currently checked out."}</p>
+    `;
+    article.querySelector('[data-act="remove-holding"]').addEventListener("click", () => {
+      if (state.draftHoldings.length <= 1) return;
+      state.draftHoldings = collectDraftHoldings().filter((entry) => entry.id !== holding.id);
+      renderHoldingsEditor(state.draftHoldings);
+    });
+    const locationSelect = article.querySelector('[data-holding-field="location"]');
+    locationSelect.value = holding.location || "";
+    [...article.querySelectorAll("input, textarea, select")].forEach((field) => {
+      field.addEventListener("input", () => {
+        state.draftHoldings = collectDraftHoldings();
+      });
+    });
+    els.holdingRows.appendChild(article);
+  });
+}
+
+function findPatronByCardNumber(cardNumber) {
+  const normalized = String(cardNumber || "").trim().toLowerCase();
+  if (!normalized) return null;
+  return getPatrons().find((entry) => String(entry.cardNumber || "").trim().toLowerCase() === normalized) || null;
+}
 const DEFAULT_MATERIAL_TYPES = ["Fiction", "Young Adult", "Biography"];
 const DEFAULT_CIRCULATION_RULES = [
   { materialType: "Fiction", loanDays: 21 },
@@ -292,7 +402,13 @@ function refreshQueuedDueDate() {
 function getRecordByMaterialNumber(materialNumber) {
   const normalized = String(materialNumber || "").trim();
   if (!normalized) return null;
-  return state.records.find((record) => (record.materialNumbers || []).includes(normalized)) || null;
+  for (const record of state.records) {
+    const holdingIndex = (record.holdings || []).findIndex((holding) => (holding.materialNumbers || []).includes(normalized));
+    if (holdingIndex >= 0) {
+      return { record, holding: record.holdings[holdingIndex], holdingIndex };
+    }
+  }
+  return null;
 }
 
 function renderCheckoutQueue() {
@@ -307,7 +423,10 @@ function renderCheckoutQueue() {
     const li = document.createElement("li");
     const dueText = entry.autoDueDate ? ` · Auto due ${entry.autoDueDate}` : "";
     const typeText = entry.materialType ? ` (${entry.materialType})` : "";
-    li.innerHTML = `<span>${entry.materialNumber}: ${entry.title}${typeText}${dueText}</span> <button class="button button-secondary" type="button">Remove</button>`;
+    li.classList.add("checkout-queue-item");
+    li.innerHTML = `<div class="checkout-queue-main"><img class="checkout-thumb" src="${entry.coverUrl || ""}" alt="" /><span>${entry.materialNumber}: ${entry.title}${typeText}${dueText}</span></div> <button class="button button-secondary" type="button">Remove</button>`;
+    const img = li.querySelector("img");
+    if (!entry.coverUrl) img.classList.add("hidden");
     li.querySelector("button").addEventListener("click", () => {
       state.queuedCheckoutItems = state.queuedCheckoutItems.filter((item) => item.materialNumber !== entry.materialNumber);
       refreshQueuedDueDate();
@@ -315,6 +434,15 @@ function renderCheckoutQueue() {
     });
     els.checkOutQueue.appendChild(li);
   });
+}
+
+function renderCheckoutPatronPreview(cardNumber = els.checkOutCardNumber?.value || "") {
+  if (!els.checkOutPatronPreview) return;
+  const patron = findPatronByCardNumber(cardNumber);
+  els.checkOutPatronPreview.textContent = cardNumber.trim()
+    ? (patron ? `Patron: ${patron.name} · Card #${patron.cardNumber}` : "No patron found for that card number.")
+    : "Scan a card to show patron details.";
+  els.checkOutPatronPreview.classList.toggle("warning", Boolean(cardNumber.trim()) && !patron);
 }
 
 function renderPatronsTable() {
@@ -331,7 +459,7 @@ function renderPatronsTable() {
   }
 
   patrons.forEach((patron) => {
-    const loansCount = state.records.filter((record) => record.checkedOutTo === patron.id && String(record.status) === "On Loan").length;
+    const loansCount = state.records.reduce((count, record) => count + (record.holdings || []).filter((holding) => holding.checkedOutTo === patron.id && String(holding.status) === "On Loan").length, 0);
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${patron.name}</td><td>${patron.cardNumber || ""}</td><td>${patron.email || ""}</td><td>${loansCount}</td><td><button class="button button-secondary" type="button" data-act="edit">Edit</button> <button class="button button-secondary" type="button" data-act="delete">Delete</button></td>`;
 
@@ -344,8 +472,8 @@ function renderPatronsTable() {
 function renderLoansTable() {
   if (!els.loansBody) return;
   const loans = state.records
-    .filter((record) => String(record.status) === "On Loan")
-    .sort((a, b) => String(a.dueDate || "").localeCompare(String(b.dueDate || "")));
+    .flatMap((record) => (record.holdings || []).filter((holding) => String(holding.status) === "On Loan").map((holding) => ({ record, holding })))
+    .sort((a, b) => String(a.holding.dueDate || "").localeCompare(String(b.holding.dueDate || "")));
 
   els.loansBody.innerHTML = "";
   if (!loans.length) {
@@ -355,10 +483,10 @@ function renderLoansTable() {
     return;
   }
 
-  loans.forEach((record) => {
+  loans.forEach(({ record, holding }) => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${record.title}</td><td>${record.checkedOutToName || "Unknown patron"}</td><td>${record.dueDate || ""}</td><td><button class="button button-secondary" type="button" data-record-id="${record.id}">Check In</button></td>`;
-    tr.querySelector("button").addEventListener("click", () => checkInRecord(record.id));
+    tr.innerHTML = `<td>${record.title}</td><td>${holding.checkedOutToName || "Unknown patron"}</td><td>${holding.dueDate || ""}</td><td><button class="button button-secondary" type="button">Check In</button></td>`;
+    tr.querySelector("button").addEventListener("click", () => checkInRecord(record.id, holding.id));
     els.loansBody.appendChild(tr);
   });
 }
@@ -433,7 +561,7 @@ function editPatron(patronId) {
 }
 
 function removePatron(patronId) {
-  const hasLoans = state.records.some((record) => record.checkedOutTo === patronId && String(record.status) === "On Loan");
+  const hasLoans = state.records.some((record) => (record.holdings || []).some((holding) => holding.checkedOutTo === patronId && String(holding.status) === "On Loan"));
   if (hasLoans) {
     setCirculationMessage("Cannot delete patron with checked out items.", true);
     return;
@@ -446,12 +574,13 @@ function removePatron(patronId) {
 function queueCheckoutItem() {
   const materialNumber = els.checkOutMaterialNumber.value.trim();
   if (!materialNumber) return;
-  const record = getRecordByMaterialNumber(materialNumber);
-  if (!record) {
+  const match = getRecordByMaterialNumber(materialNumber);
+  if (!match) {
     setCirculationMessage(`No item found with material number ${materialNumber}.`, true);
     return;
   }
-  if (String(record.status) === "On Loan") {
+  const { record, holding } = match;
+  if (String(holding.status) === "On Loan") {
     setCirculationMessage(`Item ${materialNumber} is already checked out.`, true);
     return;
   }
@@ -459,8 +588,7 @@ function queueCheckoutItem() {
     setCirculationMessage(`Item ${materialNumber} is already queued.`, true);
     return;
   }
-
-  state.queuedCheckoutItems.push({ recordId: record.id, materialNumber, title: record.title, materialType: record.materialType || "", autoDueDate: getAutoDueDate(record) });
+  state.queuedCheckoutItems.push({ recordId: record.id, holdingId: holding.id, materialNumber, title: record.title, materialType: record.materialType || "", autoDueDate: getAutoDueDate(record), coverUrl: record.coverUrl || "" });
   els.checkOutMaterialNumber.value = "";
   refreshQueuedDueDate();
   const queuedRule = getRuleForMaterialType(record.materialType);
@@ -478,7 +606,7 @@ function checkOutRecord(event) {
     return;
   }
 
-  const patron = getPatrons().find((entry) => String(entry.cardNumber || "").toLowerCase() === cardNumber.toLowerCase());
+  const patron = findPatronByCardNumber(cardNumber);
   if (!patron) {
     setCirculationMessage("No patron found with that card number.", true);
     return;
@@ -491,18 +619,19 @@ function checkOutRecord(event) {
   }
 
   state.records = state.records.map((record) => {
-    const queued = state.queuedCheckoutItems.find((entry) => entry.recordId === record.id);
-    if (!queued) return record;
-    const assignedDueDate = dueDate || queued.autoDueDate;
-    return {
+    const queuedForRecord = state.queuedCheckoutItems.filter((entry) => entry.recordId === record.id);
+    if (!queuedForRecord.length) return record;
+    const nextHoldings = (record.holdings || []).map((holding) => {
+      const queued = queuedForRecord.find((entry) => entry.holdingId === holding.id);
+      if (!queued) return holding;
+      const assignedDueDate = dueDate || queued.autoDueDate;
+      return { ...holding, status: "On Loan", checkedOutTo: patron.id, checkedOutToName: patron.name, checkedOutAt: new Date().toISOString(), dueDate: assignedDueDate };
+    });
+    return normalizeRecord({
       ...record,
-      status: "On Loan",
-      checkedOutTo: patron.id,
-      checkedOutToName: patron.name,
-      checkedOutAt: new Date().toISOString(),
-      dueDate: assignedDueDate,
-      circulationHistory: appendCirculationHistory(record, `Checked out to ${patron.name} (Card: ${patron.cardNumber || "N/A"}) due ${assignedDueDate}`),
-    };
+      holdings: nextHoldings,
+      circulationHistory: appendCirculationHistory(record, `Checked out to ${patron.name} (Card: ${patron.cardNumber || "N/A"}) due ${dueDate || queuedForRecord[0].autoDueDate}`),
+    });
   });
 
   saveRecords(state.records);
@@ -512,19 +641,20 @@ function checkOutRecord(event) {
   render();
 }
 
-function checkInRecord(recordId) {
+function checkInRecord(recordId, holdingId = "") {
   const idx = state.records.findIndex((entry) => entry.id === recordId);
   if (idx < 0) return;
-
-  state.records[idx] = {
-    ...state.records[idx],
-    status: "Available",
-    checkedOutTo: "",
-    checkedOutToName: "",
-    checkedOutAt: "",
-    dueDate: "",
-    circulationHistory: appendCirculationHistory(state.records[idx], "Checked in"),
-  };
+  const record = state.records[idx];
+  const nextHoldings = (record.holdings || []).map((holding) => (
+    !holdingId || holding.id === holdingId
+      ? { ...holding, status: "Available", checkedOutTo: "", checkedOutToName: "", checkedOutAt: "", dueDate: "" }
+      : holding
+  ));
+  state.records[idx] = normalizeRecord({
+    ...record,
+    holdings: nextHoldings,
+    circulationHistory: appendCirculationHistory(record, "Checked in"),
+  });
 
   saveRecords(state.records);
   setCirculationMessage(`Checked in "${state.records[idx].title}".`);
@@ -535,12 +665,12 @@ function checkInByMaterialNumber(event) {
   event.preventDefault();
   const materialNumber = els.checkInMaterialNumber.value.trim();
   if (!materialNumber) return;
-  const record = getRecordByMaterialNumber(materialNumber);
-  if (!record) {
+  const match = getRecordByMaterialNumber(materialNumber);
+  if (!match) {
     setCirculationMessage(`No item found with material number ${materialNumber}.`, true);
     return;
   }
-  checkInRecord(record.id);
+  checkInRecord(match.record.id, match.holding.id);
   els.checkInMaterialNumber.value = "";
 }
 
@@ -559,10 +689,11 @@ function placeHold(event) {
   const cardNumber = String(els.holdCardNumber?.value || "").trim();
   const materialNumber = String(els.holdMaterialNumber?.value || "").trim();
   const type = String(els.holdType?.value || "Hold");
-  const patron = getPatrons().find((entry) => String(entry.cardNumber || "").toLowerCase() === cardNumber.toLowerCase());
+  const patron = findPatronByCardNumber(cardNumber);
   if (!patron) return setCirculationMessage("No patron found with that card number.", true);
-  const record = getRecordByMaterialNumber(materialNumber);
-  if (!record) return setCirculationMessage(`No item found with material number ${materialNumber}.`, true);
+  const match = getRecordByMaterialNumber(materialNumber);
+  if (!match) return setCirculationMessage(`No item found with material number ${materialNumber}.`, true);
+  const { record } = match;
 
   const holds = getHolds();
   holds.push({ id: crypto.randomUUID(), recordId: record.id, materialNumber, title: record.title, patronId: patron.id, patronName: patron.name, type, placedAt: new Date().toISOString() });
@@ -946,9 +1077,11 @@ function fillBindings() {
 
 function fillLocations() {
   const managed = getManagedLocations();
-  const current = els.locationSelect.value || "";
-  els.locationSelect.innerHTML = ['<option value="">Unspecified</option>', ...managed.map((location) => `<option value="${location}">${location}</option>`)].join("");
-  els.locationSelect.value = managed.includes(current) ? current : "";
+  const current = els.locationSelect?.value || "";
+  if (els.locationSelect) {
+    els.locationSelect.innerHTML = ['<option value="">Unspecified</option>', ...managed.map((location) => `<option value="${location}">${location}</option>`)].join("");
+    els.locationSelect.value = managed.includes(current) ? current : "";
+  }
   renderManagedList(els.locationList, managed, "location", renameLocation, deleteLocation);
 }
 
@@ -1003,7 +1136,15 @@ function removeFromSettings(key, target) {
   saveSettings(state.settings);
 }
 
-function addMaterialType() { addToManagedList("materialTypes", els.newMaterialTypeInput, fillMaterialTypes); }
+function addMaterialType() {
+  const value = els.newMaterialTypeInput.value.trim();
+  if (!value) return;
+  addToManagedList("materialTypes", els.newMaterialTypeInput, fillMaterialTypes);
+  if (!getCirculationRules().some((rule) => rule.materialType === value)) {
+    saveCirculationRules([...getCirculationRules(), { materialType: value, loanDays: 21 }]);
+  }
+  renderCirculationRulesTable();
+}
 function addGenre() { addToManagedList("genres", els.newGenreInput, fillGenres); }
 function addFormat() { addToManagedList("formats", els.newFormatInput, fillFormats); }
 function addLocation() { addToManagedList("locations", els.newLocationInput, fillLocations); }
@@ -1044,6 +1185,18 @@ function renderCirculationRulesTable() {
     tr.querySelector("button").addEventListener("click", () => updateCirculationRule(materialType, input.value));
     els.circulationRulesBody.appendChild(tr);
   });
+}
+
+function getOverdueLoans(minDays = 60) {
+  const today = new Date().toISOString().slice(0, 10);
+  return state.records.flatMap((record) => (record.holdings || [])
+    .filter((holding) => String(holding.status) === "On Loan" && holding.dueDate && holding.dueDate < today)
+    .map((holding) => {
+      const overdueDays = Math.floor((new Date(today) - new Date(holding.dueDate)) / (1000 * 60 * 60 * 24));
+      return { record, holding, overdueDays };
+    }))
+    .filter((entry) => entry.overdueDays >= minDays)
+    .sort((a, b) => b.overdueDays - a.overdueDays);
 }
 
 function renameGenre(prev, next) {
@@ -1115,11 +1268,11 @@ function resetForm() {
   els.recordForm.reset();
   if (els.coverUploadStatus) els.coverUploadStatus.textContent = "";
   $("#recordId").value = "";
-  $("#status").value = "Available";
   $("#format").value = "Book";
   $("#binding").value = "";
-  $("#location").value = "";
   $("#curatedShelf").value = "";
+  state.draftHoldings = [sanitizeHolding()];
+  renderHoldingsEditor(state.draftHoldings);
   els.duplicateWarning.textContent = "";
 }
 
@@ -1253,6 +1406,8 @@ function populateForm(record) {
   });
 
   window.scrollTo({ top: 0, behavior: "smooth" });
+  state.draftHoldings = (record.holdings || []).map((holding) => sanitizeHolding(holding));
+  renderHoldingsEditor(state.draftHoldings);
   checkDuplicateDraft();
   setActiveWorkspaceRecord(record.id);
   switchIlsTab("records");
@@ -1265,6 +1420,8 @@ function saveFormRecord(event) {
   const selectedGenres = [...$("#genres").selectedOptions].map((option) => option.value);
   const custom = $("#genre").value.trim();
   const genres = [...new Set([...selectedGenres, ...(custom ? [custom] : [])])];
+  const holdings = collectDraftHoldings();
+  const primaryHolding = holdings[0] || sanitizeHolding();
 
   const record = normalizeRecord({
     id,
@@ -1293,16 +1450,16 @@ function saveFormRecord(event) {
     targetAudience: $("#targetAudience").value.trim(),
     bibliographyNote: $("#bibliographyNote").value.trim(),
     description: $("#description").value.trim(),
-    location: $("#location").value.trim(),
-    callNumber: $("#callNumber").value.trim(),
-    accessionNumber: $("#accessionNumber").value.trim(),
-    materialNumbers: parseMaterialNumbersInput($("#materialNumbers").value),
-    status: $("#status").value || "Available",
-    dateAcquired: $("#dateAcquired").value,
+    location: primaryHolding.location,
+    callNumber: primaryHolding.callNumber,
+    accessionNumber: primaryHolding.accessionNumber,
+    materialNumbers: holdings.flatMap((holding) => holding.materialNumbers || []),
+    status: primaryHolding.status || "Available",
+    dateAcquired: primaryHolding.dateAcquired,
     dateAdded,
-    source: $("#source").value.trim(),
-    pricePaid: $("#pricePaid").value.trim(),
-    retailPrice: $("#retailPrice").value.trim(),
+    source: primaryHolding.source,
+    pricePaid: primaryHolding.pricePaid,
+    retailPrice: primaryHolding.retailPrice,
     notes: $("#notes").value.trim(),
     circulationHistory: $("#circulationHistory").value.trim(),
     coverUrl: $("#coverUrl").value.trim(),
@@ -1315,6 +1472,7 @@ function saveFormRecord(event) {
     marcLeader: $("#marcLeader").value.trim(),
     marc008: $("#marc008").value.trim(),
     addedAt: new Date(dateAdded).getTime() || Date.now(),
+    holdings,
   });
 
   const duplicateMaterial = (record.materialNumbers || []).find((materialNumber) => state.records.some((entry) => entry.id !== id && (entry.materialNumbers || []).includes(materialNumber)));
@@ -1571,6 +1729,25 @@ function renderStatsPanel() {
 
   els.ilsStatsPage.innerHTML = `<p>Total items: <strong>${stats.total}</strong></p><p>Formats: ${formats}</p><p>Most owned authors: ${topCreators}</p><p>Publication year distribution: ${years}</p><p>Newest additions: ${newest}</p><p>Collection value (price paid): <strong>$${paidTotal.toFixed(2)}</strong></p><p>Collection value (retail): <strong>$${retailTotal.toFixed(2)}</strong></p>`;
   renderMissingBiblioReport();
+  renderOverdueReport();
+}
+
+function renderOverdueReport() {
+  if (!els.overdueReportBody || !els.overdueReportSummary) return;
+  const overdueLoans = getOverdueLoans(60);
+  els.overdueReportSummary.textContent = overdueLoans.length
+    ? `${overdueLoans.length} item${overdueLoans.length === 1 ? " is" : "s are"} 60+ days overdue.`
+    : "No items are currently 60+ days overdue.";
+  els.overdueReportBody.innerHTML = "";
+  if (!overdueLoans.length) {
+    els.overdueReportBody.innerHTML = '<tr><td colspan="5">No long-overdue items found.</td></tr>';
+    return;
+  }
+  overdueLoans.forEach(({ record, holding, overdueDays }) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${record.title}</td><td>${holding.checkedOutToName || "Unknown patron"}</td><td>${holding.materialNumbers?.[0] || ""}</td><td>${holding.dueDate || ""}</td><td>${overdueDays}</td>`;
+    els.overdueReportBody.appendChild(tr);
+  });
 }
 
 function bindEvents() {
@@ -1655,8 +1832,13 @@ function bindEvents() {
   if (els.serialSubscriptionForm) els.serialSubscriptionForm.addEventListener("submit", saveSubscription);
   if (els.acquisitionItemForm) els.acquisitionItemForm.addEventListener("submit", addAcquisitionItem);
   if (els.checkOutForm) els.checkOutForm.addEventListener("submit", checkOutRecord);
+  if (els.checkOutCardNumber) els.checkOutCardNumber.addEventListener("input", () => renderCheckoutPatronPreview());
   if (els.runMissingReportBtn) els.runMissingReportBtn.addEventListener("click", renderMissingBiblioReport);
   if (els.queueCheckoutItemBtn) els.queueCheckoutItemBtn.addEventListener("click", queueCheckoutItem);
+  if (els.addHoldingBtn) els.addHoldingBtn.addEventListener("click", () => {
+    state.draftHoldings = [...collectDraftHoldings(), sanitizeHolding()];
+    renderHoldingsEditor(state.draftHoldings);
+  });
   if (els.checkOutMaterialNumber) els.checkOutMaterialNumber.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); queueCheckoutItem(); } });
   if (els.checkInForm) els.checkInForm.addEventListener("submit", checkInByMaterialNumber);
   if (els.holdForm) els.holdForm.addEventListener("submit", placeHold);
@@ -1671,6 +1853,8 @@ function bindEvents() {
       els.missingFieldSelect.value = "location";
       renderMissingBiblioReport();
       els.runMissingReportBtn?.focus();
+    } else if (reportTarget === "overdue-60") {
+      renderOverdueReport();
     }
   }));
 
@@ -1689,6 +1873,7 @@ function render() {
   fillBindings();
   fillLocations();
   fillCuratedShelves();
+  renderHoldingsEditor(collectDraftHoldings().length ? collectDraftHoldings() : state.draftHoldings);
   renderTable();
   renderPatronsTable();
   renderSubscriptionsTable();
@@ -1704,6 +1889,7 @@ function render() {
 
 function init() {
   bindEvents();
+  state.draftHoldings = [sanitizeHolding()];
 
   if (!isFirebaseConfigured()) {
     els.loginError.textContent = "Add Firebase configuration in js/config.js to enable the ILS.";
@@ -1718,9 +1904,26 @@ function init() {
       state.unsubscribeRecords();
       state.unsubscribeRecords = null;
     }
+    if (state.unsubscribeSettings) {
+      state.unsubscribeSettings();
+      state.unsubscribeSettings = null;
+    }
 
     if (!isAuthed) return;
 
+    loadSettingsFromRemote().then((settings) => {
+      if (settings) {
+        state.settings = settings;
+        saveSettings(state.settings);
+        render();
+      }
+    });
+    state.unsubscribeSettings = subscribeToFirebaseSettings((settings) => {
+      if (!settings) return;
+      state.settings = settings;
+      saveSettings(state.settings);
+      render();
+    });
     state.unsubscribeRecords = subscribeToFirebaseRecords((records) => {
       state.records = records.map(normalizeRecord);
       saveRecords(state.records);
