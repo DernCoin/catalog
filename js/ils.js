@@ -8,12 +8,14 @@ const state = {
   query: "",
   selectedIds: new Set(),
   ilsTab: "dashboard",
+  ilsSection: "dashboard",
   activeSearchIndex: -1,
   unsubscribeRecords: null,
   circulationTab: "checkout",
   queuedCheckoutItems: [],
   activeWorkspaceRecordId: "",
   editingPatronId: "",
+  selectedPatronId: "",
   draftHoldings: [],
   recordTab: "basic",
   formDirty: false,
@@ -50,8 +52,12 @@ const els = {
   bindingSelect: $("#binding"),
   locationSelect: $("#location"),
   curatedShelfSelect: $("#curatedShelf"),
+  ilsSectionButtons: $$(".ils-section-btn[data-ils-section]"),
   ilsTabButtons: $$(".admin-tab-btn[data-ils-tab]"),
   ilsTabPanels: $$(".admin-tab-panel[data-ils-panel]"),
+  ilsSubnav: $("#ilsSubnav"),
+  ilsSectionTitle: $("#ilsSectionTitle"),
+  ilsSectionDescription: $("#ilsSectionDescription"),
   newGenreInput: $("#newGenreInput"),
   addGenreBtn: $("#addGenreBtn"),
   genreList: $("#genreList"),
@@ -71,6 +77,12 @@ const els = {
   newBindingInput: $("#newBindingInput"),
   addBindingBtn: $("#addBindingBtn"),
   bindingList: $("#bindingList"),
+  materialTypeError: $("#materialTypeError"),
+  genreError: $("#genreError"),
+  formatError: $("#formatError"),
+  locationError: $("#locationError"),
+  curatedShelfError: $("#curatedShelfError"),
+  bindingError: $("#bindingError"),
   ilsStatsPage: $("#ilsStatsPage"),
   dashboardTileGrid: $("#dashboardTileGrid"),
   dashboardDate: $("#dashboardDate"),
@@ -84,7 +96,15 @@ const els = {
   patronBirthDay: $("#patronBirthDay"),
   patronId: $("#patronId"),
   patronSubmitBtn: $("#patronSubmitBtn"),
+  patronStatus: $("#patronStatus"),
+  patronExpirationDate: $("#patronExpirationDate"),
+  patronNotes: $("#patronNotes"),
+  patronBlocks: $("#patronBlocks"),
+  patronAlerts: $("#patronAlerts"),
   patronsBody: $("#patronsBody"),
+  patronDetailPanel: $("#patronDetailPanel"),
+  patronDetailBadge: $("#patronDetailBadge"),
+  patronListSummary: $("#patronListSummary"),
   serialIssueForm: $("#serialIssueForm"),
   serialTitle: $("#serialTitle"),
   serialIssueLabel: $("#serialIssueLabel"),
@@ -163,6 +183,29 @@ const els = {
   overdueReportBody: $("#overdueReportBody"),
 };
 
+const ILS_SECTIONS = {
+  dashboard: { label: "Dashboard", description: "At-a-glance circulation, cataloging, and acquisitions work.", tabs: [{ id: "dashboard", label: "Overview" }] },
+  circulation: { label: "Circulation", description: "Check out, check in, and manage holds from one circulation workspace.", tabs: [{ id: "circulation", label: "Desk" }] },
+  cataloging: { label: "Cataloging", description: "Catalog maintenance and serials work grouped together for easier navigation.", tabs: [{ id: "records", label: "Edit Records" }, { id: "serials", label: "Serials" }] },
+  acquisitions: { label: "Acquisitions", description: "Create orders and activate pending materials into the catalog.", tabs: [{ id: "acquisitions", label: "Orders & Pending" }] },
+  patrons: { label: "Patrons", description: "Review patron accounts, contact data, and circulation activity.", tabs: [{ id: "patrons", label: "Accounts" }] },
+  administration: { label: "Administration", description: "System settings and controlled list management for staff administration.", tabs: [{ id: "circulation-rules", label: "Circulation Rules" }, { id: "utilities", label: "Utilities" }] },
+  reports: { label: "Reports", description: "Run statistics, missing bibliography, and overdue reports from one reporting area.", tabs: [{ id: "stats", label: "Statistics" }] },
+};
+
+const TAB_TO_SECTION = Object.fromEntries(
+  Object.entries(ILS_SECTIONS).flatMap(([section, config]) => config.tabs.map((tab) => [tab.id, section])),
+);
+
+const MANAGED_LIST_CONFIG = {
+  materialTypes: { key: "materialTypes", label: "material type", errorEl: "materialTypeError", countId: "materialTypeCount" },
+  genres: { key: "genres", label: "genre", errorEl: "genreError", countId: "genreCount" },
+  formats: { key: "formats", label: "format", errorEl: "formatError", countId: "formatCount" },
+  locations: { key: "locations", label: "shelf location", errorEl: "locationError", countId: "locationCount" },
+  curatedShelves: { key: "curatedShelves", label: "curated shelf", errorEl: "curatedShelfError", countId: "curatedShelfCount" },
+  bindings: { key: "bindings", label: "binding", errorEl: "bindingError", countId: "bindingCount" },
+};
+
 
 const MISSING_REPORT_FIELDS = {
   location: "Location",
@@ -179,10 +222,33 @@ const FORM_FIELDS = [
   "recordId:id", "title", "subtitle", "creator", "statementOfResponsibility", "contributors", "format", "edition", "year", "publicationPlace", "publisher", "languageCode", "lccn", "oclcNumber", "deweyNumber", "lcClassNumber", "identifier", "genre", "subjects", "description", "dateAdded", "notes", "coverUrl", "circulationHistory", "binding", "seriesName", "seriesNumber", "curatedShelf", "pageCount", "physicalDetails", "summaryNote", "targetAudience", "bibliographyNote", "marcLeader", "marc008", "materialType",
 ];
 
+function renderIlsSubnav(section = state.ilsSection) {
+  if (!els.ilsSubnav) return;
+  const config = ILS_SECTIONS[section] || ILS_SECTIONS.dashboard;
+  if (els.ilsSectionTitle) els.ilsSectionTitle.textContent = config.label;
+  if (els.ilsSectionDescription) els.ilsSectionDescription.textContent = config.description;
+  els.ilsSubnav.innerHTML = config.tabs.map((tab) => `
+    <button class="button button-secondary admin-tab-btn ${state.ilsTab === tab.id ? "is-active" : ""}" data-ils-tab="${tab.id}" type="button">${tab.label}</button>
+  `).join("");
+  [...els.ilsSubnav.querySelectorAll("[data-ils-tab]")].forEach((button) => button.addEventListener("click", () => switchIlsTab(button.dataset.ilsTab)));
+}
+
+function switchIlsSection(section, preferredTab = "") {
+  const resolvedSection = ILS_SECTIONS[section] ? section : "dashboard";
+  state.ilsSection = resolvedSection;
+  els.ilsSectionButtons.forEach((btn) => btn.classList.toggle("is-active", btn.dataset.ilsSection === resolvedSection));
+  const tabs = ILS_SECTIONS[resolvedSection]?.tabs || [];
+  const nextTab = tabs.some((tab) => tab.id === preferredTab) ? preferredTab : (tabs[0]?.id || "dashboard");
+  renderIlsSubnav(resolvedSection);
+  switchIlsTab(nextTab);
+}
+
 function switchIlsTab(tab) {
   state.ilsTab = tab;
-  els.ilsTabButtons.forEach((btn) => btn.classList.toggle("is-active", btn.dataset.ilsTab === tab));
+  state.ilsSection = TAB_TO_SECTION[tab] || state.ilsSection || "dashboard";
+  els.ilsSectionButtons.forEach((btn) => btn.classList.toggle("is-active", btn.dataset.ilsSection === state.ilsSection));
   els.ilsTabPanels.forEach((panel) => panel.classList.toggle("hidden", panel.dataset.ilsPanel !== tab));
+  renderIlsSubnav(state.ilsSection);
   if (tab !== "records") hideSearchPopover();
 }
 
@@ -536,28 +602,106 @@ function renderCheckoutPatronPreview(cardNumber = els.checkOutCardNumber?.value 
   els.checkOutPatronPreview.classList.toggle("warning", Boolean(cardNumber.trim()) && !patron);
 }
 
+function getPatronLoanEntries(patronId) {
+  return state.records.flatMap((record) => (record.holdings || [])
+    .filter((holding) => holding.checkedOutTo === patronId && String(holding.status) === "On Loan")
+    .map((holding) => ({ record, holding })));
+}
+
+function getPatronHolds(patronId) {
+  return getHolds().filter((hold) => hold.patronId === patronId);
+}
+
+function getPatronAccountSummary(patron) {
+  const loans = getPatronLoanEntries(patron.id);
+  const holds = getPatronHolds(patron.id);
+  const overdue = loans.filter(({ holding }) => holding.dueDate && holding.dueDate < new Date().toISOString().slice(0, 10));
+  const history = state.records.flatMap((record) => String(record.circulationHistory || "")
+    .split("\n")
+    .filter(Boolean)
+    .filter((line) => line.includes(patron.name || "") || line.includes(patron.cardNumber || ""))
+    .map((line) => ({ title: record.title || "Untitled", line })));
+  return { loans, holds, overdue, history: history.slice(-5).reverse() };
+}
+
+function selectPatron(patronId = "") {
+  state.selectedPatronId = patronId;
+  renderPatronsTable();
+  renderPatronDetail();
+}
+
 function renderPatronsTable() {
   if (!els.patronsBody) return;
 
   const patrons = getPatrons().slice().sort((a, b) => a.name.localeCompare(b.name));
   els.patronsBody.innerHTML = "";
+  if (els.patronListSummary) els.patronListSummary.textContent = `${patrons.length} patron account${patrons.length === 1 ? "" : "s"}`;
 
   if (!patrons.length) {
     const tr = document.createElement("tr");
-    tr.innerHTML = '<td colspan="5">No patrons added yet.</td>';
+    tr.innerHTML = '<td colspan="6">No patrons added yet. Add a patron to open a full account view.</td>';
     els.patronsBody.appendChild(tr);
+    state.selectedPatronId = "";
     return;
   }
 
-  patrons.forEach((patron) => {
-    const loansCount = state.records.reduce((count, record) => count + (record.holdings || []).filter((holding) => holding.checkedOutTo === patron.id && String(holding.status) === "On Loan").length, 0);
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${patron.name}</td><td>${patron.cardNumber || ""}</td><td>${patron.email || ""}</td><td>${loansCount}</td><td><button class="button button-secondary" type="button" data-act="edit">Edit</button> <button class="button button-secondary" type="button" data-act="delete">Delete</button></td>`;
+  if (!patrons.some((patron) => patron.id === state.selectedPatronId)) state.selectedPatronId = patrons[0].id;
 
+  patrons.forEach((patron) => {
+    const summary = getPatronAccountSummary(patron);
+    const tr = document.createElement("tr");
+    tr.classList.toggle("is-selected-row", patron.id === state.selectedPatronId);
+    tr.innerHTML = `<td><button class="text-button" type="button" data-act="select">${patron.name}</button></td><td>${patron.cardNumber || ""}</td><td>${patron.status || "Active"}</td><td>${summary.loans.length}</td><td>${summary.holds.length}</td><td><button class="button button-secondary" type="button" data-act="edit">Edit</button> <button class="button button-secondary" type="button" data-act="delete">Delete</button></td>`;
+
+    tr.querySelector('[data-act="select"]').addEventListener("click", () => selectPatron(patron.id));
     tr.querySelector('[data-act="edit"]').addEventListener("click", () => editPatron(patron.id));
     tr.querySelector('[data-act="delete"]').addEventListener("click", () => removePatron(patron.id));
     els.patronsBody.appendChild(tr);
   });
+}
+
+function renderPatronDetail() {
+  if (!els.patronDetailPanel || !els.patronDetailBadge) return;
+  const patron = getPatrons().find((entry) => entry.id === state.selectedPatronId);
+  if (!patron) {
+    els.patronDetailBadge.textContent = "No patron selected";
+    els.patronDetailPanel.className = "patron-detail-panel empty-state";
+    els.patronDetailPanel.textContent = "Select a patron from the list to view account details.";
+    return;
+  }
+
+  const summary = getPatronAccountSummary(patron);
+  const blocks = String(patron.blocks || "").split(/\s*,\s*/).filter(Boolean);
+  const alerts = String(patron.alerts || "").split(/\s*,\s*/).filter(Boolean);
+  const status = patron.status || "Active";
+
+  els.patronDetailBadge.textContent = status;
+  els.patronDetailPanel.className = "patron-detail-panel";
+  els.patronDetailPanel.innerHTML = `
+    <div class="patron-account-header">
+      <div>
+        <h4>${patron.name || "Unnamed patron"}</h4>
+        <p class="muted">Card #${patron.cardNumber || "Not assigned"}</p>
+      </div>
+      <div class="patron-account-metrics">
+        <div><strong>${summary.loans.length}</strong><span>Items out</span></div>
+        <div><strong>${summary.holds.length}</strong><span>Holds</span></div>
+        <div><strong>${summary.overdue.length}</strong><span>Overdue</span></div>
+      </div>
+    </div>
+    <div class="patron-detail-grid">
+      <div class="detail-card"><span class="detail-label">Email</span><strong>${patron.email || "No email"}</strong></div>
+      <div class="detail-card"><span class="detail-label">Phone</span><strong>${patron.phone || "No phone number"}</strong></div>
+      <div class="detail-card"><span class="detail-label">Expiration</span><strong>${patron.expirationDate || "No expiration date"}</strong></div>
+      <div class="detail-card"><span class="detail-label">Account status</span><strong>${status}</strong></div>
+    </div>
+    <div class="patron-detail-columns">
+      <section class="detail-section card-like"><h5>Notes</h5><p>${patron.notes || "No notes."}</p></section>
+      <section class="detail-section card-like"><h5>Blocks & alerts</h5><p><strong>Blocks:</strong> ${blocks.length ? blocks.join(", ") : "No blocks."}</p><p><strong>Alerts:</strong> ${alerts.length ? alerts.join(", ") : "No alerts."}</p></section>
+    </div>
+    <section class="detail-section card-like"><h5>Items currently out</h5>${summary.loans.length ? `<ul class="patron-activity-list">${summary.loans.map(({ record, holding }) => `<li><strong>${record.title || "Untitled"}</strong><span>${holding.materialNumbers?.[0] || "No barcode"} · Due ${holding.dueDate || "No due date"}</span></li>`).join("")}</ul>` : "<p>No items currently checked out.</p>"}</section>
+    <section class="detail-section card-like"><h5>Recent activity</h5>${summary.history.length ? `<ul class="patron-activity-list">${summary.history.map((entry) => `<li><strong>${entry.title}</strong><span>${entry.line}</span></li>`).join("")}</ul>` : "<p>No recent activity.</p>"}</section>
+  `;
 }
 
 function renderLoansTable() {
@@ -602,6 +746,7 @@ function resetPatronForm() {
   if (!els.patronForm) return;
   els.patronForm.reset();
   if (els.patronId) els.patronId.value = "";
+  if (els.patronStatus) els.patronStatus.value = "Active";
   state.editingPatronId = "";
   if (els.patronSubmitBtn) els.patronSubmitBtn.textContent = "Add Patron";
 }
@@ -615,6 +760,11 @@ function addPatron(event) {
   const address = els.patronAddress.value.trim();
   const phone = els.patronPhone.value.trim();
   const birthDay = els.patronBirthDay.value;
+  const status = els.patronStatus?.value || "Active";
+  const expirationDate = els.patronExpirationDate?.value || "";
+  const notes = String(els.patronNotes?.value || "").trim();
+  const blocks = String(els.patronBlocks?.value || "").trim();
+  const alerts = String(els.patronAlerts?.value || "").trim();
   if (!name || !cardNumber) return;
 
   const patrons = getPatrons();
@@ -626,10 +776,14 @@ function addPatron(event) {
   }
 
   if (editingId) {
-    savePatrons(patrons.map((patron) => (patron.id === editingId ? { ...patron, name, middleName, cardNumber, email, address, phone, birthDay } : patron)));
+    savePatrons(patrons.map((patron) => (patron.id === editingId ? {
+      ...patron, name, middleName, cardNumber, email, address, phone, birthDay, status, expirationDate, notes, blocks, alerts,
+    } : patron)));
     setCirculationMessage(`Updated patron ${name}.`);
   } else {
-    patrons.push({ id: crypto.randomUUID(), name, middleName, cardNumber, email, address, phone, birthDay });
+    patrons.push({
+      id: crypto.randomUUID(), name, middleName, cardNumber, email, address, phone, birthDay, status, expirationDate, notes, blocks, alerts,
+    });
     savePatrons(patrons);
     setCirculationMessage(`Added patron ${name}.`);
   }
@@ -648,9 +802,15 @@ function editPatron(patronId) {
   els.patronAddress.value = patron.address || "";
   els.patronPhone.value = patron.phone || "";
   els.patronBirthDay.value = patron.birthDay || "";
+  if (els.patronStatus) els.patronStatus.value = patron.status || "Active";
+  if (els.patronExpirationDate) els.patronExpirationDate.value = patron.expirationDate || "";
+  if (els.patronNotes) els.patronNotes.value = patron.notes || "";
+  if (els.patronBlocks) els.patronBlocks.value = patron.blocks || "";
+  if (els.patronAlerts) els.patronAlerts.value = patron.alerts || "";
   if (els.patronId) els.patronId.value = patron.id;
   state.editingPatronId = patron.id;
   if (els.patronSubmitBtn) els.patronSubmitBtn.textContent = "Update Patron";
+  selectPatron(patron.id);
 }
 
 function removePatron(patronId) {
@@ -660,7 +820,9 @@ function removePatron(patronId) {
     return;
   }
 
+  if (!window.confirm("Delete this patron account?")) return;
   savePatrons(getPatrons().filter((patron) => patron.id !== patronId));
+  if (state.selectedPatronId === patronId) state.selectedPatronId = "";
   render();
 }
 
@@ -1149,14 +1311,14 @@ function fillMaterialTypes() {
     els.materialTypeSelect.innerHTML = ['<option value="">Unspecified</option>', ...managed.map((materialType) => `<option value="${materialType}">${materialType}</option>`)].join("");
     els.materialTypeSelect.value = managed.includes(current) ? current : "";
   }
-  renderManagedList(els.materialTypeList, managed, "material type", renameMaterialType, deleteMaterialType);
+  renderManagedList(els.materialTypeList, managed, MANAGED_LIST_CONFIG.materialTypes, renameMaterialType, deleteMaterialType);
 }
 
 function fillGenres() {
   const managed = getManagedGenres();
   const options = managed.map((g) => `<option value="${g}">${g}</option>`).join("");
   $("#genres").innerHTML = options;
-  renderManagedList(els.genreList, managed, "genre", renameGenre, deleteGenre);
+  renderManagedList(els.genreList, managed, MANAGED_LIST_CONFIG.genres, renameGenre, deleteGenre);
 }
 
 function fillFormats() {
@@ -1164,7 +1326,7 @@ function fillFormats() {
   const current = els.formatSelect.value || "";
   els.formatSelect.innerHTML = managed.map((format) => `<option value="${format}">${format}</option>`).join("");
   els.formatSelect.value = managed.includes(current) ? current : (managed[0] || "Other");
-  renderManagedList(els.formatList, managed, "format", renameFormat, deleteFormat);
+  renderManagedList(els.formatList, managed, MANAGED_LIST_CONFIG.formats, renameFormat, deleteFormat);
 }
 
 function fillBindings() {
@@ -1172,7 +1334,7 @@ function fillBindings() {
   const current = els.bindingSelect.value || "";
   els.bindingSelect.innerHTML = ['<option value="">None</option>', ...managed.map((binding) => `<option value="${binding}">${binding}</option>`)].join("");
   els.bindingSelect.value = managed.includes(current) ? current : "";
-  renderManagedList(els.bindingList, managed, "binding", renameBinding, deleteBinding);
+  renderManagedList(els.bindingList, managed, MANAGED_LIST_CONFIG.bindings, renameBinding, deleteBinding);
 }
 
 function fillLocations() {
@@ -1182,7 +1344,7 @@ function fillLocations() {
     els.locationSelect.innerHTML = ['<option value="">Unspecified</option>', ...managed.map((location) => `<option value="${location}">${location}</option>`)].join("");
     els.locationSelect.value = managed.includes(current) ? current : "";
   }
-  renderManagedList(els.locationList, managed, "location", renameLocation, deleteLocation);
+  renderManagedList(els.locationList, managed, MANAGED_LIST_CONFIG.locations, renameLocation, deleteLocation);
 }
 
 function fillCuratedShelves() {
@@ -1190,19 +1352,65 @@ function fillCuratedShelves() {
   const current = els.curatedShelfSelect.value || "";
   els.curatedShelfSelect.innerHTML = ['<option value="">None</option>', ...managed.map((shelf) => `<option value="${shelf}">${shelf}</option>`)].join("");
   els.curatedShelfSelect.value = managed.includes(current) ? current : "";
-  renderManagedList(els.curatedShelfList, managed, "curated shelf", renameCuratedShelf, deleteCuratedShelf);
+  renderManagedList(els.curatedShelfList, managed, MANAGED_LIST_CONFIG.curatedShelves, renameCuratedShelf, deleteCuratedShelf);
 }
 
-function renderManagedList(listEl, values, label, onRename, onDelete) {
+function setManagedMessage(config, message = "") {
+  if (!config) return;
+  const target = els[config.errorEl];
+  if (target) target.textContent = message;
+}
+
+function getManagedUsageCount(key, value) {
+  if (key === "materialTypes") return state.records.filter((record) => record.materialType === value).length;
+  if (key === "genres") return state.records.filter((record) => asArray(record.genres?.length ? record.genres : record.genre).includes(value)).length;
+  if (key === "formats") return state.records.filter((record) => record.format === value).length;
+  if (key === "locations") return state.records.reduce((count, record) => count + (record.location === value ? 1 : 0) + (record.holdings || []).filter((holding) => holding.location === value).length, 0);
+  if (key === "curatedShelves") return state.records.filter((record) => record.curatedShelf === value).length;
+  if (key === "bindings") return state.records.filter((record) => record.binding === value).length;
+  return 0;
+}
+
+function renderManagedList(listEl, values, config, onRename, onDelete) {
   if (!listEl) return;
   listEl.innerHTML = "";
+  setManagedMessage(config, "");
+  const countEl = document.getElementById(config.countId);
+  if (countEl) countEl.textContent = `${values.length} value${values.length === 1 ? "" : "s"}`;
+  if (!values.length) {
+    listEl.innerHTML = `<li class="managed-empty">No ${config.label}s yet.</li>`;
+    return;
+  }
   values.forEach((value) => {
     const li = document.createElement("li");
-    li.innerHTML = `<span>${value}</span><div><button class="button button-secondary" data-act="rename" type="button">Edit</button> <button class="button button-secondary" data-act="delete" type="button">Delete</button></div>`;
-    li.querySelector('[data-act="rename"]').addEventListener("click", () => {
-      const next = window.prompt(`Rename ${label}`, value);
-      if (!next || next.trim() === value) return;
-      onRename(value, next.trim());
+    const usage = getManagedUsageCount(config.key, value);
+    li.className = "managed-item";
+    li.innerHTML = `
+      <div class="managed-item-main">
+        <div>
+          <strong>${value}</strong>
+          <p class="muted">Usage count: ${usage}</p>
+        </div>
+        <div class="managed-item-actions">
+          <button class="button button-secondary" data-act="rename" type="button">Edit</button>
+          <button class="button button-secondary" data-act="delete" type="button">Delete</button>
+        </div>
+      </div>
+      <div class="managed-inline-edit hidden">
+        <input type="text" value="${value}" aria-label="Edit ${config.label}" />
+        <button class="button button-secondary" data-act="save" type="button">Save</button>
+        <button class="button button-secondary" data-act="cancel" type="button">Cancel</button>
+      </div>`;
+    const inline = li.querySelector(".managed-inline-edit");
+    li.querySelector('[data-act="rename"]').addEventListener("click", () => inline.classList.remove("hidden"));
+    li.querySelector('[data-act="cancel"]').addEventListener("click", () => inline.classList.add("hidden"));
+    li.querySelector('[data-act="save"]').addEventListener("click", () => {
+      const next = inline.querySelector("input")?.value.trim() || "";
+      if (!next || next === value) {
+        inline.classList.add("hidden");
+        return;
+      }
+      onRename(value, next);
     });
     li.querySelector('[data-act="delete"]').addEventListener("click", () => onDelete(value));
     listEl.appendChild(li);
@@ -1211,13 +1419,31 @@ function renderManagedList(listEl, values, label, onRename, onDelete) {
 
 function addToManagedList(key, inputEl, fillFn) {
   const value = inputEl.value.trim();
-  if (!value) return;
+  const config = MANAGED_LIST_CONFIG[key];
+  if (!value) {
+    setManagedMessage(config, `Enter a ${config.label} before saving.`);
+    return false;
+  }
+  const existingValues = ({
+    materialTypes: getManagedMaterialTypes,
+    genres: getManagedGenres,
+    formats: getManagedFormats,
+    locations: getManagedLocations,
+    curatedShelves: getManagedCuratedShelves,
+    bindings: getManagedBindings,
+  }[key] || (() => []))();
+  if (existingValues.some((entry) => entry.toLowerCase() === value.toLowerCase())) {
+    setManagedMessage(config, `${value} already exists.`);
+    return false;
+  }
   const set = new Set(state.settings[key] || []);
   set.add(value);
   state.settings[key] = [...set].sort((a, b) => a.localeCompare(b));
   saveSettings(state.settings);
   inputEl.value = "";
+  setManagedMessage(config, "");
   fillFn();
+  return true;
 }
 
 function renameInRecords(recordKey, prev, next) {
@@ -1239,7 +1465,7 @@ function removeFromSettings(key, target) {
 function addMaterialType() {
   const value = els.newMaterialTypeInput.value.trim();
   if (!value) return;
-  addToManagedList("materialTypes", els.newMaterialTypeInput, fillMaterialTypes);
+  if (!addToManagedList("materialTypes", els.newMaterialTypeInput, fillMaterialTypes)) return;
   if (!getCirculationRules().some((rule) => rule.materialType === value)) {
     saveCirculationRules([...getCirculationRules(), { materialType: value, loanDays: 21 }]);
   }
@@ -1252,6 +1478,8 @@ function addCuratedShelf() { addToManagedList("curatedShelves", els.newCuratedSh
 function addBinding() { addToManagedList("bindings", els.newBindingInput, fillBindings); }
 
 function renameMaterialType(prev, next) {
+  if (!next) return setManagedMessage(MANAGED_LIST_CONFIG.materialTypes, "Material type name cannot be empty.");
+  if (getManagedMaterialTypes().some((value) => value !== prev && value.toLowerCase() === next.toLowerCase())) return setManagedMessage(MANAGED_LIST_CONFIG.materialTypes, `${next} already exists.`);
   renameInRecords("materialType", prev, next);
   renameInSettings("materialTypes", prev, next);
   const rules = getCirculationRules().map((rule) => (rule.materialType === prev ? { ...rule, materialType: next } : rule));
@@ -1260,6 +1488,7 @@ function renameMaterialType(prev, next) {
 }
 
 function deleteMaterialType(target) {
+  if (!window.confirm(`Delete material type "${target}"?`)) return;
   removeFromSettings("materialTypes", target);
   saveCirculationRules(getCirculationRules().filter((rule) => rule.materialType !== target));
   render();
@@ -1288,6 +1517,8 @@ function renderCirculationRulesTable() {
 }
 
 function renameGenre(prev, next) {
+  if (!next) return setManagedMessage(MANAGED_LIST_CONFIG.genres, "Genre name cannot be empty.");
+  if (getManagedGenres().some((value) => value !== prev && value.toLowerCase() === next.toLowerCase())) return setManagedMessage(MANAGED_LIST_CONFIG.genres, `${next} already exists.`);
   state.records = state.records.map((record) => {
     const genres = asArray(record.genres?.length ? record.genres : record.genre).map((g) => (g === prev ? next : g));
     const unique = [...new Set(genres)];
@@ -1299,6 +1530,7 @@ function renameGenre(prev, next) {
 }
 
 function deleteGenre(target) {
+  if (!window.confirm(`Delete genre "${target}"?`)) return;
   state.records = state.records.map((record) => {
     const genres = asArray(record.genres?.length ? record.genres : record.genre).filter((g) => g !== target);
     return { ...record, genres, genre: genres.join(", ") };
@@ -1309,45 +1541,57 @@ function deleteGenre(target) {
 }
 
 function renameFormat(prev, next) {
+  if (!next) return setManagedMessage(MANAGED_LIST_CONFIG.formats, "Format name cannot be empty.");
+  if (getManagedFormats().some((value) => value !== prev && value.toLowerCase() === next.toLowerCase())) return setManagedMessage(MANAGED_LIST_CONFIG.formats, `${next} already exists.`);
   renameInRecords("format", prev, next);
   renameInSettings("formats", prev, next);
   render();
 }
 
 function deleteFormat(target) {
+  if (!window.confirm(`Delete format "${target}"?`)) return;
   removeFromSettings("formats", target);
   fillFormats();
 }
 
 function renameLocation(prev, next) {
+  if (!next) return setManagedMessage(MANAGED_LIST_CONFIG.locations, "Location name cannot be empty.");
+  if (getManagedLocations().some((value) => value !== prev && value.toLowerCase() === next.toLowerCase())) return setManagedMessage(MANAGED_LIST_CONFIG.locations, `${next} already exists.`);
   renameInRecords("location", prev, next);
   renameInSettings("locations", prev, next);
   render();
 }
 
 function deleteLocation(target) {
+  if (!window.confirm(`Delete location "${target}"?`)) return;
   removeFromSettings("locations", target);
   fillLocations();
 }
 
 function renameCuratedShelf(prev, next) {
+  if (!next) return setManagedMessage(MANAGED_LIST_CONFIG.curatedShelves, "Curated shelf name cannot be empty.");
+  if (getManagedCuratedShelves().some((value) => value !== prev && value.toLowerCase() === next.toLowerCase())) return setManagedMessage(MANAGED_LIST_CONFIG.curatedShelves, `${next} already exists.`);
   renameInRecords("curatedShelf", prev, next);
   renameInSettings("curatedShelves", prev, next);
   render();
 }
 
 function deleteCuratedShelf(target) {
+  if (!window.confirm(`Delete curated shelf "${target}"?`)) return;
   removeFromSettings("curatedShelves", target);
   fillCuratedShelves();
 }
 
 function renameBinding(prev, next) {
+  if (!next) return setManagedMessage(MANAGED_LIST_CONFIG.bindings, "Binding name cannot be empty.");
+  if (getManagedBindings().some((value) => value !== prev && value.toLowerCase() === next.toLowerCase())) return setManagedMessage(MANAGED_LIST_CONFIG.bindings, `${next} already exists.`);
   renameInRecords("binding", prev, next);
   renameInSettings("bindings", prev, next);
   render();
 }
 
 function deleteBinding(target) {
+  if (!window.confirm(`Delete binding "${target}"?`)) return;
   removeFromSettings("bindings", target);
   fillBindings();
 }
@@ -1932,7 +2176,7 @@ function bindEvents() {
   if (els.checkInForm) els.checkInForm.addEventListener("submit", checkInByMaterialNumber);
   if (els.holdForm) els.holdForm.addEventListener("submit", placeHold);
   els.circulationTabButtons.forEach((button) => button.addEventListener("click", () => switchCirculationTab(button.dataset.circulationTab)));
-  els.ilsTabButtons.forEach((btn) => btn.addEventListener("click", () => switchIlsTab(btn.dataset.ilsTab)));
+  els.ilsSectionButtons.forEach((btn) => btn.addEventListener("click", () => switchIlsSection(btn.dataset.ilsSection)));
   els.recordTabButtons.forEach((button) => button.addEventListener("click", () => switchRecordTab(button.dataset.recordTab)));
   window.addEventListener("beforeunload", (event) => {
     if (!state.formDirty) return;
@@ -1958,6 +2202,7 @@ function render() {
   renderHoldingsEditor(collectDraftHoldings().length ? collectDraftHoldings() : state.draftHoldings);
   renderTable();
   renderPatronsTable();
+  renderPatronDetail();
   renderSubscriptionsTable();
   renderSerialIssuesTable();
   renderAcquisitionOrdersTable();
@@ -1974,7 +2219,7 @@ function init() {
   bindEvents();
   state.draftHoldings = [sanitizeHolding()];
 
-  switchIlsTab("dashboard");
+  switchIlsSection("dashboard");
   switchCirculationTab("checkout");
   switchRecordTab("basic");
   renderCheckoutReceipt(null);

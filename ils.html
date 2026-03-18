@@ -20,23 +20,34 @@
 
     <main class="layout ils-layout">
       <section class="card" id="ilsCard">
-        <div class="ils-toolbar">
-          <nav class="admin-tab-nav" aria-label="ILS sections">
-            <button class="button button-secondary admin-tab-btn is-active" data-ils-tab="dashboard" type="button">Dashboard</button>
-            <button class="button button-secondary admin-tab-btn" data-ils-tab="acquisitions" type="button">Acquisitions</button>
-            <button class="button button-secondary admin-tab-btn" data-ils-tab="circulation" type="button">Circulation</button>
-            <button class="button button-secondary admin-tab-btn" data-ils-tab="circulation-rules" type="button">Circulation Rules</button>
-            <button class="button button-secondary admin-tab-btn" data-ils-tab="patrons" type="button">Patrons</button>
-            <button class="button button-secondary admin-tab-btn" data-ils-tab="records" type="button">Edit Records</button>
-            <button class="button button-secondary admin-tab-btn" data-ils-tab="stats" type="button">Statistics and Reports</button>
-            <button class="button button-secondary admin-tab-btn" data-ils-tab="utilities" type="button">Utilities</button>
-          </nav>
+        <div class="ils-toolbar ils-shell-grid">
+          <aside class="ils-navigation card-like" aria-label="ILS navigation">
+            <div class="ils-nav-block">
+              <p class="eyebrow">Staff modules</p>
+              <nav class="ils-top-nav" aria-label="Primary ILS sections">
+                <button class="button button-secondary ils-section-btn is-active" data-ils-section="dashboard" type="button">Dashboard</button>
+                <button class="button button-secondary ils-section-btn" data-ils-section="circulation" type="button">Circulation</button>
+                <button class="button button-secondary ils-section-btn" data-ils-section="cataloging" type="button">Cataloging</button>
+                <button class="button button-secondary ils-section-btn" data-ils-section="acquisitions" type="button">Acquisitions</button>
+                <button class="button button-secondary ils-section-btn" data-ils-section="patrons" type="button">Patrons</button>
+                <button class="button button-secondary ils-section-btn" data-ils-section="administration" type="button">Administration</button>
+                <button class="button button-secondary ils-section-btn" data-ils-section="reports" type="button">Reports</button>
+              </nav>
+            </div>
+            <div class="ils-nav-block">
+              <div>
+                <h2 id="ilsSectionTitle" class="ils-section-title">Dashboard</h2>
+                <p id="ilsSectionDescription" class="muted ils-section-description">At-a-glance circulation, cataloging, and acquisitions work.</p>
+              </div>
+              <nav id="ilsSubnav" class="ils-subnav" aria-label="Section tools"></nav>
+            </div>
+          </aside>
+          <div class="ils-main-column">
           <div class="ils-toolbar-search">
             <label class="sr-only" for="searchInput">Search records</label>
             <input id="searchInput" type="search" placeholder="Search records to edit" autocomplete="off" />
             <div id="searchResultsPopover" class="search-popover hidden" role="listbox" aria-label="Matching records"></div>
           </div>
-        </div>
 
         <section class="admin-tab-panel hidden" data-ils-panel="dashboard">
           <div class="panel-header">
@@ -214,51 +225,98 @@
         </section>
 
         <section class="admin-tab-panel hidden" data-ils-panel="patrons">
-          <h2>Patrons</h2>
-          <section class="admin-block">
-            <h3>Add patron</h3>
-            <form id="patronForm" class="simple-form">
-              <label>Full name
-                <input id="patronName" required />
-              </label>
-              <label>Middle name
-                <input id="patronMiddleName" />
-              </label>
-              <label>Card number
-                <input id="patronCardNumber" required />
-              </label>
-              <label>Email
-                <input id="patronEmail" type="email" placeholder="optional@example.com" />
-              </label>
-              <label>Address
-                <input id="patronAddress" />
-              </label>
-              <label>Phone number
-                <input id="patronPhone" />
-              </label>
-              <label>Birth day
-                <input id="patronBirthDay" type="date" />
-              </label>
-              <input id="patronId" type="hidden" />
-              <button id="patronSubmitBtn" class="button" type="submit">Add Patron</button>
-            </form>
-          </section>
+          <div class="panel-header">
+            <div>
+              <h2>Patrons</h2>
+              <p class="muted">Open full patron accounts, review circulation context, and update account alerts without leaving the patron module.</p>
+            </div>
+          </div>
+          <div class="patrons-workspace">
+            <section class="admin-block patron-list-block">
+              <div class="panel-header compact">
+                <div>
+                  <h3>Patron list</h3>
+                  <p class="muted">Select a patron to open the account detail panel.</p>
+                </div>
+                <div id="patronListSummary" class="status-message"></div>
+              </div>
+              <table id="patronsTable">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Card #</th>
+                    <th>Status</th>
+                    <th>Items Out</th>
+                    <th>Holds</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="patronsBody"></tbody>
+              </table>
+            </section>
 
-          <section class="admin-block">
-            <h3>Patron list</h3>
-            <table id="patronsTable">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Card #</th>
-                  <th>Email</th>
-                  <th>Items Out</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="patronsBody"></tbody>
-            </table>
-          </section>
+            <aside class="patron-detail-stack">
+              <section class="admin-block patron-detail-card">
+                <div class="panel-header compact">
+                  <div>
+                    <h3>Patron account</h3>
+                    <p class="muted">Detailed circulation and contact context for the selected patron.</p>
+                  </div>
+                  <span id="patronDetailBadge" class="badge badge-status">No patron selected</span>
+                </div>
+                <div id="patronDetailPanel" class="patron-detail-panel empty-state">Select a patron from the list to view account details.</div>
+              </section>
+
+              <section class="admin-block">
+                <h3>Add or update patron</h3>
+                <form id="patronForm" class="simple-form patron-form-grid">
+                  <label>Full name
+                    <input id="patronName" required />
+                  </label>
+                  <label>Middle name
+                    <input id="patronMiddleName" />
+                  </label>
+                  <label>Card number
+                    <input id="patronCardNumber" required />
+                  </label>
+                  <label>Email
+                    <input id="patronEmail" type="email" placeholder="optional@example.com" />
+                  </label>
+                  <label>Address
+                    <input id="patronAddress" />
+                  </label>
+                  <label>Phone number
+                    <input id="patronPhone" placeholder="(555) 555-5555" />
+                  </label>
+                  <label>Birth day
+                    <input id="patronBirthDay" type="date" />
+                  </label>
+                  <label>Account status
+                    <select id="patronStatus">
+                      <option>Active</option>
+                      <option>Expired</option>
+                      <option>Blocked</option>
+                      <option>Inactive</option>
+                    </select>
+                  </label>
+                  <label>Expiration date
+                    <input id="patronExpirationDate" type="date" />
+                  </label>
+                  <label class="form-grid-span">Account notes
+                    <textarea id="patronNotes" rows="3" placeholder="Optional notes about the account"></textarea>
+                  </label>
+                  <label>Account blocks
+                    <input id="patronBlocks" placeholder="Lost card, fees due, etc." />
+                  </label>
+                  <label>Account alerts
+                    <input id="patronAlerts" placeholder="Staff-only alert message" />
+                  </label>
+                  <input id="patronId" type="hidden" />
+                  <button id="patronSubmitBtn" class="button" type="submit">Add Patron</button>
+                </form>
+              </section>
+            </aside>
+          </div>
         </section>
 
         <section class="admin-tab-panel hidden" data-ils-panel="serials">
@@ -532,60 +590,70 @@
         </section>
 
         <section class="admin-tab-panel hidden" data-ils-panel="utilities">
-          <section class="location-manager admin-block">
-            <h3>Material Types</h3>
-            <div class="admin-tools">
-              <input id="newMaterialTypeInput" placeholder="Add material type" />
-              <button id="addMaterialTypeBtn" class="button button-secondary" type="button">Add material type</button>
+          <div class="panel-header">
+            <div>
+              <h2>Utilities</h2>
+              <p class="muted">Manage controlled vocabulary lists used throughout cataloging and circulation.</p>
             </div>
-            <ul id="materialTypeList" class="location-list"></ul>
-          </section>
-
-          <section class="location-manager admin-block">
-            <h3>Genres</h3>
-            <div class="admin-tools">
-              <input id="newGenreInput" placeholder="Add genre" />
-              <button id="addGenreBtn" class="button button-secondary" type="button">Add genre</button>
-            </div>
-            <ul id="genreList" class="location-list"></ul>
-          </section>
-
-          <section class="location-manager admin-block">
-            <h3>Formats</h3>
-            <div class="admin-tools">
-              <input id="newFormatInput" placeholder="Add format" />
-              <button id="addFormatBtn" class="button button-secondary" type="button">Add format</button>
-            </div>
-            <ul id="formatList" class="location-list"></ul>
-          </section>
-
-          <section class="location-manager admin-block">
-            <h3>Shelf locations</h3>
-            <div class="admin-tools">
-              <input id="newLocationInput" placeholder="Add shelf location" />
-              <button id="addLocationBtn" class="button button-secondary" type="button">Add location</button>
-            </div>
-            <ul id="locationList" class="location-list"></ul>
-          </section>
-
-          <section class="location-manager admin-block">
-            <h3>Curated shelves</h3>
-            <div class="admin-tools">
-              <input id="newCuratedShelfInput" placeholder="Add curated shelf" />
-              <button id="addCuratedShelfBtn" class="button button-secondary" type="button">Add curated shelf</button>
-            </div>
-            <ul id="curatedShelfList" class="location-list"></ul>
-          </section>
-
-          <section class="location-manager admin-block">
-            <h3>Bindings</h3>
-            <div class="admin-tools">
-              <input id="newBindingInput" placeholder="Add binding" />
-              <button id="addBindingBtn" class="button button-secondary" type="button">Add binding</button>
-            </div>
-            <ul id="bindingList" class="location-list"></ul>
-          </section>
+          </div>
+          <div class="utilities-grid">
+            <section class="location-manager admin-block managed-panel" data-managed-key="materialTypes">
+              <div class="panel-header compact"><div><h3>Material Types</h3><p class="muted">Loan rule categories and item-type labels.</p></div><span class="managed-count" id="materialTypeCount"></span></div>
+              <div class="admin-tools managed-add-row">
+                <input id="newMaterialTypeInput" placeholder="Add material type" />
+                <button id="addMaterialTypeBtn" class="button button-secondary" type="button">Add material type</button>
+              </div>
+              <p id="materialTypeError" class="warning managed-message" aria-live="polite"></p>
+              <ul id="materialTypeList" class="location-list managed-list"></ul>
+            </section>
+            <section class="location-manager admin-block managed-panel" data-managed-key="genres">
+              <div class="panel-header compact"><div><h3>Genres</h3><p class="muted">Controlled genre and topical labels.</p></div><span class="managed-count" id="genreCount"></span></div>
+              <div class="admin-tools managed-add-row">
+                <input id="newGenreInput" placeholder="Add genre" />
+                <button id="addGenreBtn" class="button button-secondary" type="button">Add genre</button>
+              </div>
+              <p id="genreError" class="warning managed-message" aria-live="polite"></p>
+              <ul id="genreList" class="location-list managed-list"></ul>
+            </section>
+            <section class="location-manager admin-block managed-panel" data-managed-key="formats">
+              <div class="panel-header compact"><div><h3>Formats</h3><p class="muted">Public-facing format labels shown in records.</p></div><span class="managed-count" id="formatCount"></span></div>
+              <div class="admin-tools managed-add-row">
+                <input id="newFormatInput" placeholder="Add format" />
+                <button id="addFormatBtn" class="button button-secondary" type="button">Add format</button>
+              </div>
+              <p id="formatError" class="warning managed-message" aria-live="polite"></p>
+              <ul id="formatList" class="location-list managed-list"></ul>
+            </section>
+            <section class="location-manager admin-block managed-panel" data-managed-key="locations">
+              <div class="panel-header compact"><div><h3>Shelf Locations</h3><p class="muted">Physical shelving and collection locations.</p></div><span class="managed-count" id="locationCount"></span></div>
+              <div class="admin-tools managed-add-row">
+                <input id="newLocationInput" placeholder="Add shelf location" />
+                <button id="addLocationBtn" class="button button-secondary" type="button">Add location</button>
+              </div>
+              <p id="locationError" class="warning managed-message" aria-live="polite"></p>
+              <ul id="locationList" class="location-list managed-list"></ul>
+            </section>
+            <section class="location-manager admin-block managed-panel" data-managed-key="curatedShelves">
+              <div class="panel-header compact"><div><h3>Curated Shelves</h3><p class="muted">Discovery groupings for featured collections.</p></div><span class="managed-count" id="curatedShelfCount"></span></div>
+              <div class="admin-tools managed-add-row">
+                <input id="newCuratedShelfInput" placeholder="Add curated shelf" />
+                <button id="addCuratedShelfBtn" class="button button-secondary" type="button">Add curated shelf</button>
+              </div>
+              <p id="curatedShelfError" class="warning managed-message" aria-live="polite"></p>
+              <ul id="curatedShelfList" class="location-list managed-list"></ul>
+            </section>
+            <section class="location-manager admin-block managed-panel" data-managed-key="bindings">
+              <div class="panel-header compact"><div><h3>Bindings</h3><p class="muted">Physical format details for copies and holdings.</p></div><span class="managed-count" id="bindingCount"></span></div>
+              <div class="admin-tools managed-add-row">
+                <input id="newBindingInput" placeholder="Add binding" />
+                <button id="addBindingBtn" class="button button-secondary" type="button">Add binding</button>
+              </div>
+              <p id="bindingError" class="warning managed-message" aria-live="polite"></p>
+              <ul id="bindingList" class="location-list managed-list"></ul>
+            </section>
+          </div>
         </section>
+        </div>
       </section>
     </main>
 
