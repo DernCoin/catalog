@@ -26,6 +26,7 @@ export function normalizeRecord(record) {
     genres,
     subjects: record.subjects || "",
     location: record.location || "",
+    materialType: record.materialType || "",
     publicationPlace: record.publicationPlace || "",
     languageCode: record.languageCode || "",
     statementOfResponsibility: record.statementOfResponsibility || "",
@@ -91,22 +92,24 @@ export function saveRecords(records) {
 export function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return { locations: [], genres: [], curatedShelves: [], formats: [], bindings: [], patrons: [], subscriptions: [], holds: [], acquisitionOrders: [], pendingMaterials: [] };
+    if (!raw) return { locations: [], genres: [], materialTypes: [], curatedShelves: [], formats: [], bindings: [], patrons: [], subscriptions: [], holds: [], circulationRules: [], acquisitionOrders: [], pendingMaterials: [] };
     const parsed = JSON.parse(raw);
     return {
       locations: parsed.locations || [],
       genres: parsed.genres || [],
+      materialTypes: parsed.materialTypes || [],
       curatedShelves: parsed.curatedShelves || [],
       formats: parsed.formats || [],
       bindings: parsed.bindings || [],
       patrons: parsed.patrons || [],
       subscriptions: parsed.subscriptions || [],
       holds: parsed.holds || [],
+      circulationRules: parsed.circulationRules || [],
       acquisitionOrders: parsed.acquisitionOrders || [],
       pendingMaterials: parsed.pendingMaterials || [],
     };
   } catch {
-    return { locations: [], genres: [], curatedShelves: [], formats: [], bindings: [], patrons: [], subscriptions: [], holds: [], acquisitionOrders: [], pendingMaterials: [] };
+    return { locations: [], genres: [], materialTypes: [], curatedShelves: [], formats: [], bindings: [], patrons: [], subscriptions: [], holds: [], circulationRules: [], acquisitionOrders: [], pendingMaterials: [] };
   }
 }
 
