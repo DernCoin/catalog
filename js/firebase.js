@@ -118,6 +118,11 @@ export async function loginWithFirebase(email, password) {
   return signInWithEmailAndPassword(services.auth, email, password);
 }
 
+export function isFirebaseAuthActive() {
+  const services = getFirebaseServices();
+  return Boolean(services?.auth?.currentUser);
+}
+
 export async function logoutFirebase() {
   const services = getFirebaseServices();
   if (!services) return;
