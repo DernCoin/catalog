@@ -1,8 +1,15 @@
-import { PAGE_SIZE, PLACEHOLDER_COVER } from "./config.js";
+import { PAGE_SIZE, PLACEHOLDER_COVER, FIREBASE_CONFIG } from "./config.js";
 import { loadRecords, saveRecords, exportRecords, importRecords, normalizeRecord, loadSettings, saveSettings, loadRecordsFromRemote } from "./storage.js";
 import { login, logout, isAdminSessionActive } from "./auth.js";
-import { isFirebaseConfigured, subscribeToFirebaseRecords } from "./firebase.js";
 import { buildFacets, queryRecords, getStats, duplicateCandidates, getRelated, PRELOADED_GENRES, didYouMean, asArray, normalizeAuthor } from "./catalog.js";
+
+function isFirebaseConfigured() {
+  return Boolean(FIREBASE_CONFIG?.apiKey && FIREBASE_CONFIG?.projectId);
+}
+
+async function loadFirebaseModule() {
+  return import("./firebase.js");
+}
 
 const state = {
   isAdmin: isAdminSessionActive(),
@@ -638,6 +645,7 @@ async function hydrateRemoteRecords() {
     render();
   }
 
+  const { subscribeToFirebaseRecords } = await loadFirebaseModule();
   subscribeToFirebaseRecords((records) => {
     state.records = records.map(normalizeRecord);
     localStorage.setItem("catalogRecordsV2", JSON.stringify(state.records));
