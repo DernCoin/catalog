@@ -1,5 +1,6 @@
 import { duplicateCandidates, PRELOADED_GENRES, asArray, getStats } from "./catalog.js";
-import { normalizeRecord, loadRecords, saveRecords, loadSettings, saveSettings } from "./storage.js";
+import { normalizeRecord, loadRecords, saveRecords, loadSettings, saveSettings, loadRecordsFromRemote } from "./storage.js";
+import { FIREBASE_CONFIG, STORAGE_KEY } from "./config.js";
 
 const state = {
   records: loadRecords(),
@@ -17,6 +18,15 @@ const state = {
   recordTab: "basic",
   formDirty: false,
 };
+
+
+function isFirebaseConfigured() {
+  return Boolean(FIREBASE_CONFIG?.apiKey && FIREBASE_CONFIG?.projectId);
+}
+
+async function loadFirebaseModule() {
+  return import("./firebase.js");
+}
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
@@ -1970,6 +1980,7 @@ function init() {
   renderCheckoutReceipt(null);
   updateCheckoutStatus();
   render();
+  hydrateRemoteRecords();
 }
 
 init();
