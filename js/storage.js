@@ -1,9 +1,9 @@
-import { STORAGE_KEY, SETTINGS_KEY, FIREBASE_CONFIG, isFirebaseConfigReady } from "./config.js";
+import { STORAGE_KEY, SETTINGS_KEY, FIREBASE_CONFIG } from "./config.js";
 
 let syncQueue = Promise.resolve();
 
 function isFirebaseConfigured() {
-  return isFirebaseConfigReady(FIREBASE_CONFIG);
+  return Boolean(FIREBASE_CONFIG?.apiKey && FIREBASE_CONFIG?.projectId);
 }
 
 async function loadFirebaseModule() {

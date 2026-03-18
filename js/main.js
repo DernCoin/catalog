@@ -1,10 +1,10 @@
-import { PAGE_SIZE, PLACEHOLDER_COVER, FIREBASE_CONFIG, isFirebaseConfigReady } from "./config.js";
+import { PAGE_SIZE, PLACEHOLDER_COVER, FIREBASE_CONFIG } from "./config.js";
 import { loadRecords, saveRecords, exportRecords, importRecords, normalizeRecord, loadSettings, saveSettings, loadRecordsFromRemote } from "./storage.js";
 import { login, logout, isAdminSessionActive } from "./auth.js";
 import { buildFacets, queryRecords, getStats, duplicateCandidates, getRelated, PRELOADED_GENRES, didYouMean, asArray, normalizeAuthor } from "./catalog.js";
 
 function isFirebaseConfigured() {
-  return isFirebaseConfigReady(FIREBASE_CONFIG);
+  return Boolean(FIREBASE_CONFIG?.apiKey && FIREBASE_CONFIG?.projectId);
 }
 
 async function loadFirebaseModule() {
