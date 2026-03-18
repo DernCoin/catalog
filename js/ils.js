@@ -183,7 +183,7 @@ const els = {
 };
 
 const ILS_SECTIONS = {
-  dashboard: { label: "Dashboard", description: "At-a-glance circulation, cataloging, and acquisitions work.", tabs: [{ id: "dashboard", label: "Overview" }] },
+  dashboard: { label: "Dashboard", description: "Overview of circulation, cataloging, acquisitions, and patron activity.", tabs: [{ id: "dashboard", label: "Overview" }] },
   circulation: { label: "Circulation", description: "Check out, check in, and manage holds from one circulation workspace.", tabs: [{ id: "circulation", label: "Desk" }] },
   cataloging: { label: "Cataloging", description: "Catalog maintenance and serials work grouped together for easier navigation.", tabs: [{ id: "records", label: "Edit Records" }, { id: "serials", label: "Serials" }] },
   acquisitions: { label: "Acquisitions", description: "Create orders and activate pending materials into the catalog.", tabs: [{ id: "acquisitions", label: "Orders & Pending" }] },
@@ -469,33 +469,264 @@ function getItemsCheckedOutTodayCount() {
   return state.records.reduce((count, record) => count + (record.holdings || []).filter((holding) => String(holding.checkedOutAt || "").slice(0, 10) === today).length, 0);
 }
 
+function getAllLoanEntries() {
+  return state.records.flatMap((record) => (record.holdings || []).map((holding) => ({ record, holding })));
+}
+
+function getCurrentLoanEntries() {
+  return getAllLoanEntries().filter(({ holding }) => String(holding.status) === "On Loan");
+}
+
+function getProblemItems() {
+  return getAllLoanEntries().filter(({ holding }) => {
+    const status = String(holding.status || "").toLowerCase();
+    return ["missing", "lost", "damaged", "claims returned", "problem", "billing"].includes(status);
+  });
+}
+
+function getMissingFieldRecords() {
+  return state.records.filter((record) => !String(record.callNumber || "").trim() || !String(record.location || "").trim() || !String(record.description || "").trim());
+}
+
+function getPendingActivationMaterials() {
+  return getPendingMaterials().filter((entry) => !entry.linkedRecordId && String(entry.status || "Pending Material") !== "Active");
+}
+
+function getOpenOrders() {
+  const pendingByOrderId = new Set(getPendingActivationMaterials().map((entry) => entry.orderId));
+  return getAcquisitionOrders().filter((order) => pendingByOrderId.has(order.id));
+}
+
+function getPatronAlertsList() {
+  return getPatrons().filter((patron) => String(patron.blocks || "").trim() || String(patron.alerts || "").trim() || String(patron.status || "").toLowerCase() === "blocked");
+}
+
+function getSerialsRenewalPreview() {
+  const recentIssues = state.records
+    .filter((record) => String(record.format || "").toLowerCase() === "magazine" && String(record.source || "").toLowerCase() === "serials")
+    .sort((a, b) => Number(b.addedAt || 0) - Number(a.addedAt || 0))
+    .slice(0, 5)
+    .map((record) => ({
+      type: "issue",
+      title: record.title.split(" — ")[0] || record.title || "Untitled magazine",
+      frequency: "Recent issue",
+      detail: String(record.notes || "").replace(/^Serial issue:\s*/, "") || "Issue added",
+      date: record.dateAdded || "",
+      timestamp: Number(record.addedAt || 0),
+    }));
+  const subscriptions = getSubscriptions()
+    .filter((entry) => String(entry.status || "").toLowerCase() !== "cancelled")
+    .sort((a, b) => {
+      const aDate = Date.parse(`${a.renewalDate || '9999-12-31'}T00:00:00Z`);
+      const bDate = Date.parse(`${b.renewalDate || '9999-12-31'}T00:00:00Z`);
+      return aDate - bDate;
+    })
+    .slice(0, 5)
+    .map((entry) => ({
+      type: "renewal",
+      title: entry.title || "Untitled subscription",
+      frequency: entry.frequency || "Unknown frequency",
+      detail: entry.renewalDate ? `Renews ${entry.renewalDate}` : "Renewal date not set",
+      date: entry.renewalDate || "",
+      timestamp: entry.renewalDate ? Date.parse(`${entry.renewalDate}T00:00:00Z`) : Number(entry.updatedAt || 0),
+    }));
+  return [...subscriptions, ...recentIssues].sort((a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0)).slice(0, 5);
+}
+
+function formatRelativeTime(value) {
+  if (!value) return "No timestamp";
+  const parsed = typeof value === "number" ? value : Date.parse(value);
+  if (!Number.isFinite(parsed)) return String(value);
+  const diff = Date.now() - parsed;
+  const future = diff < 0;
+  const absoluteMinutes = Math.round(Math.abs(diff) / 60000);
+  if (absoluteMinutes < 1) return "just now";
+  if (absoluteMinutes < 60) return `${absoluteMinutes}m ${future ? 'from now' : 'ago'}`;
+  const hours = Math.round(absoluteMinutes / 60);
+  if (hours < 24) return `${hours}h ${future ? 'from now' : 'ago'}`;
+  const days = Math.round(hours / 24);
+  if (days < 30) return `${days}d ${future ? 'from now' : 'ago'}`;
+  return new Date(parsed).toLocaleString();
+}
+
+function getRecentActivityItems(limit = 10) {
+  const activities = [];
+
+  state.records.forEach((record) => {
+    const title = record.title || "Untitled";
+    if (record.updatedAt) activities.push({ type: "record", icon: "📚", text: `Record saved: ${title}`, timestamp: Number(record.updatedAt), target: "records" });
+    if (String(record.format || "").toLowerCase() === "magazine" && String(record.source || "").toLowerCase() === "serials") {
+      activities.push({ type: "serial", icon: "📰", text: `Magazine issue added: ${title}`, timestamp: Number(record.addedAt || 0), target: "serials" });
+    }
+    String(record.circulationHistory || "").split(/\n+/).filter(Boolean).forEach((line) => {
+      const match = line.match(/^\[(.+?)\]\s*(.+)$/);
+      if (!match) return;
+      const [, stamp, action] = match;
+      const normalizedStamp = String(stamp).replace(" ", "T") + ":00Z";
+      let icon = "📘";
+      let target = "circulation";
+      if (/checked in/i.test(action)) icon = "↩️";
+      else if (/checked out/i.test(action)) icon = "📤";
+      else if (/hold|reserve/i.test(action)) icon = "📌";
+      activities.push({ icon, text: `${title} — ${action}`, timestamp: Date.parse(normalizedStamp), target });
+    });
+  });
+
+  getPatrons().forEach((patron) => {
+    if (patron.updatedAt) activities.push({ type: "patron", icon: "👤", text: `Patron updated: ${patron.name || 'Unnamed patron'}`, timestamp: Number(patron.updatedAt), target: "patrons" });
+    else if (patron.createdAt) activities.push({ type: "patron", icon: "👤", text: `Patron added: ${patron.name || 'Unnamed patron'}`, timestamp: Number(patron.createdAt), target: "patrons" });
+  });
+
+  getAcquisitionOrders().forEach((order) => {
+    activities.push({ type: "order", icon: "🧾", text: `New open order created: ${order.name || 'Untitled order'}`, timestamp: Number(order.createdAt || 0), target: "acquisitions" });
+  });
+
+  getPendingMaterials().forEach((material) => {
+    activities.push({ type: "pending", icon: material.activatedAt ? "✅" : "📦", text: material.activatedAt ? `Pending material activated: ${material.title}` : `Pending material added: ${material.title}`, timestamp: Number(material.activatedAt ? Date.parse(material.activatedAt) : material.createdAt || 0), target: "acquisitions" });
+  });
+
+  getSubscriptions().forEach((entry) => {
+    activities.push({ type: "subscription", icon: "🗓️", text: `Subscription saved: ${entry.title || 'Untitled subscription'}`, timestamp: Number(entry.updatedAt || 0), target: "serials" });
+  });
+
+  return activities
+    .filter((entry) => Number.isFinite(Number(entry.timestamp)) && Number(entry.timestamp) > 0)
+    .sort((a, b) => Number(b.timestamp) - Number(a.timestamp))
+    .slice(0, limit);
+}
+
+function openDashboardTarget(target = "dashboard", circulationTab = "", recordTab = "") {
+  switchIlsTab(target);
+  if (target === "circulation" && circulationTab) switchCirculationTab(circulationTab);
+  if (target === "records" && recordTab) switchRecordTab(recordTab);
+}
+
 function renderDashboard() {
   if (!els.dashboardTileGrid) return;
-  if (els.dashboardDate) els.dashboardDate.textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
-  const cards = [
-    { type: "metric", label: "Overdue items", value: getOverdueLoans(1).length, copy: "Items currently past due and needing staff follow-up." },
-    { type: "metric", label: "Checked out today", value: getItemsCheckedOutTodayCount(), copy: "Completed circulation transactions posted today." },
-    { type: "metric", label: "Holds ready for pickup", value: getHoldsReadyForPickupCount() || 3, copy: "Requests staged for patron pickup.", target: "circulation", tab: "holds" },
-    { type: "metric", label: "Pending acquisitions", value: getPendingMaterials().length || 4, copy: "Materials waiting to be activated into the catalog.", target: "acquisitions" },
-    { type: "metric", label: "Items needing cataloging", value: state.records.filter((record) => !String(record.callNumber || "").trim() || !String(record.location || "").trim() || !String(record.description || "").trim()).length, copy: "Records missing local item or descriptive fields.", target: "records" },
-    { type: "shortcut", label: "Daily reports", value: "Reports", copy: "Open reports for missing metadata and long-overdue materials.", target: "stats" },
-    { type: "shortcut", label: "Acquisitions", value: "Orders", copy: "Review open orders and pending materials.", target: "acquisitions" },
-    { type: "shortcut", label: "Circulation rules", value: "Rules", copy: "Adjust due-date policies by material type.", target: "circulation-rules" },
+  const currentLoans = getCurrentLoanEntries();
+  const overdueLoans = getOverdueLoans(1);
+  const holds = getHolds();
+  const pendingMaterials = getPendingActivationMaterials();
+  const openOrders = getOpenOrders();
+  const problemItems = getProblemItems();
+  const missingFieldRecords = getMissingFieldRecords();
+  const serialPreview = getSerialsRenewalPreview();
+  const patronAlerts = getPatronAlertsList();
+  const recentActivity = getRecentActivityItems(10);
+  const dashboardUpdatedLabel = `Updated ${formatRelativeTime(Date.now())}`;
+  if (els.dashboardDate) els.dashboardDate.textContent = dashboardUpdatedLabel;
+
+  const stats = [
+    { label: "Items Out", value: currentLoans.length, copy: "Currently on loan", target: "circulation" },
+    { label: "Overdues", value: overdueLoans.length, copy: "Past due circulation items", target: "circulation" },
+    { label: "Holds / Reserves", value: holds.length, copy: "Pending patron requests", target: "circulation", circulationTab: "holds" },
+    { label: "Pending Materials", value: pendingMaterials.length, copy: "Awaiting activation/cataloging", target: "acquisitions" },
+    { label: "Open Orders", value: openOrders.length, copy: "Active vendor orders", target: "acquisitions" },
+    { label: "Missing / Problem Items", value: problemItems.length, copy: "Needs review", target: "circulation" },
   ];
-  els.dashboardTileGrid.innerHTML = cards.map((card) => `
-    <button class="dashboard-tile ${card.type === "shortcut" || card.target ? "is-shortcut" : ""}" type="button" ${card.target ? `data-ils-target="${card.target}"` : ""} ${card.tab ? `data-circulation-target="${card.tab}"` : ""}>
-      <span class="dashboard-tile-label">${card.label}</span>
-      <span class="dashboard-tile-value">${card.value}</span>
-      <p class="dashboard-tile-copy">${card.copy}</p>
-      <span class="dashboard-tile-footer">${card.target ? "Open panel →" : "Live summary"}</span>
-    </button>`).join("");
-  [...els.dashboardTileGrid.querySelectorAll('.dashboard-tile')].forEach((tile) => tile.addEventListener('click', () => {
-    const target = tile.dataset.ilsTarget;
-    const circulationTarget = tile.dataset.circulationTarget;
-    if (!target) return;
-    switchIlsTab(target);
-    if (target === 'circulation' && circulationTarget) switchCirculationTab(circulationTarget);
-  }));
+
+  const todaysWork = [
+    { label: `${holds.length} holds/reserves waiting to be managed`, empty: "No holds or reserves waiting right now.", count: holds.length, target: "circulation", circulationTab: "holds", urgent: holds.length > 0 },
+    { label: `${overdueLoans.length} overdue items need follow-up`, empty: "No overdue items right now.", count: overdueLoans.length, target: "circulation", urgent: overdueLoans.length > 0 },
+    { label: `${pendingMaterials.length} pending materials need activation`, empty: "No pending materials awaiting action.", count: pendingMaterials.length, target: "acquisitions", urgent: pendingMaterials.length > 0 },
+    { label: `${openOrders.length} open orders still in progress`, empty: "No open acquisition orders right now.", count: openOrders.length, target: "acquisitions" },
+    { label: `${missingFieldRecords.length} missing-field records need cleanup`, empty: "No missing-field records need cleanup.", count: missingFieldRecords.length, target: "records" },
+    { label: `${serialPreview.length} serial items need review`, empty: "No serial renewals or recent issues need attention.", count: serialPreview.length, target: "serials" },
+  ];
+
+  const quickActions = [
+    { label: "Add Record", target: "records" },
+    { label: "Check Out", target: "circulation", circulationTab: "checkout" },
+    { label: "Check In", target: "circulation", circulationTab: "checkin" },
+    { label: "Add Patron", target: "patrons" },
+    { label: "Create Order", target: "acquisitions" },
+  ];
+
+  const actionPanel = [
+    { label: "Add New Record", target: "records" },
+    { label: "Add New Patron", target: "patrons" },
+    { label: "Start Checkout", target: "circulation", circulationTab: "checkout" },
+    { label: "Start Check-In", target: "circulation", circulationTab: "checkin" },
+    { label: "Place Hold / Reserve", target: "circulation", circulationTab: "holds" },
+    { label: "Create Acquisition Order", target: "acquisitions" },
+    { label: "Add Magazine Issue", target: "serials" },
+    { label: "Run Reports", target: "stats" },
+  ];
+
+  const overduePreview = overdueLoans.slice().sort((a, b) => b.overdueDays - a.overdueDays).slice(0, 5);
+  const pendingPreview = pendingMaterials.slice().sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0)).slice(0, 5);
+  const patronPreview = patronAlerts.slice(0, 5);
+
+  const renderList = (items, renderItem, emptyText) => items.length
+    ? `<ul class="dashboard-list">${items.map(renderItem).join("")}</ul>`
+    : `<div class="empty-state dashboard-empty">${emptyText}</div>`;
+
+  els.dashboardTileGrid.innerHTML = `
+    <section class="dashboard-home">
+      <header class="dashboard-hero card-like">
+        <div>
+          <p class="eyebrow">Staff home</p>
+          <h3>Dashboard</h3>
+          <p class="dashboard-subheading">Overview of circulation, cataloging, acquisitions, and patron activity.</p>
+          <p class="muted dashboard-welcome">Here’s what needs attention today.</p>
+        </div>
+        <div class="dashboard-hero-actions">
+          <div class="dashboard-updated">${dashboardUpdatedLabel}</div>
+          <div class="dashboard-action-row">
+            ${quickActions.map((action) => `<button class="button button-secondary dashboard-chip" type="button" data-dashboard-target="${action.target}" ${action.circulationTab ? `data-dashboard-circulation="${action.circulationTab}"` : ""}>${action.label}</button>`).join("")}
+          </div>
+        </div>
+      </header>
+
+      <section class="dashboard-stats-grid" aria-label="Primary dashboard stats">
+        ${stats.map((card) => `<button class="dashboard-stat-card ${card.label.includes('Overdues') || card.label.includes('Missing') ? 'is-urgent' : ''}" type="button" data-dashboard-target="${card.target}" ${card.circulationTab ? `data-dashboard-circulation="${card.circulationTab}"` : ""}><span class="dashboard-stat-label">${card.label}</span><strong class="dashboard-stat-value">${card.value}</strong><span class="dashboard-stat-copy">${card.copy}</span><span class="dashboard-stat-link">Open module →</span></button>`).join("")}
+      </section>
+
+      <section class="dashboard-work-row">
+        <article class="dashboard-panel card-like dashboard-tasks-panel">
+          <div class="dashboard-panel-header"><div><h4>Today’s Work</h4><p class="muted">Short task list built from live circulation, cataloging, acquisitions, and serials data.</p></div></div>
+          <div class="dashboard-task-list">
+            ${todaysWork.map((item) => item.count ? `<button class="dashboard-task-row ${item.urgent ? 'is-urgent' : ''}" type="button" data-dashboard-target="${item.target}" ${item.circulationTab ? `data-dashboard-circulation="${item.circulationTab}"` : ""}><span>${item.label}</span><span class="dashboard-task-arrow">Open →</span></button>` : `<div class="dashboard-task-row is-empty"><span>${item.empty}</span></div>`).join("")}
+          </div>
+        </article>
+        <aside class="dashboard-panel card-like dashboard-actions-panel">
+          <div class="dashboard-panel-header"><div><h4>Quick Actions</h4><p class="muted">Open the right workspace without wading into the full dashboard.</p></div></div>
+          <div class="dashboard-action-grid">
+            ${actionPanel.map((action) => `<button class="button dashboard-action-button" type="button" data-dashboard-target="${action.target}" ${action.circulationTab ? `data-dashboard-circulation="${action.circulationTab}"` : ""}>${action.label}</button>`).join("")}
+          </div>
+        </aside>
+      </section>
+
+      <section class="dashboard-panel card-like dashboard-activity-panel">
+        <div class="dashboard-panel-header"><div><h4>Recent Activity</h4><p class="muted">Most recent staff actions across circulation, cataloging, acquisitions, patrons, and serials.</p></div><button class="button button-secondary dashboard-inline-action" type="button" data-dashboard-target="stats">View more</button></div>
+        ${renderList(recentActivity, (entry) => `<li><button class="dashboard-activity-row" type="button" data-dashboard-target="${entry.target}" ${entry.target === 'circulation' ? 'data-dashboard-circulation="checkout"' : ''}><span class="dashboard-activity-icon">${entry.icon}</span><span class="dashboard-activity-copy"><strong>${entry.text}</strong><span class="muted">${formatRelativeTime(entry.timestamp)}</span></span></button></li>`, "No recent staff activity yet.")}
+      </section>
+
+      <section class="dashboard-preview-grid">
+        <article class="dashboard-panel card-like">
+          <div class="dashboard-panel-header"><div><h4>Overdue Preview</h4><p class="muted">Most overdue items needing follow-up.</p></div><button class="button button-secondary dashboard-inline-action" type="button" data-dashboard-target="circulation">Open Circulation</button></div>
+          ${renderList(overduePreview, ({ record, holding, overdueDays }) => `<li><button class="dashboard-preview-row" type="button" data-dashboard-target="circulation"><strong>${record.title || 'Untitled'}</strong><span>${holding.checkedOutToName || 'Unknown patron'} · Due ${holding.dueDate || 'No due date'} · ${overdueDays} day${overdueDays === 1 ? '' : 's'} overdue</span></button></li>`, "No items are currently overdue.")}
+        </article>
+
+        <article class="dashboard-panel card-like">
+          <div class="dashboard-panel-header"><div><h4>Pending Cataloging / Materials</h4><p class="muted">Recently staged materials awaiting action.</p></div><button class="button button-secondary dashboard-inline-action" type="button" data-dashboard-target="acquisitions">Open Acquisitions</button></div>
+          ${renderList(pendingPreview, (material) => `<li><button class="dashboard-preview-row" type="button" data-dashboard-target="acquisitions"><strong>${material.title}</strong><span>${material.orderName || 'No order'} · ${material.materialNumber || 'No material #'} · ${material.status || 'Pending Material'}</span></button></li>`, "No pending materials awaiting activation.")}
+        </article>
+
+        <article class="dashboard-panel card-like">
+          <div class="dashboard-panel-header"><div><h4>Patron Alerts</h4><p class="muted">Patrons with alerts, blocks, or account issues.</p></div><button class="button button-secondary dashboard-inline-action" type="button" data-dashboard-target="patrons">Open Patrons</button></div>
+          ${renderList(patronPreview, (patron) => `<li><button class="dashboard-preview-row" type="button" data-dashboard-target="patrons"><strong>${patron.name || 'Unnamed patron'}</strong><span>${patron.cardNumber || 'No card'} · ${patron.status || 'Active'}${patron.blocks ? ` · ${patron.blocks}` : patron.alerts ? ` · ${patron.alerts}` : ''}</span></button></li>`, "No patron alerts or account issues right now.")}
+        </article>
+
+        <article class="dashboard-panel card-like">
+          <div class="dashboard-panel-header"><div><h4>Serials / Renewals</h4><p class="muted">Upcoming renewals and recently added issues.</p></div><button class="button button-secondary dashboard-inline-action" type="button" data-dashboard-target="serials">Open Serials</button></div>
+          ${renderList(serialPreview, (entry) => `<li><button class="dashboard-preview-row" type="button" data-dashboard-target="serials"><strong>${entry.title}</strong><span>${entry.frequency} · ${entry.detail}</span></button></li>`, "No serial renewals or recent issues to show.")}
+        </article>
+      </section>
+    </section>
+  `;
+
+  [...els.dashboardTileGrid.querySelectorAll('[data-dashboard-target]')].forEach((button) => button.addEventListener('click', () => openDashboardTarget(button.dataset.dashboardTarget, button.dataset.dashboardCirculation || '')));
 }
 
 function updateCheckoutStatus(before = "Awaiting item scan.", after = "Item will display updated status here.") {
@@ -788,12 +1019,12 @@ function addPatron(event) {
 
   if (editingId) {
     savePatrons(patrons.map((patron) => (patron.id === editingId ? {
-      ...patron, name, middleName, cardNumber, email, address, phone, birthDay, status, expirationDate, notes, blocks, alerts,
+      ...patron, name, middleName, cardNumber, email, address, phone, birthDay, status, expirationDate, notes, blocks, alerts, updatedAt: Date.now(),
     } : patron)));
     setCirculationMessage(`Updated patron ${name}.`);
   } else {
     patrons.push({
-      id: crypto.randomUUID(), name, middleName, cardNumber, email, address, phone, birthDay, status, expirationDate, notes, blocks, alerts,
+      id: crypto.randomUUID(), name, middleName, cardNumber, email, address, phone, birthDay, status, expirationDate, notes, blocks, alerts, createdAt: Date.now(), updatedAt: Date.now(),
     });
     savePatrons(patrons);
     setCirculationMessage(`Added patron ${name}.`);
@@ -1821,6 +2052,7 @@ function saveFormRecord(event) {
     marcLeader: $("#marcLeader").value.trim(),
     marc008: $("#marc008").value.trim(),
     addedAt: new Date(dateAdded).getTime() || Date.now(),
+    updatedAt: Date.now(),
     holdings,
   });
 

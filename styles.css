@@ -709,3 +709,53 @@ label > span, .status-label { display:block; font-size:.83rem; font-weight:700; 
 .holding-row { border:1px solid var(--border); border-radius:16px; padding:1rem; background:#fcfbff; }
 .holding-row-header { display:flex; justify-content:space-between; gap:1rem; align-items:center; margin-bottom:.75rem; }
 @media (max-width: 900px) { .circulation-checkout-layout { grid-template-columns: 1fr; } .circulation-status-card { grid-template-columns: 1fr; } }
+
+
+.dashboard-home { display:grid; gap:1rem; }
+.dashboard-hero { display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; padding:1.1rem; border-radius:20px; background:linear-gradient(135deg, #fff 0%, #f8f2ff 55%, #f3fbff 100%); border:1px solid var(--border); }
+.dashboard-hero h3 { margin:.2rem 0; font-size:clamp(1.6rem, 3vw, 2.3rem); }
+.dashboard-subheading, .dashboard-welcome { margin:.2rem 0; }
+.dashboard-hero-actions { display:grid; gap:.75rem; justify-items:end; min-width:min(100%, 380px); }
+.dashboard-updated { color:var(--muted); font-size:.9rem; font-weight:600; }
+.dashboard-action-row { display:flex; gap:.5rem; flex-wrap:wrap; justify-content:flex-end; }
+.dashboard-chip { white-space:nowrap; }
+.dashboard-stats-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:.85rem; }
+.dashboard-stat-card { border:1px solid var(--border); border-radius:18px; padding:1rem; background:linear-gradient(180deg, #fff, #fbf7ff); display:grid; gap:.45rem; text-align:left; color:var(--text); cursor:pointer; }
+.dashboard-stat-card.is-urgent { background:linear-gradient(180deg, #fff7f7, #fff0f4); border-color:#f2c8d3; }
+.dashboard-stat-label { color:var(--muted); font-size:.85rem; text-transform:uppercase; letter-spacing:.07em; }
+.dashboard-stat-value { font-size:clamp(1.75rem, 3vw, 2.4rem); line-height:1; }
+.dashboard-stat-copy { color:var(--muted); font-size:.94rem; }
+.dashboard-stat-link, .dashboard-task-arrow { color:var(--accent); font-weight:700; }
+.dashboard-work-row { display:grid; grid-template-columns:minmax(0, 1.35fr) minmax(280px, .85fr); gap:1rem; }
+.dashboard-panel { padding:1rem; border-radius:18px; border:1px solid var(--border); background:linear-gradient(180deg, #fff, #fcf9ff); display:grid; gap:.85rem; }
+.dashboard-panel-header { display:flex; justify-content:space-between; gap:.75rem; align-items:flex-start; flex-wrap:wrap; }
+.dashboard-panel-header h4 { margin:0; font-size:1.1rem; }
+.dashboard-task-list, .dashboard-action-grid, .dashboard-preview-grid { display:grid; gap:.7rem; }
+.dashboard-task-row, .dashboard-preview-row, .dashboard-activity-row { width:100%; border:1px solid var(--border); border-radius:14px; padding:.8rem .9rem; background:#fff; text-align:left; color:var(--text); display:flex; justify-content:space-between; gap:.8rem; align-items:flex-start; }
+.dashboard-task-row.is-urgent { border-color:#f0c0c9; background:#fff7f9; }
+.dashboard-task-row.is-empty { cursor:default; color:var(--muted); background:#fdf9ff; }
+.dashboard-action-grid { grid-template-columns:1fr 1fr; }
+.dashboard-action-button { width:100%; text-align:center; border-radius:16px; padding:.85rem .9rem; }
+.dashboard-activity-panel .dashboard-list, .dashboard-panel .dashboard-list { list-style:none; margin:0; padding:0; display:grid; gap:.65rem; }
+.dashboard-activity-row { align-items:center; }
+.dashboard-activity-icon { font-size:1.15rem; }
+.dashboard-activity-copy { display:grid; gap:.1rem; }
+.dashboard-preview-grid { grid-template-columns:repeat(4, minmax(0, 1fr)); }
+.dashboard-preview-row, .dashboard-activity-row { cursor:pointer; }
+.dashboard-preview-row span, .dashboard-activity-copy .muted { font-size:.9rem; color:var(--muted); }
+.dashboard-empty { width:100%; margin:0; }
+.dashboard-inline-action { white-space:nowrap; }
+
+@media (max-width: 1080px) {
+  .dashboard-preview-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 900px) {
+  .dashboard-hero, .dashboard-work-row { grid-template-columns:1fr; display:grid; }
+  .dashboard-hero-actions { justify-items:start; min-width:0; }
+  .dashboard-action-row { justify-content:flex-start; }
+}
+
+@media (max-width: 720px) {
+  .dashboard-action-grid, .dashboard-preview-grid { grid-template-columns:1fr; }
+}
