@@ -20,34 +20,54 @@
 
     <main class="layout ils-layout">
       <section class="card" id="ilsCard">
-        <div class="ils-toolbar ils-shell-grid">
+        <div class="ils-shell-grid">
           <aside class="ils-navigation card-like" aria-label="ILS navigation">
             <div class="ils-nav-block">
               <p class="eyebrow">Staff modules</p>
               <nav class="ils-top-nav" aria-label="Primary ILS sections">
-                <button class="button button-secondary ils-section-btn is-active" data-ils-section="dashboard" type="button">Dashboard</button>
-                <button class="button button-secondary ils-section-btn" data-ils-section="circulation" type="button">Circulation</button>
-                <button class="button button-secondary ils-section-btn" data-ils-section="cataloging" type="button">Cataloging</button>
-                <button class="button button-secondary ils-section-btn" data-ils-section="acquisitions" type="button">Acquisitions</button>
-                <button class="button button-secondary ils-section-btn" data-ils-section="patrons" type="button">Patrons</button>
-                <button class="button button-secondary ils-section-btn" data-ils-section="administration" type="button">Administration</button>
-                <button class="button button-secondary ils-section-btn" data-ils-section="reports" type="button">Reports</button>
+                <div class="ils-nav-item">
+                  <button class="button button-secondary ils-section-btn is-active" data-ils-section="dashboard" type="button">Dashboard</button>
+                  <nav id="ilsSubnav-dashboard" class="ils-subnav" aria-label="Dashboard tools"></nav>
+                </div>
+                <div class="ils-nav-item">
+                  <button class="button button-secondary ils-section-btn" data-ils-section="circulation" type="button">Circulation</button>
+                  <nav id="ilsSubnav-circulation" class="ils-subnav" aria-label="Circulation tools"></nav>
+                </div>
+                <div class="ils-nav-item">
+                  <button class="button button-secondary ils-section-btn" data-ils-section="cataloging" type="button">Cataloging</button>
+                  <nav id="ilsSubnav-cataloging" class="ils-subnav" aria-label="Cataloging tools"></nav>
+                </div>
+                <div class="ils-nav-item">
+                  <button class="button button-secondary ils-section-btn" data-ils-section="acquisitions" type="button">Acquisitions</button>
+                  <nav id="ilsSubnav-acquisitions" class="ils-subnav" aria-label="Acquisitions tools"></nav>
+                </div>
+                <div class="ils-nav-item">
+                  <button class="button button-secondary ils-section-btn" data-ils-section="patrons" type="button">Patrons</button>
+                  <nav id="ilsSubnav-patrons" class="ils-subnav" aria-label="Patron tools"></nav>
+                </div>
+                <div class="ils-nav-item">
+                  <button class="button button-secondary ils-section-btn" data-ils-section="administration" type="button">Administration</button>
+                  <nav id="ilsSubnav-administration" class="ils-subnav" aria-label="Administration tools"></nav>
+                </div>
+                <div class="ils-nav-item">
+                  <button class="button button-secondary ils-section-btn" data-ils-section="reports" type="button">Reports</button>
+                  <nav id="ilsSubnav-reports" class="ils-subnav" aria-label="Report tools"></nav>
+                </div>
               </nav>
             </div>
-            <div class="ils-nav-block">
+          </aside>
+          <div class="ils-main-column">
+            <div class="ils-main-header">
               <div>
                 <h2 id="ilsSectionTitle" class="ils-section-title">Dashboard</h2>
                 <p id="ilsSectionDescription" class="muted ils-section-description">At-a-glance circulation, cataloging, and acquisitions work.</p>
               </div>
-              <nav id="ilsSubnav" class="ils-subnav" aria-label="Section tools"></nav>
+              <div class="ils-toolbar-search">
+                <label class="sr-only" for="searchInput">Search records</label>
+                <input id="searchInput" type="search" placeholder="Search records to edit" autocomplete="off" />
+                <div id="searchResultsPopover" class="search-popover hidden" role="listbox" aria-label="Matching records"></div>
+              </div>
             </div>
-          </aside>
-          <div class="ils-main-column">
-          <div class="ils-toolbar-search">
-            <label class="sr-only" for="searchInput">Search records</label>
-            <input id="searchInput" type="search" placeholder="Search records to edit" autocomplete="off" />
-            <div id="searchResultsPopover" class="search-popover hidden" role="listbox" aria-label="Matching records"></div>
-          </div>
 
         <section class="admin-tab-panel hidden" data-ils-panel="dashboard">
           <div class="panel-header">

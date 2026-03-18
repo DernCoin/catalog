@@ -318,13 +318,56 @@ mark { background:#ffe8f6; color:inherit; padding:0 .15em; border-radius:3px; }
 
 .admin-tab-nav { display:flex; gap:.45rem; flex-wrap:wrap; margin:.75rem 0 .25rem; }
 .admin-tab-btn.is-active { background:#e4d7f8; }
-.ils-shell-grid { display:grid; grid-template-columns: 260px minmax(0, 1fr); gap: 1rem; align-items:start; }
-.ils-navigation { position: sticky; top: 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: 18px; background: linear-gradient(180deg, #fff, #f8f2ff); }
-.ils-nav-block + .ils-nav-block { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
-.ils-top-nav, .ils-subnav { display:grid; gap: .45rem; }
+.ils-shell-grid { display:grid; grid-template-columns: 320px minmax(0, 1fr); gap: 1.1rem; align-items:start; }
+.ils-navigation {
+  position: sticky;
+  top: 1rem;
+  width: 320px;
+  max-width: 320px;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  padding: .8rem;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #fff, #f8f2ff);
+}
+.ils-nav-block + .ils-nav-block { margin-top: .75rem; padding-top: .75rem; border-top: 1px solid var(--border); }
+.ils-top-nav { display:grid; gap: .3rem; }
+.ils-nav-item { display:grid; gap: .22rem; }
+.ils-subnav { display:grid; gap: .18rem; padding-left: .85rem; }
 .ils-top-nav .button, .ils-subnav .button { justify-content: flex-start; text-align:left; }
-.ils-section-title { margin: 0 0 .35rem; }
-.ils-main-column { min-width: 0; }
+.ils-section-btn {
+  width: 100%;
+  padding: .58rem .85rem;
+  font-size: .95rem;
+  font-weight: 700;
+}
+.ils-section-btn.is-active {
+  background: #e4d7f8;
+  border-color: #b99fee;
+}
+.ils-subnav-btn {
+  width: 100%;
+  padding: .38rem .72rem;
+  font-size: .82rem;
+  font-weight: 600;
+  border-radius: 999px;
+  opacity: .92;
+}
+.ils-subnav-btn.is-active {
+  background: #f0e7ff;
+  border-color: #ccb8f5;
+}
+.ils-section-title { margin: 0 0 .2rem; }
+.ils-section-description { margin: 0; }
+.ils-main-column { min-width: 0; display:grid; gap: 1rem; }
+.ils-main-header {
+  display:flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
 .utilities-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
 .managed-panel { display:grid; gap: .75rem; align-content:start; }
 .managed-list { gap: .55rem; }
@@ -349,7 +392,16 @@ mark { background:#ffe8f6; color:inherit; padding:0 .15em; border-radius:3px; }
 
 @media (max-width: 980px) {
   .ils-shell-grid, .patrons-workspace { grid-template-columns: 1fr; }
-  .ils-navigation { position: static; }
+  .ils-navigation {
+    position: static;
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    overflow: visible;
+  }
+  .ils-main-header {
+    flex-direction: column;
+  }
 }
 .admin-tab-panel { margin-top:.2rem; }
 
@@ -416,7 +468,7 @@ mark { background:#ffe8f6; color:inherit; padding:0 .15em; border-radius:3px; }
 .arrival-cover, .wall-item img, .details-cover { object-fit: contain; object-position: center; }
 
 .ils-layout {
-  max-width: 1580px;
+  max-width: 1680px;
   grid-template-columns: 1fr;
 }
 
@@ -436,19 +488,6 @@ mark { background:#ffe8f6; color:inherit; padding:0 .15em; border-radius:3px; }
 .simple-form label {
   display: grid;
   gap: 0.25rem;
-}
-
-.ils-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: .8rem;
-  flex-wrap: wrap;
-  margin: .75rem 0 .25rem;
-}
-
-.ils-toolbar .admin-tab-nav {
-  margin: 0;
 }
 
 .ils-toolbar-search {

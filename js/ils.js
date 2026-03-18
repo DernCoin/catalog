@@ -55,7 +55,6 @@ const els = {
   ilsSectionButtons: $$(".ils-section-btn[data-ils-section]"),
   ilsTabButtons: $$(".admin-tab-btn[data-ils-tab]"),
   ilsTabPanels: $$(".admin-tab-panel[data-ils-panel]"),
-  ilsSubnav: $("#ilsSubnav"),
   ilsSectionTitle: $("#ilsSectionTitle"),
   ilsSectionDescription: $("#ilsSectionDescription"),
   newGenreInput: $("#newGenreInput"),
@@ -223,14 +222,26 @@ const FORM_FIELDS = [
 ];
 
 function renderIlsSubnav(section = state.ilsSection) {
-  if (!els.ilsSubnav) return;
   const config = ILS_SECTIONS[section] || ILS_SECTIONS.dashboard;
   if (els.ilsSectionTitle) els.ilsSectionTitle.textContent = config.label;
   if (els.ilsSectionDescription) els.ilsSectionDescription.textContent = config.description;
-  els.ilsSubnav.innerHTML = config.tabs.map((tab) => `
-    <button class="button button-secondary admin-tab-btn ${state.ilsTab === tab.id ? "is-active" : ""}" data-ils-tab="${tab.id}" type="button">${tab.label}</button>
-  `).join("");
-  [...els.ilsSubnav.querySelectorAll("[data-ils-tab]")].forEach((button) => button.addEventListener("click", () => switchIlsTab(button.dataset.ilsTab)));
+
+  Object.entries(ILS_SECTIONS).forEach(([sectionId, sectionConfig]) => {
+    const subnav = document.querySelector(`#ilsSubnav-${sectionId}`);
+    if (!subnav) return;
+
+    if (sectionId !== section) {
+      subnav.innerHTML = "";
+      subnav.classList.add("hidden");
+      return;
+    }
+
+    subnav.innerHTML = sectionConfig.tabs.map((tab) => `
+      <button class="button button-secondary ils-subnav-btn ${state.ilsTab === tab.id ? "is-active" : ""}" data-ils-tab="${tab.id}" type="button">${tab.label}</button>
+    `).join("");
+    subnav.classList.toggle("hidden", !sectionConfig.tabs.length);
+    [...subnav.querySelectorAll("[data-ils-tab]")].forEach((button) => button.addEventListener("click", () => switchIlsTab(button.dataset.ilsTab)));
+  });
 }
 
 function switchIlsSection(section, preferredTab = "") {
