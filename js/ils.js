@@ -133,6 +133,22 @@ const els = {
   workspaceLookupBtn: $("#workspaceLookupBtn"),
   exportActiveMarcBtn: $("#exportActiveMarcBtn"),
   workspaceStatus: $("#workspaceStatus"),
+  missingFieldSelect: $("#missingFieldSelect"),
+  runMissingReportBtn: $("#runMissingReportBtn"),
+  missingReportSummary: $("#missingReportSummary"),
+  missingReportBody: $("#missingReportBody"),
+};
+
+
+const MISSING_REPORT_FIELDS = {
+  location: "Location",
+  callNumber: "Call Number",
+  identifier: "Identifier / ISBN",
+  publisher: "Publisher",
+  year: "Publication Year",
+  description: "Description",
+  subjects: "Subjects",
+  materialNumbers: "Material Number",
 };
 
 const FORM_FIELDS = [
@@ -1394,6 +1410,36 @@ function handleAcquisitionCoverUpload() {
   reader.readAsDataURL(file);
 }
 
+function recordFieldIsMissing(record, field) {
+  if (field === "materialNumbers") return !Array.isArray(record.materialNumbers) || !record.materialNumbers.some((value) => String(value || "").trim());
+  return !String(record?.[field] || "").trim();
+}
+
+function renderMissingBiblioReport() {
+  if (!els.missingReportBody || !els.missingReportSummary || !els.missingFieldSelect) return;
+  const field = els.missingFieldSelect.value || "location";
+  const label = MISSING_REPORT_FIELDS[field] || field;
+  const matches = state.records.filter((record) => recordFieldIsMissing(record, field));
+
+  els.missingReportSummary.textContent = matches.length
+    ? `${matches.length} material${matches.length === 1 ? " is" : "s are"} currently missing ${label}.`
+    : `No materials are currently missing ${label}.`;
+
+  els.missingReportBody.innerHTML = "";
+  if (!matches.length) {
+    els.missingReportBody.innerHTML = `<tr><td colspan="5">No materials found for this report option.</td></tr>`;
+    return;
+  }
+
+  matches
+    .sort((a, b) => a.title.localeCompare(b.title))
+    .forEach((record) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${record.title || "Untitled"}</td><td>${record.creator || "Unknown creator"}</td><td>${record.format || "Other"}</td><td>${label}</td><td>${record.status || "Available"}</td>`;
+      els.missingReportBody.appendChild(tr);
+    });
+}
+
 function renderStatsPanel() {
   if (!els.ilsStatsPage) return;
   const stats = getStats(state.records);
@@ -1405,6 +1451,7 @@ function renderStatsPanel() {
   const retailTotal = state.records.reduce((sum, record) => sum + (Number.parseFloat(record.retailPrice) || 0), 0);
 
   els.ilsStatsPage.innerHTML = `<p>Total items: <strong>${stats.total}</strong></p><p>Formats: ${formats}</p><p>Most owned authors: ${topCreators}</p><p>Publication year distribution: ${years}</p><p>Newest additions: ${newest}</p><p>Collection value (price paid): <strong>$${paidTotal.toFixed(2)}</strong></p><p>Collection value (retail): <strong>$${retailTotal.toFixed(2)}</strong></p>`;
+  renderMissingBiblioReport();
 }
 
 function bindEvents() {
@@ -1489,6 +1536,7 @@ function bindEvents() {
   if (els.serialSubscriptionForm) els.serialSubscriptionForm.addEventListener("submit", saveSubscription);
   if (els.acquisitionItemForm) els.acquisitionItemForm.addEventListener("submit", addAcquisitionItem);
   if (els.checkOutForm) els.checkOutForm.addEventListener("submit", checkOutRecord);
+  if (els.runMissingReportBtn) els.runMissingReportBtn.addEventListener("click", renderMissingBiblioReport);
   if (els.queueCheckoutItemBtn) els.queueCheckoutItemBtn.addEventListener("click", queueCheckoutItem);
   if (els.checkOutMaterialNumber) els.checkOutMaterialNumber.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); queueCheckoutItem(); } });
   if (els.checkInForm) els.checkInForm.addEventListener("submit", checkInByMaterialNumber);
@@ -1496,10 +1544,15 @@ function bindEvents() {
   els.circulationTabButtons.forEach((button) => button.addEventListener("click", () => switchCirculationTab(button.dataset.circulationTab)));
   els.ilsTabButtons.forEach((btn) => btn.addEventListener("click", () => switchIlsTab(btn.dataset.ilsTab)));
   els.dashboardTiles.forEach((tile) => tile.addEventListener("click", () => {
-    const { ilsTarget, ilsEmpty } = tile.dataset;
+    const { ilsTarget, ilsEmpty, reportTarget } = tile.dataset;
     if (ilsEmpty === "true") return;
     if (!ilsTarget) return;
     switchIlsTab(ilsTarget);
+    if (reportTarget === "missing-biblio") {
+      els.missingFieldSelect.value = "location";
+      renderMissingBiblioReport();
+      els.runMissingReportBtn?.focus();
+    }
   }));
 
   els.addGenreBtn.addEventListener("click", addGenre);
