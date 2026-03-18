@@ -25,9 +25,7 @@ const state = {
   circulationTab: "checkout",
   queuedCheckoutItems: [],
   activeWorkspaceRecordId: "",
-  authMode: isFirebaseConfigured() ? "firebase" : "local",
   isLocalAuthActive: false,
-  isFirebaseAuthActive: false,
   editingPatronId: "",
   draftHoldings: [],
 };
@@ -189,7 +187,7 @@ function switchIlsTab(tab) {
 }
 
 function isAuthenticated() {
-  return state.isLocalAuthActive || state.isFirebaseAuthActive;
+  return state.isLocalAuthActive;
 }
 
 function setAuthenticatedUI(isAuthed) {
@@ -203,9 +201,7 @@ function syncAuthUI() {
 }
 
 function getCredentialLabel() {
-  return state.authMode === "firebase"
-    ? "a Firebase email/password account or the local admin fallback (admin / catalog123)"
-    : "local admin credentials (admin / catalog123)";
+  return "local admin credentials (admin / catalog123)";
 }
 
 function tryLocalAdminLogin(username, password) {

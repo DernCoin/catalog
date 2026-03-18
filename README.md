@@ -49,9 +49,8 @@ Then open <http://localhost:8000>.
 
 ## Firebase setup
 
-1. Open `js/config.js` and fill in `FIREBASE_CONFIG` with your project values (`apiKey`, `authDomain`, `projectId`, and `appId` are required for Firebase login).
-2. Ensure Firestore has a collection matching `FIREBASE_COLLECTION` (default: `records`).
-3. Create at least one Firebase Auth email/password user for staff login.
-4. Open `index.html` for OPAC and `ils.html` for cataloging. If Firebase is not configured yet, or if you need an emergency local sign-in, the ILS can still be accessed with `admin` / `catalog123`.
+1. Open `js/config.js` and fill in `FIREBASE_CONFIG` if you want the OPAC/record layer to use Firebase services later.
+2. Ensure Firestore has a collection matching `FIREBASE_COLLECTION` (default: `records`) if you plan to re-enable Firebase-backed record sync.
+3. Open `index.html` for OPAC and `ils.html` for cataloging. The ILS currently signs in locally with `admin` / `catalog123`.
 
 When Firebase is configured, OPAC and ILS use the same Firestore records so you do not need to recreate items manually. Other ILS data such as patrons, subscriptions, holds, circulation rules, and acquisitions remain local to the browser.
