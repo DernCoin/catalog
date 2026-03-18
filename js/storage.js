@@ -163,9 +163,29 @@ export function loadSettings() {
   }
 }
 
+export async function loadSettingsFromRemote() {
+  if (!isFirebaseConfigured()) return null;
+  try {
+    const { fetchFirebaseSettings, isFirebaseAuthActive } = await loadFirebaseModule();
+    if (!isFirebaseAuthActive()) return null;
+    const settings = await fetchFirebaseSettings();
+    return settings ? { ...DEFAULT_SETTINGS, ...settings } : null;
+  } catch (error) {
+    console.error("Unable to load Firebase settings", error);
+    return null;
+  }
+}
 
 export function saveSettings(settings) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  if (!isFirebaseConfigured()) return;
+  syncQueue = syncQueue.then(async () => {
+    const { syncFirebaseSettings, isFirebaseAuthActive } = await loadFirebaseModule();
+    if (!isFirebaseAuthActive()) return null;
+    return syncFirebaseSettings(settings);
+  }).catch((error) => {
+    console.error("Unable to sync Firebase settings", error);
+  });
 }
 
 export function exportRecords(records) {

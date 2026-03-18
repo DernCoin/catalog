@@ -1,5 +1,5 @@
 import { duplicateCandidates, PRELOADED_GENRES, asArray, getStats } from "./catalog.js";
-import { normalizeRecord, loadRecords, saveRecords, loadSettings, saveSettings } from "./storage.js";
+import { normalizeRecord, loadRecords, saveRecords, loadSettings, loadSettingsFromRemote, saveSettings } from "./storage.js";
 import { FIREBASE_CONFIG, isFirebaseConfigReady } from "./config.js";
 import { login, logout, isAdminSessionActive } from "./auth.js";
 
@@ -1958,7 +1958,7 @@ function init() {
     syncAuthUI();
   } else {
     syncAuthUI();
-    loadFirebaseModule().then(({ onFirebaseAuthStateChanged, subscribeToFirebaseRecords }) => onFirebaseAuthStateChanged((user) => {
+    loadFirebaseModule().then(({ onFirebaseAuthStateChanged, subscribeToFirebaseRecords, subscribeToFirebaseSettings }) => onFirebaseAuthStateChanged((user) => {
       state.isFirebaseAuthActive = Boolean(user);
       syncAuthUI();
 
