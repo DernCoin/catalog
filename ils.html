@@ -56,7 +56,7 @@
             <button class="dashboard-tile" type="button" data-ils-target="acquisitions">Acquisitions</button>
             <button class="dashboard-tile" type="button" data-ils-target="serials">Serials</button>
             <button class="dashboard-tile" type="button" data-ils-target="circulation">Circulation Rules</button>
-            <button class="dashboard-tile" type="button" data-ils-empty="true">EMPTY</button>
+            <button class="dashboard-tile" type="button" data-ils-target="stats" data-report-target="missing-biblio">Missing Biblio Report</button>
             <button class="dashboard-tile" type="button" data-ils-empty="true">EMPTY</button>
             <button class="dashboard-tile" type="button" data-ils-empty="true">EMPTY</button>
             <button class="dashboard-tile" type="button" data-ils-empty="true">EMPTY</button>
@@ -452,6 +452,32 @@
           <section class="admin-block">
             <h3>Collection Stats</h3>
             <div id="ilsStatsPage" class="stats-page"></div>
+          </section>
+
+          <section class="admin-block">
+            <h3>Missing Biblio Report</h3>
+            <p class="muted">Choose a bibliographic field to find all materials that are missing that information.</p>
+            <div class="admin-tools">
+              <label for="missingFieldSelect">Report option</label>
+              <select id="missingFieldSelect">
+                <option value="location">Location</option>
+                <option value="callNumber">Call Number</option>
+                <option value="identifier">Identifier / ISBN</option>
+                <option value="publisher">Publisher</option>
+                <option value="year">Publication Year</option>
+                <option value="description">Description</option>
+                <option value="subjects">Subjects</option>
+                <option value="materialNumbers">Material Number</option>
+              </select>
+              <button id="runMissingReportBtn" class="button button-secondary" type="button">Run Missing Report</button>
+            </div>
+            <p id="missingReportSummary" class="status-message" aria-live="polite"></p>
+            <table class="serials-table">
+              <thead>
+                <tr><th>Title</th><th>Creator</th><th>Format</th><th>Missing Field</th><th>Status</th></tr>
+              </thead>
+              <tbody id="missingReportBody"></tbody>
+            </table>
           </section>
         </section>
 
