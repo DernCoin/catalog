@@ -1,6 +1,18 @@
 import { duplicateCandidates, PRELOADED_GENRES, asArray, getStats } from "./catalog.js";
-import { normalizeRecord, loadRecords, saveRecords, loadSettings, saveSettings } from "./storage.js";
+import { normalizeRecord, loadRecords, saveRecords, loadSettings, loadSettingsFromRemote, saveSettings } from "./storage.js";
+import { FIREBASE_CONFIG, isFirebaseConfigReady } from "./config.js";
+import { login, logout, isAdminSessionActive } from "./auth.js";
 
+let firebaseModulePromise;
+
+function isFirebaseConfigured() {
+  return isFirebaseConfigReady(FIREBASE_CONFIG);
+}
+
+async function loadFirebaseModule() {
+  firebaseModulePromise ||= import("./firebase.js");
+  return firebaseModulePromise;
+}
 
 const state = {
   records: loadRecords(),
@@ -9,9 +21,11 @@ const state = {
   selectedIds: new Set(),
   ilsTab: "dashboard",
   activeSearchIndex: -1,
+  unsubscribeRecords: null,
   circulationTab: "checkout",
   queuedCheckoutItems: [],
   activeWorkspaceRecordId: "",
+  isLocalAuthActive: false,
   editingPatronId: "",
   draftHoldings: [],
 };
@@ -165,6 +179,50 @@ function switchIlsTab(tab) {
   els.ilsTabPanels.forEach((panel) => panel.classList.toggle("hidden", panel.dataset.ilsPanel !== tab));
   if (tab !== "records") hideSearchPopover();
 }
+
+function isAuthenticated() {
+  return state.isLocalAuthActive;
+}
+
+function setAuthenticatedUI(isAuthed) {
+  els.loginCard.classList.toggle("hidden", isAuthed);
+  els.ilsCard.classList.toggle("hidden", !isAuthed);
+  els.logoutBtn.classList.toggle("hidden", !isAuthed);
+}
+
+function syncAuthUI() {
+  setAuthenticatedUI(isAuthenticated());
+}
+
+function getCredentialLabel() {
+  return "local admin credentials (admin / catalog123)";
+}
+
+function tryLocalAdminLogin(username, password) {
+  const ok = login(username.trim(), password);
+  state.isLocalAuthActive = ok;
+  return ok;
+}
+
+async function authenticateStaff(username, password) {
+  const trimmedUsername = username.trim();
+
+  if (tryLocalAdminLogin(trimmedUsername, password)) {
+    syncAuthUI();
+    return "local";
+  }
+
+  state.isLocalAuthActive = false;
+
+  if (state.authMode === "firebase") {
+    const { loginWithFirebase } = await loadFirebaseModule();
+    await loginWithFirebase(trimmedUsername, password);
+    return "firebase";
+  }
+
+  throw new Error(`Use ${getCredentialLabel()}.`);
+}
+
 
 function getPatrons() {
   return Array.isArray(state.settings.patrons) ? state.settings.patrons : [];
@@ -1735,6 +1793,31 @@ function renderOverdueReport() {
 }
 
 function bindEvents() {
+  els.loginForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    els.loginError.textContent = "";
+
+    try {
+      await authenticateStaff(els.email.value, els.password.value);
+      els.loginForm.reset();
+      syncAuthUI();
+    } catch (error) {
+      els.loginError.textContent = `Unable to log in. ${error?.message || `Check ${getCredentialLabel()}.`}`;
+    }
+  });
+
+  els.logoutBtn.addEventListener("click", async () => {
+    state.isLocalAuthActive = false;
+    logout();
+
+    if (state.authMode === "firebase") {
+      const { logoutFirebase } = await loadFirebaseModule();
+      await logoutFirebase();
+    } else {
+      syncAuthUI();
+    }
+  });
+
   els.recordForm.addEventListener("submit", saveFormRecord);
   els.recordForm.addEventListener("input", checkDuplicateDraft);
   els.cancelEditBtn.addEventListener("click", resetForm);
@@ -1857,6 +1940,38 @@ function render() {
 function init() {
   bindEvents();
   state.draftHoldings = [sanitizeHolding()];
+
+  state.isLocalAuthActive = isAdminSessionActive();
+
+  if (state.authMode === "local") {
+    els.loginError.textContent = `Firebase is not configured. Sign in with ${getCredentialLabel()}.`;
+    syncAuthUI();
+  } else {
+    syncAuthUI();
+    loadFirebaseModule().then(({ onFirebaseAuthStateChanged, subscribeToFirebaseRecords, subscribeToFirebaseSettings }) => onFirebaseAuthStateChanged((user) => {
+      state.isFirebaseAuthActive = Boolean(user);
+      syncAuthUI();
+
+      if (state.unsubscribeRecords) {
+        state.unsubscribeRecords();
+        state.unsubscribeRecords = null;
+      }
+      if (!state.isFirebaseAuthActive) return;
+
+      state.unsubscribeRecords = subscribeToFirebaseRecords((records) => {
+        state.records = records.map(normalizeRecord);
+        saveRecords(state.records);
+        render();
+      }, (error) => {
+        els.loginError.textContent = `Could not load Firebase records. ${error?.message || "Check Firestore permissions."}`;
+      });
+    })).catch((error) => {
+      state.authMode = "local";
+      state.isFirebaseAuthActive = false;
+      els.loginError.textContent = `Could not load Firebase services. ${error?.message || "Check your network connection and Firebase setup."} Sign in with ${getCredentialLabel()}.`;
+      syncAuthUI();
+    });
+  }
 
   switchIlsTab("dashboard");
   switchCirculationTab("checkout");
