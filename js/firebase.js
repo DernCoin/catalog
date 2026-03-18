@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
-import { getFirestore, collection, doc, getDoc, getDocs, onSnapshot, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+import { getFirestore, collection, doc, getDocs, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 import { FIREBASE_CONFIG, FIREBASE_COLLECTION, getMissingFirebaseConfigFields, isFirebaseConfigReady } from "./config.js";
 
 let app;
@@ -70,36 +70,6 @@ export async function syncFirebaseRecords(records) {
   await batch.commit();
 }
 
-const FIREBASE_SETTINGS_COLLECTION = "system";
-const FIREBASE_SETTINGS_DOC = "settings";
-
-export function getSettingsDocRef() {
-  const services = initFirebase();
-  if (!services) return null;
-  return doc(services.db, FIREBASE_SETTINGS_COLLECTION, FIREBASE_SETTINGS_DOC);
-}
-
-export async function fetchFirebaseSettings() {
-  const ref = getSettingsDocRef();
-  if (!ref) return null;
-  const snapshot = await getDoc(ref);
-  return snapshot.exists() ? snapshot.data() : null;
-}
-
-export function subscribeToFirebaseSettings(onChange, onError = console.error) {
-  const ref = getSettingsDocRef();
-  if (!ref) return () => {};
-  return onSnapshot(ref, (snapshot) => {
-    onChange(snapshot.exists() ? snapshot.data() : null);
-  }, onError);
-}
-
-export async function syncFirebaseSettings(settings) {
-  const ref = getSettingsDocRef();
-  if (!ref) return;
-  await setDoc(ref, settings, { merge: true });
-}
-
 export function onFirebaseAuthStateChanged(cb) {
   const services = getFirebaseServices();
   if (!services) {
@@ -116,6 +86,11 @@ export async function loginWithFirebase(email, password) {
     throw new Error(missing.length ? `Firebase config is incomplete: missing ${missing.join(", ")}.` : "Firebase is not configured");
   }
   return signInWithEmailAndPassword(services.auth, email, password);
+}
+
+export function isFirebaseAuthActive() {
+  const services = getFirebaseServices();
+  return Boolean(services?.auth?.currentUser);
 }
 
 export async function logoutFirebase() {

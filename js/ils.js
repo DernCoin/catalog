@@ -1,7 +1,18 @@
 import { duplicateCandidates, PRELOADED_GENRES, asArray, getStats } from "./catalog.js";
-import { normalizeRecord, loadRecords, saveRecords, loadSettings, loadSettingsFromRemote, saveSettings } from "./storage.js";
-import { isFirebaseConfigured, loginWithFirebase, logoutFirebase, onFirebaseAuthStateChanged, subscribeToFirebaseRecords, subscribeToFirebaseSettings } from "./firebase.js";
+import { normalizeRecord, loadRecords, saveRecords, loadSettings, saveSettings } from "./storage.js";
+import { FIREBASE_CONFIG, isFirebaseConfigReady } from "./config.js";
 import { login, logout, isAdminSessionActive } from "./auth.js";
+
+let firebaseModulePromise;
+
+function isFirebaseConfigured() {
+  return isFirebaseConfigReady(FIREBASE_CONFIG);
+}
+
+async function loadFirebaseModule() {
+  firebaseModulePromise ||= import("./firebase.js");
+  return firebaseModulePromise;
+}
 
 const state = {
   records: loadRecords(),
@@ -11,7 +22,6 @@ const state = {
   ilsTab: "dashboard",
   activeSearchIndex: -1,
   unsubscribeRecords: null,
-  unsubscribeSettings: null,
   circulationTab: "checkout",
   queuedCheckoutItems: [],
   activeWorkspaceRecordId: "",
@@ -215,6 +225,7 @@ async function authenticateStaff(username, password) {
   state.isLocalAuthActive = false;
 
   if (state.authMode === "firebase") {
+    const { loginWithFirebase } = await loadFirebaseModule();
     await loginWithFirebase(trimmedUsername, password);
     return "firebase";
   }
@@ -1810,6 +1821,7 @@ function bindEvents() {
     logout();
 
     if (state.authMode === "firebase") {
+      const { logoutFirebase } = await loadFirebaseModule();
       await logoutFirebase();
     } else {
       syncAuthUI();
@@ -1946,7 +1958,7 @@ function init() {
     syncAuthUI();
   } else {
     syncAuthUI();
-    onFirebaseAuthStateChanged((user) => {
+    loadFirebaseModule().then(({ onFirebaseAuthStateChanged, subscribeToFirebaseRecords }) => onFirebaseAuthStateChanged((user) => {
       state.isFirebaseAuthActive = Boolean(user);
       syncAuthUI();
 
@@ -1954,26 +1966,8 @@ function init() {
         state.unsubscribeRecords();
         state.unsubscribeRecords = null;
       }
-      if (state.unsubscribeSettings) {
-        state.unsubscribeSettings();
-        state.unsubscribeSettings = null;
-      }
-
       if (!state.isFirebaseAuthActive) return;
 
-      loadSettingsFromRemote().then((settings) => {
-        if (settings) {
-          state.settings = settings;
-          saveSettings(state.settings);
-          render();
-        }
-      });
-      state.unsubscribeSettings = subscribeToFirebaseSettings((settings) => {
-        if (!settings) return;
-        state.settings = settings;
-        saveSettings(state.settings);
-        render();
-      });
       state.unsubscribeRecords = subscribeToFirebaseRecords((records) => {
         state.records = records.map(normalizeRecord);
         saveRecords(state.records);
@@ -1981,6 +1975,11 @@ function init() {
       }, (error) => {
         els.loginError.textContent = `Could not load Firebase records. ${error?.message || "Check Firestore permissions."}`;
       });
+    })).catch((error) => {
+      state.authMode = "local";
+      state.isFirebaseAuthActive = false;
+      els.loginError.textContent = `Could not load Firebase services. ${error?.message || "Check your network connection and Firebase setup."} Sign in with ${getCredentialLabel()}.`;
+      syncAuthUI();
     });
   }
 
