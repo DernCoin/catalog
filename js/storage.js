@@ -114,6 +114,28 @@ export function normalizeRecord(record) {
   }, holdings);
 }
 
+export function mergeRecords(localRecords = [], remoteRecords = []) {
+  const merged = new Map();
+
+  remoteRecords.map(normalizeRecord).forEach((record) => {
+    merged.set(record.id, record);
+  });
+
+  localRecords.map(normalizeRecord).forEach((record) => {
+    const existing = merged.get(record.id);
+    if (!existing) {
+      merged.set(record.id, record);
+      return;
+    }
+
+    const localTimestamp = Number(record.updatedAt || record.addedAt || 0);
+    const remoteTimestamp = Number(existing.updatedAt || existing.addedAt || 0);
+    merged.set(record.id, localTimestamp >= remoteTimestamp ? record : existing);
+  });
+
+  return [...merged.values()].sort((a, b) => Number(b.addedAt || 0) - Number(a.addedAt || 0));
+}
+
 export function loadRecords() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
