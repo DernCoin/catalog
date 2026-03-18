@@ -1,7 +1,52 @@
 import { STORAGE_KEY, SETTINGS_KEY } from "./config.js";
-import { fetchAllFirebaseRecords, isFirebaseConfigured, syncFirebaseRecords } from "./firebase.js";
+import { fetchAllFirebaseRecords, fetchFirebaseSettings, isFirebaseConfigured, syncFirebaseRecords, syncFirebaseSettings } from "./firebase.js";
 
 let syncQueue = Promise.resolve();
+const DEFAULT_SETTINGS = { locations: [], genres: [], materialTypes: [], curatedShelves: [], formats: [], bindings: [], patrons: [], subscriptions: [], holds: [], circulationRules: [], acquisitionOrders: [], pendingMaterials: [] };
+
+function normalizeHolding(holding = {}, fallback = {}) {
+  const parsedMaterialNumbers = Array.isArray(holding.materialNumbers)
+    ? holding.materialNumbers
+    : String(holding.materialNumbers || fallback.materialNumber || "").split(/[\n,]/).map((value) => value.trim()).filter(Boolean);
+  const materialNumbers = [...new Set(parsedMaterialNumbers.map((value) => String(value || "").trim()).filter(Boolean))];
+  return {
+    id: holding.id || `holding-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+    status: holding.status || fallback.status || "Available",
+    location: holding.location || fallback.location || "",
+    callNumber: holding.callNumber || fallback.callNumber || "",
+    accessionNumber: holding.accessionNumber || fallback.accessionNumber || "",
+    materialNumbers,
+    dateAcquired: holding.dateAcquired || fallback.dateAcquired || "",
+    source: holding.source || fallback.source || "",
+    pricePaid: holding.pricePaid || fallback.pricePaid || "",
+    retailPrice: holding.retailPrice || fallback.retailPrice || "",
+    checkedOutTo: holding.checkedOutTo || "",
+    checkedOutToName: holding.checkedOutToName || "",
+    checkedOutAt: holding.checkedOutAt || "",
+    dueDate: holding.dueDate || "",
+  };
+}
+
+function deriveRecordFromHoldings(record, holdings) {
+  const primary = holdings[0] || normalizeHolding({}, record);
+  return {
+    ...record,
+    holdings,
+    status: primary.status || record.status || "Available",
+    location: primary.location || record.location || "",
+    callNumber: primary.callNumber || record.callNumber || "",
+    accessionNumber: primary.accessionNumber || record.accessionNumber || "",
+    materialNumbers: [...new Set(holdings.flatMap((holding) => holding.materialNumbers || []))],
+    dateAcquired: primary.dateAcquired || record.dateAcquired || "",
+    source: primary.source || record.source || "",
+    pricePaid: primary.pricePaid || record.pricePaid || "",
+    retailPrice: primary.retailPrice || record.retailPrice || "",
+    checkedOutTo: primary.checkedOutTo || record.checkedOutTo || "",
+    checkedOutToName: primary.checkedOutToName || record.checkedOutToName || "",
+    checkedOutAt: primary.checkedOutAt || record.checkedOutAt || "",
+    dueDate: primary.dueDate || record.dueDate || "",
+  };
+}
 
 export function normalizeRecord(record) {
   const parsedGenres = Array.isArray(record.genres)
@@ -13,8 +58,12 @@ export function normalizeRecord(record) {
     ? record.materialNumbers
     : String(record.materialNumbers || record.materialNumber || "").split(/[\n,]/).map((value) => value.trim()).filter(Boolean);
   const materialNumbers = [...new Set(parsedMaterialNumbers.map((value) => String(value || "").trim()).filter(Boolean))];
+  const rawHoldings = Array.isArray(record.holdings) && record.holdings.length
+    ? record.holdings
+    : [{ status: record.status, location: record.location, callNumber: record.callNumber, accessionNumber: record.accessionNumber, materialNumbers, dateAcquired: record.dateAcquired, source: record.source, pricePaid: record.pricePaid, retailPrice: record.retailPrice, checkedOutTo: record.checkedOutTo, checkedOutToName: record.checkedOutToName, checkedOutAt: record.checkedOutAt, dueDate: record.dueDate }];
+  const holdings = rawHoldings.map((holding) => normalizeHolding(holding, record));
 
-  return {
+  return deriveRecordFromHoldings({
     ...record,
     id: record.id || `id-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
     title: (record.title || "").trim(),
@@ -54,7 +103,7 @@ export function normalizeRecord(record) {
     dateAdded: record.dateAdded || new Date().toISOString().slice(0, 10),
     addedAt: Number(record.addedAt) || Date.now(),
     permalink: record.permalink || `record-${record.id || crypto.randomUUID()}`,
-  };
+  }, holdings);
 }
 
 export function loadRecords() {
@@ -92,29 +141,31 @@ export function saveRecords(records) {
 export function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return { locations: [], genres: [], materialTypes: [], curatedShelves: [], formats: [], bindings: [], patrons: [], subscriptions: [], holds: [], circulationRules: [], acquisitionOrders: [], pendingMaterials: [] };
+    if (!raw) return { ...DEFAULT_SETTINGS };
     const parsed = JSON.parse(raw);
-    return {
-      locations: parsed.locations || [],
-      genres: parsed.genres || [],
-      materialTypes: parsed.materialTypes || [],
-      curatedShelves: parsed.curatedShelves || [],
-      formats: parsed.formats || [],
-      bindings: parsed.bindings || [],
-      patrons: parsed.patrons || [],
-      subscriptions: parsed.subscriptions || [],
-      holds: parsed.holds || [],
-      circulationRules: parsed.circulationRules || [],
-      acquisitionOrders: parsed.acquisitionOrders || [],
-      pendingMaterials: parsed.pendingMaterials || [],
-    };
+    return { ...DEFAULT_SETTINGS, ...parsed };
   } catch {
-    return { locations: [], genres: [], materialTypes: [], curatedShelves: [], formats: [], bindings: [], patrons: [], subscriptions: [], holds: [], circulationRules: [], acquisitionOrders: [], pendingMaterials: [] };
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
+export async function loadSettingsFromRemote() {
+  if (!isFirebaseConfigured()) return null;
+  try {
+    const settings = await fetchFirebaseSettings();
+    return settings ? { ...DEFAULT_SETTINGS, ...settings } : null;
+  } catch (error) {
+    console.error("Unable to load Firebase settings", error);
+    return null;
   }
 }
 
 export function saveSettings(settings) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  if (!isFirebaseConfigured()) return;
+  syncQueue = syncQueue.then(() => syncFirebaseSettings(settings)).catch((error) => {
+    console.error("Unable to sync Firebase settings", error);
+  });
 }
 
 export function exportRecords(records) {

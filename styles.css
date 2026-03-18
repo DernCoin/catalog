@@ -310,6 +310,9 @@ mark { background:#ffe8f6; color:inherit; padding:0 .15em; border-radius:3px; }
 .stats-page p { margin:.45rem 0; }
 .location-list { list-style:none; padding:0; margin:0; display:grid; gap:.35rem; }
 .location-list li { display:flex; justify-content:space-between; align-items:center; border:1px solid var(--border); border-radius:10px; padding:.35rem .55rem; }
+.checkout-queue-item { gap: .6rem; }
+.checkout-queue-main { display:flex; align-items:center; gap:.65rem; min-width:0; }
+.checkout-thumb { width: 42px; height: 58px; object-fit: contain; border-radius: 6px; background:#f3ecfb; border:1px solid var(--border); flex:0 0 auto; }
 
 
 
@@ -539,6 +542,17 @@ mark { background:#ffe8f6; color:inherit; padding:0 .15em; border-radius:3px; }
   min-height: 280px;
   padding: .5rem;
 }
+.workspace-holdings-toolbar {
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap:.65rem;
+  align-items:end;
+}
+.workspace-holdings-toolbar .button { align-self:end; }
+.holdings-editor { display:grid; gap:.8rem; margin-top:.75rem; }
+.holding-row { border:1px solid var(--border); border-radius:12px; padding:.75rem; background:#faf7ff; }
+.holding-row-header { display:flex; justify-content:space-between; gap:.6rem; align-items:center; margin-bottom:.55rem; }
+.holding-meta { margin:.5rem 0 0; }
 .workspace-grid {
   margin: .5rem 0 0;
   display: grid;
