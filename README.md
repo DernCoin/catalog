@@ -17,8 +17,8 @@ It now includes a polished public catalog experience and a distinct Firebase-rea
 
 ### ILS (Integrated Library System)
 - Separate `ils.html` staff workspace for add/edit/delete record management.
-- Firebase Auth email/password login for staff access, with a local admin fallback (`admin` / `catalog123`) available when Firebase is unavailable or not yet configured.
-- Firebase Firestore-backed record storage shared with the OPAC.
+- Local admin login for staff access (`admin` / `catalog123`) while Firebase login is temporarily disabled.
+- Firebase Firestore-backed **record** storage shared with the OPAC; the rest of the ILS settings/data stay in local browser storage.
 - LocalStorage fallback for offline/dev use.
 
 ## Project structure
@@ -49,9 +49,8 @@ Then open <http://localhost:8000>.
 
 ## Firebase setup
 
-1. Open `js/config.js` and fill in `FIREBASE_CONFIG` with your project values (`apiKey`, `authDomain`, `projectId`, and `appId` are required for Firebase login).
-2. Ensure Firestore has a collection matching `FIREBASE_COLLECTION` (default: `records`).
-3. Create at least one Firebase Auth email/password user for staff login.
-4. Open `index.html` for OPAC and `ils.html` for cataloging. If Firebase is not configured yet, or if you need an emergency local sign-in, the ILS can still be accessed with `admin` / `catalog123`.
+1. Open `js/config.js` and fill in `FIREBASE_CONFIG` if you want the OPAC/record layer to use Firebase services later.
+2. Ensure Firestore has a collection matching `FIREBASE_COLLECTION` (default: `records`) if you plan to re-enable Firebase-backed record sync.
+3. Open `index.html` for OPAC and `ils.html` for cataloging. The ILS currently signs in locally with `admin` / `catalog123`.
 
-When Firebase is configured, OPAC and ILS use the same Firestore records so you do not need to recreate items manually.
+The ILS login is currently local-only. Other ILS data such as patrons, subscriptions, holds, circulation rules, and acquisitions remain local to the browser.
