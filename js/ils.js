@@ -34,13 +34,7 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 
 const els = {
-  loginCard: $("#loginCard"),
   ilsCard: $("#ilsCard"),
-  logoutBtn: $("#logoutBtn"),
-  loginForm: $("#loginForm"),
-  loginError: $("#loginError"),
-  email: $("#email"),
-  password: $("#password"),
   recordForm: $("#recordForm"),
   cancelEditBtn: $("#cancelEditBtn"),
   duplicateWarning: $("#duplicateWarning"),
