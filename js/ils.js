@@ -1970,25 +1970,6 @@ function render() {
   renderDashboard();
 }
 
-
-async function hydrateRemoteRecords() {
-  if (!isFirebaseConfigured()) return;
-  const remoteRecords = await loadRecordsFromRemote();
-  if (remoteRecords.length) {
-    state.records = remoteRecords;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.records));
-    render();
-  }
-
-  const { subscribeToFirebaseRecords } = await loadFirebaseModule();
-  if (state.unsubscribeRecords) state.unsubscribeRecords();
-  state.unsubscribeRecords = subscribeToFirebaseRecords((records) => {
-    state.records = records.map(normalizeRecord);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.records));
-    render();
-  });
-}
-
 function init() {
   bindEvents();
   state.draftHoldings = [sanitizeHolding()];
