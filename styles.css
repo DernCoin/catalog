@@ -759,3 +759,57 @@ label > span, .status-label { display:block; font-size:.83rem; font-weight:700; 
 @media (max-width: 720px) {
   .dashboard-action-grid, .dashboard-preview-grid { grid-template-columns:1fr; }
 }
+
+.acquisitions-shell { display:grid; gap:1rem; }
+.acquisitions-hero { display:grid; gap:1rem; }
+.acquisitions-hero-header { align-items:flex-start; }
+.acquisitions-eyebrow { margin-bottom:.35rem; }
+.acquisitions-subheading, .acquisitions-status-line { max-width: 62ch; }
+.acquisitions-quick-actions { display:flex; gap:.55rem; flex-wrap:wrap; justify-content:flex-end; }
+.acquisition-summary-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:.75rem; }
+.acquisition-summary-card { border:1px solid var(--border); border-radius:18px; background:linear-gradient(180deg, #fff, #faf5ff); padding:1rem; text-align:left; display:grid; gap:.35rem; cursor:pointer; color:var(--text); }
+.acquisition-summary-card:hover, .acquisition-summary-card:focus-visible { transform:translateY(-2px); box-shadow:0 12px 24px rgba(36,18,58,.08); }
+.acquisition-summary-label { font-size:.82rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }
+.acquisition-summary-value { font-size:2rem; line-height:1; }
+.acquisition-summary-copy { color:var(--muted); font-size:.9rem; }
+.acquisitions-stage-nav { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:.65rem; }
+.acquisition-stage-btn { width:100%; border-radius:16px; padding:.8rem .9rem; display:grid; gap:.2rem; text-align:left; }
+.acquisition-stage-btn small { color:var(--muted); font-size:.8rem; }
+.acquisition-stage-btn.is-active { background:#eadfff; border-color:#cbb1fb; }
+.acquisition-stage-panel { min-width:0; }
+.acquisitions-stage-header { margin-bottom:.35rem; }
+.acquisitions-orders-layout { display:grid; grid-template-columns:minmax(320px, .95fr) minmax(0, 1.4fr); gap:1rem; align-items:start; }
+.acquisition-form-panel, .acquisition-list-panel { display:grid; gap:.75rem; }
+.acquisition-form-panel { padding:1rem; border:1px solid var(--border); border-radius:18px; background:linear-gradient(180deg, #fff, #fcf8ff); }
+.acquisition-data-table-wrap { overflow-x:auto; }
+.acquisition-stage-table td { vertical-align:top; }
+.acquisition-progress-meta { margin-bottom:.45rem; }
+.acquisition-progress-bar { width:100%; height:10px; border-radius:999px; background:#efe8fb; overflow:hidden; }
+.acquisition-progress-bar span { display:block; height:100%; background:linear-gradient(90deg, var(--accent), var(--accent-3)); border-radius:999px; }
+.acquisition-card-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:.9rem; }
+.acquisition-card-grid-compact { grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); }
+.acquisition-stage-card { border:1px solid var(--border); border-radius:18px; background:#fff; padding:1rem; display:grid; gap:.85rem; }
+.acquisition-stage-card h4 { margin:.1rem 0 .2rem; }
+.acquisition-stage-card-top { display:flex; justify-content:space-between; gap:.8rem; align-items:flex-start; }
+.acquisition-detail-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:.75rem; }
+.acquisition-empty-state { border:1px dashed #d9c7ee; border-radius:16px; padding:1.1rem; background:#fcf8ff; display:grid; gap:.45rem; }
+.acquisition-empty-state h4 { margin:0; }
+.acquisition-inline-flag { margin-top:.35rem; display:inline-flex; align-items:center; gap:.35rem; border-radius:999px; padding:.2rem .55rem; background:#fff0e1; color:#8a4a05; font-size:.78rem; font-weight:700; }
+.acquisition-badge { background:#f1ecf8; color:#4a3960; }
+.acquisition-badge[data-acq-status="open"], .acquisition-badge[data-acq-status="ordered"], .acquisition-badge[data-acq-status="awaiting-receipt"] { background:#eef2ff; color:#3348a8; }
+.acquisition-badge[data-acq-status="partially-received"] { background:#fff2db; color:#8b4d00; }
+.acquisition-badge[data-acq-status="received"] { background:#e8fbef; color:#176a37; }
+.acquisition-badge[data-acq-status="pending"] { background:#fff1fa; color:#a32261; }
+.acquisition-badge[data-acq-status="activated"] { background:#e6fbfb; color:#0b6d68; }
+.acquisition-badge[data-acq-status="closed"] { background:#ede7ff; color:#5b30c6; }
+.acquisition-badge[data-acq-status="item-activated-into-catalog"], .acquisition-badge[data-acq-status="order-fully-received-and-closed"] { background:#ede7ff; color:#5b30c6; }
+
+@media (max-width: 980px) {
+  .acquisitions-stage-nav { grid-template-columns:repeat(2, minmax(0,1fr)); }
+  .acquisitions-orders-layout { grid-template-columns:1fr; }
+}
+
+@media (max-width: 720px) {
+  .acquisitions-quick-actions, .acquisitions-stage-nav { grid-template-columns:1fr; display:grid; }
+  .acquisition-summary-grid, .acquisition-card-grid, .acquisition-card-grid-compact { grid-template-columns:1fr; }
+}
