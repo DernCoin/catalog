@@ -49,7 +49,7 @@ Then open <http://localhost:8000>.
 
 ## Firebase setup
 
-1. Open `js/config.js` and fill in `FIREBASE_CONFIG` with your project values.
+1. Open `js/config.js` and fill in `FIREBASE_CONFIG` with your project values (`apiKey`, `authDomain`, `projectId`, and `appId` are required for Firebase login).
 2. Ensure Firestore has a collection matching `FIREBASE_COLLECTION` (default: `records`).
 3. Create at least one Firebase Auth email/password user for staff login.
 4. Open `index.html` for OPAC and `ils.html` for cataloging. If Firebase is not configured yet, the ILS can still be accessed locally with `admin` / `catalog123`.
