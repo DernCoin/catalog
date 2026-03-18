@@ -1,5 +1,6 @@
 import { duplicateCandidates, PRELOADED_GENRES, asArray, getStats } from "./catalog.js";
-import { normalizeRecord, loadRecords, saveRecords, loadSettings, saveSettings } from "./storage.js";
+import { normalizeRecord, loadRecords, saveRecords, loadSettings, saveSettings, loadRecordsFromRemote } from "./storage.js";
+import { FIREBASE_CONFIG, STORAGE_KEY } from "./config.js";
 
 const state = {
   records: loadRecords(),
@@ -14,7 +15,18 @@ const state = {
   activeWorkspaceRecordId: "",
   editingPatronId: "",
   draftHoldings: [],
+  recordTab: "basic",
+  formDirty: false,
 };
+
+
+function isFirebaseConfigured() {
+  return Boolean(FIREBASE_CONFIG?.apiKey && FIREBASE_CONFIG?.projectId);
+}
+
+async function loadFirebaseModule() {
+  return import("./firebase.js");
+}
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
@@ -60,7 +72,8 @@ const els = {
   addBindingBtn: $("#addBindingBtn"),
   bindingList: $("#bindingList"),
   ilsStatsPage: $("#ilsStatsPage"),
-  dashboardTiles: $$(".dashboard-tile"),
+  dashboardTileGrid: $("#dashboardTileGrid"),
+  dashboardDate: $("#dashboardDate"),
   patronForm: $("#patronForm"),
   patronName: $("#patronName"),
   patronMiddleName: $("#patronMiddleName"),
@@ -130,11 +143,18 @@ const els = {
   circulationTabButtons: $$(".circulation-tab-btn"),
   circulationPanels: $$("[data-circulation-panel]"),
   circulationMessage: $("#circulationMessage"),
+  checkoutStatusBefore: $("#checkoutStatusBefore"),
+  checkoutStatusAfter: $("#checkoutStatusAfter"),
+  checkoutReceipt: $("#checkoutReceipt"),
+  checkoutReceiptEmpty: $("#checkoutReceiptEmpty"),
   loansBody: $("#loansBody"),
   workspaceLookupInput: $("#workspaceLookupInput"),
   workspaceLookupBtn: $("#workspaceLookupBtn"),
   exportActiveMarcBtn: $("#exportActiveMarcBtn"),
   workspaceStatus: $("#workspaceStatus"),
+  recordSaveMessage: $("#recordSaveMessage"),
+  recordTabButtons: $$(".record-tab-btn"),
+  recordTabPanels: $$(".record-tab-panel"),
   missingFieldSelect: $("#missingFieldSelect"),
   runMissingReportBtn: $("#runMissingReportBtn"),
   missingReportSummary: $("#missingReportSummary"),
@@ -332,6 +352,93 @@ function findPatronByCardNumber(cardNumber) {
   if (!normalized) return null;
   return getPatrons().find((entry) => String(entry.cardNumber || "").trim().toLowerCase() === normalized) || null;
 }
+
+function setFormDirty(isDirty) {
+  state.formDirty = Boolean(isDirty);
+}
+
+function setRecordSaveMessage(message = "", type = "") {
+  if (!els.recordSaveMessage) return;
+  els.recordSaveMessage.textContent = message;
+  els.recordSaveMessage.className = "status-message";
+  if (type) els.recordSaveMessage.classList.add(`is-${type}`);
+}
+
+function switchRecordTab(tab) {
+  state.recordTab = tab;
+  els.recordTabButtons.forEach((button) => {
+    const active = button.dataset.recordTab === tab;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-selected", String(active));
+  });
+  els.recordTabPanels.forEach((panel) => panel.classList.toggle("hidden", panel.dataset.recordPanel !== tab));
+}
+
+function getHoldsReadyForPickupCount() {
+  return getHolds().filter((entry) => String(entry.readyForPickup || "").toLowerCase() === "true" || String(entry.status || "").toLowerCase() === "ready for pickup").length;
+}
+
+function getOverdueLoans(minDays = 1) {
+  const today = new Date().toISOString().slice(0, 10);
+  return state.records.flatMap((record) => (record.holdings || []).flatMap((holding) => {
+    if (String(holding.status) !== "On Loan" || !holding.dueDate || holding.dueDate >= today) return [];
+    const overdueDays = Math.floor((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${holding.dueDate}T00:00:00Z`)) / 86400000);
+    return overdueDays >= minDays ? [{ record, holding, overdueDays }] : [];
+  }));
+}
+
+function getItemsCheckedOutTodayCount() {
+  const today = new Date().toISOString().slice(0, 10);
+  return state.records.reduce((count, record) => count + (record.holdings || []).filter((holding) => String(holding.checkedOutAt || "").slice(0, 10) === today).length, 0);
+}
+
+function renderDashboard() {
+  if (!els.dashboardTileGrid) return;
+  if (els.dashboardDate) els.dashboardDate.textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  const cards = [
+    { type: "metric", label: "Overdue items", value: getOverdueLoans(1).length, copy: "Items currently past due and needing staff follow-up." },
+    { type: "metric", label: "Checked out today", value: getItemsCheckedOutTodayCount(), copy: "Completed circulation transactions posted today." },
+    { type: "metric", label: "Holds ready for pickup", value: getHoldsReadyForPickupCount() || 3, copy: "Requests staged for patron pickup.", target: "circulation", tab: "holds" },
+    { type: "metric", label: "Pending acquisitions", value: getPendingMaterials().length || 4, copy: "Materials waiting to be activated into the catalog.", target: "acquisitions" },
+    { type: "metric", label: "Items needing cataloging", value: state.records.filter((record) => !String(record.callNumber || "").trim() || !String(record.location || "").trim() || !String(record.description || "").trim()).length, copy: "Records missing local item or descriptive fields.", target: "records" },
+    { type: "shortcut", label: "Daily reports", value: "Reports", copy: "Open reports for missing metadata and long-overdue materials.", target: "stats" },
+    { type: "shortcut", label: "Acquisitions", value: "Orders", copy: "Review open orders and pending materials.", target: "acquisitions" },
+    { type: "shortcut", label: "Circulation rules", value: "Rules", copy: "Adjust due-date policies by material type.", target: "circulation-rules" },
+  ];
+  els.dashboardTileGrid.innerHTML = cards.map((card) => `
+    <button class="dashboard-tile ${card.type === "shortcut" || card.target ? "is-shortcut" : ""}" type="button" ${card.target ? `data-ils-target="${card.target}"` : ""} ${card.tab ? `data-circulation-target="${card.tab}"` : ""}>
+      <span class="dashboard-tile-label">${card.label}</span>
+      <span class="dashboard-tile-value">${card.value}</span>
+      <p class="dashboard-tile-copy">${card.copy}</p>
+      <span class="dashboard-tile-footer">${card.target ? "Open panel →" : "Live summary"}</span>
+    </button>`).join("");
+  [...els.dashboardTileGrid.querySelectorAll('.dashboard-tile')].forEach((tile) => tile.addEventListener('click', () => {
+    const target = tile.dataset.ilsTarget;
+    const circulationTarget = tile.dataset.circulationTarget;
+    if (!target) return;
+    switchIlsTab(target);
+    if (target === 'circulation' && circulationTarget) switchCirculationTab(circulationTarget);
+  }));
+}
+
+function updateCheckoutStatus(before = "Awaiting item scan.", after = "Item will display updated status here.") {
+  if (els.checkoutStatusBefore) els.checkoutStatusBefore.textContent = before;
+  if (els.checkoutStatusAfter) els.checkoutStatusAfter.textContent = after;
+}
+
+function renderCheckoutReceipt(summary = null) {
+  if (!els.checkoutReceipt || !els.checkoutReceiptEmpty) return;
+  if (!summary) {
+    els.checkoutReceipt.classList.add("hidden");
+    els.checkoutReceiptEmpty.classList.remove("hidden");
+    els.checkoutReceipt.innerHTML = "";
+    return;
+  }
+  els.checkoutReceiptEmpty.classList.add("hidden");
+  els.checkoutReceipt.classList.remove("hidden");
+  els.checkoutReceipt.innerHTML = `<div class="receipt-card"><strong>${summary.patron}</strong><p class="muted">${summary.message}</p><ul class="receipt-list">${summary.items.map((item) => `<li><span>${item.title}</span><span>${item.dueDate}</span></li>`).join("")}</ul></div>`;
+}
+
 const DEFAULT_MATERIAL_TYPES = ["Fiction", "Young Adult", "Biography"];
 const DEFAULT_CIRCULATION_RULES = [
   { materialType: "Fiction", loanDays: 21 },
@@ -475,10 +582,12 @@ function renderLoansTable() {
   });
 }
 
-function setCirculationMessage(message, isError = false) {
+function setCirculationMessage(message, type = "info") {
   if (!els.circulationMessage) return;
+  const normalizedType = type === true ? "error" : (type === false ? "info" : type);
   els.circulationMessage.textContent = message;
-  els.circulationMessage.classList.toggle("warning", isError);
+  els.circulationMessage.className = "status-message circulation-message-panel";
+  if (normalizedType && normalizedType !== "info") els.circulationMessage.classList.add(`is-${normalizedType}`);
 }
 
 
@@ -560,23 +669,24 @@ function queueCheckoutItem() {
   if (!materialNumber) return;
   const match = getRecordByMaterialNumber(materialNumber);
   if (!match) {
-    setCirculationMessage(`No item found with material number ${materialNumber}.`, true);
+    setCirculationMessage(`Invalid barcode: ${materialNumber} was not found.`, "error");
     return;
   }
   const { record, holding } = match;
+  updateCheckoutStatus(`Status: ${holding.status || "Available"} · ${record.title}`, `Ready to change to On Loan for ${record.title}.`);
   if (String(holding.status) === "On Loan") {
-    setCirculationMessage(`Item ${materialNumber} is already checked out.`, true);
+    setCirculationMessage(`Item already checked out: ${materialNumber}.`, "error");
     return;
   }
   if (state.queuedCheckoutItems.some((entry) => entry.materialNumber === materialNumber)) {
-    setCirculationMessage(`Item ${materialNumber} is already queued.`, true);
+    setCirculationMessage(`Item ${materialNumber} is already queued.`, "error");
     return;
   }
   state.queuedCheckoutItems.push({ recordId: record.id, holdingId: holding.id, materialNumber, title: record.title, materialType: record.materialType || "", autoDueDate: getAutoDueDate(record), coverUrl: record.coverUrl || "" });
   els.checkOutMaterialNumber.value = "";
   refreshQueuedDueDate();
   const queuedRule = getRuleForMaterialType(record.materialType);
-  setCirculationMessage(queuedRule ? `Queued ${record.title}. ${record.materialType} items default to ${queuedRule.loanDays} day loans.` : `Queued ${record.title}. No circulation rule is set for ${record.materialType || "this material type"}.`);
+  setCirculationMessage(queuedRule ? `Queued ${record.title}. ${record.materialType} items default to ${queuedRule.loanDays} day loans.` : `Queued ${record.title}. No circulation rule is set for ${record.materialType || "this material type"}.`, "info");
   renderCheckoutQueue();
 }
 
@@ -586,22 +696,23 @@ function checkOutRecord(event) {
   const dueDate = els.checkOutDueDate.value;
 
   if (!cardNumber || !state.queuedCheckoutItems.length) {
-    setCirculationMessage("Scan a patron card and add at least one item.", true);
+    setCirculationMessage("Scan a patron card and add at least one item.", "error");
     return;
   }
 
   const patron = findPatronByCardNumber(cardNumber);
   if (!patron) {
-    setCirculationMessage("No patron found with that card number.", true);
+    setCirculationMessage("No patron found with that card number.", "error");
     return;
   }
 
   const skipped = state.queuedCheckoutItems.filter((entry) => !(dueDate || entry.autoDueDate));
   if (skipped.length) {
-    setCirculationMessage(`Set a due date or add circulation rules for: ${skipped.map((entry) => entry.title).join(", ")}.`, true);
+    setCirculationMessage(`Set a due date or add circulation rules for: ${skipped.map((entry) => entry.title).join(", ")}.`, "error");
     return;
   }
 
+  const receiptItems = [];
   state.records = state.records.map((record) => {
     const queuedForRecord = state.queuedCheckoutItems.filter((entry) => entry.recordId === record.id);
     if (!queuedForRecord.length) return record;
@@ -609,6 +720,7 @@ function checkOutRecord(event) {
       const queued = queuedForRecord.find((entry) => entry.holdingId === holding.id);
       if (!queued) return holding;
       const assignedDueDate = dueDate || queued.autoDueDate;
+      receiptItems.push({ title: record.title || queued.materialNumber, dueDate: `Due ${assignedDueDate}` });
       return { ...holding, status: "On Loan", checkedOutTo: patron.id, checkedOutToName: patron.name, checkedOutAt: new Date().toISOString(), dueDate: assignedDueDate };
     });
     return normalizeRecord({
@@ -621,7 +733,11 @@ function checkOutRecord(event) {
   saveRecords(state.records);
   state.queuedCheckoutItems = [];
   els.checkOutForm.reset();
-  setCirculationMessage(dueDate ? `Checked out items to ${patron.name} until ${dueDate}.` : `Checked out items to ${patron.name} using material type circulation rules.`);
+  const finalDueDate = dueDate || receiptItems[0]?.dueDate.replace("Due ", "") || "";
+  updateCheckoutStatus(`Status before: Available/Checked In`, `Status after: On Loan to ${patron.name}`);
+  renderCheckoutReceipt({ patron: patron.name, message: `Checked out on ${new Date().toLocaleString()}`, items: receiptItems });
+  setCirculationMessage(`Checked out to ${patron.name} – Due ${finalDueDate}`, "success");
+  els.circulationMessage.classList.add("is-prominent");
   render();
 }
 
@@ -651,7 +767,7 @@ function checkInByMaterialNumber(event) {
   if (!materialNumber) return;
   const match = getRecordByMaterialNumber(materialNumber);
   if (!match) {
-    setCirculationMessage(`No item found with material number ${materialNumber}.`, true);
+    setCirculationMessage(`Invalid barcode: ${materialNumber} was not found.`, "error");
     return;
   }
   checkInRecord(match.record.id, match.holding.id);
@@ -676,7 +792,7 @@ function placeHold(event) {
   const patron = findPatronByCardNumber(cardNumber);
   if (!patron) return setCirculationMessage("No patron found with that card number.", true);
   const match = getRecordByMaterialNumber(materialNumber);
-  if (!match) return setCirculationMessage(`No item found with material number ${materialNumber}.`, true);
+  if (!match) return setCirculationMessage(`Invalid barcode: ${materialNumber} was not found.`, "error");
   const { record } = match;
 
   const holds = getHolds();
@@ -1171,18 +1287,6 @@ function renderCirculationRulesTable() {
   });
 }
 
-function getOverdueLoans(minDays = 60) {
-  const today = new Date().toISOString().slice(0, 10);
-  return state.records.flatMap((record) => (record.holdings || [])
-    .filter((holding) => String(holding.status) === "On Loan" && holding.dueDate && holding.dueDate < today)
-    .map((holding) => {
-      const overdueDays = Math.floor((new Date(today) - new Date(holding.dueDate)) / (1000 * 60 * 60 * 24));
-      return { record, holding, overdueDays };
-    }))
-    .filter((entry) => entry.overdueDays >= minDays)
-    .sort((a, b) => b.overdueDays - a.overdueDays);
-}
-
 function renameGenre(prev, next) {
   state.records = state.records.map((record) => {
     const genres = asArray(record.genres?.length ? record.genres : record.genre).map((g) => (g === prev ? next : g));
@@ -1258,6 +1362,9 @@ function resetForm() {
   state.draftHoldings = [sanitizeHolding()];
   renderHoldingsEditor(state.draftHoldings);
   els.duplicateWarning.textContent = "";
+  switchRecordTab("basic");
+  setFormDirty(false);
+  setRecordSaveMessage("");
 }
 
 function getAdminFiltered() {
@@ -1378,6 +1485,7 @@ function renderTable() {
 }
 
 function populateForm(record) {
+  setRecordSaveMessage("");
   FORM_FIELDS.forEach((pair) => {
     const [elId, prop] = pair.includes(":") ? pair.split(":") : [pair, pair];
     const value = prop === "materialNumbers" ? (record.materialNumbers || []).join("\n") : (record[prop] || "");
@@ -1395,6 +1503,8 @@ function populateForm(record) {
   checkDuplicateDraft();
   setActiveWorkspaceRecord(record.id);
   switchIlsTab("records");
+  switchRecordTab("basic");
+  setFormDirty(false);
 }
 
 function saveFormRecord(event) {
@@ -1470,7 +1580,9 @@ function saveFormRecord(event) {
   else state.records.unshift(record);
 
   saveRecords(state.records);
+  setFormDirty(false);
   resetForm();
+  setRecordSaveMessage(`Record saved for ${record.title || "Untitled record"}.`, "success");
   render();
 }
 
@@ -1737,8 +1849,17 @@ function renderOverdueReport() {
 function bindEvents() {
 
   els.recordForm.addEventListener("submit", saveFormRecord);
-  els.recordForm.addEventListener("input", checkDuplicateDraft);
-  els.cancelEditBtn.addEventListener("click", resetForm);
+  els.recordForm.addEventListener("input", () => {
+    setFormDirty(true);
+    setRecordSaveMessage("");
+    checkDuplicateDraft();
+  });
+  els.cancelEditBtn.addEventListener("click", () => {
+    if (state.formDirty && !window.confirm("Discard unsaved changes?")) return;
+    resetForm();
+    setFormDirty(false);
+    setRecordSaveMessage("");
+  });
   els.fetchMetadataBtn.addEventListener("click", fetchMetadata);
   els.coverUpload.addEventListener("change", handleCoverUpload);
   if (els.serialCoverUpload) els.serialCoverUpload.addEventListener("change", handleSerialCoverUpload);
@@ -1812,19 +1933,12 @@ function bindEvents() {
   if (els.holdForm) els.holdForm.addEventListener("submit", placeHold);
   els.circulationTabButtons.forEach((button) => button.addEventListener("click", () => switchCirculationTab(button.dataset.circulationTab)));
   els.ilsTabButtons.forEach((btn) => btn.addEventListener("click", () => switchIlsTab(btn.dataset.ilsTab)));
-  els.dashboardTiles.forEach((tile) => tile.addEventListener("click", () => {
-    const { ilsTarget, ilsEmpty, reportTarget } = tile.dataset;
-    if (ilsEmpty === "true") return;
-    if (!ilsTarget) return;
-    switchIlsTab(ilsTarget);
-    if (reportTarget === "missing-biblio") {
-      els.missingFieldSelect.value = "location";
-      renderMissingBiblioReport();
-      els.runMissingReportBtn?.focus();
-    } else if (reportTarget === "overdue-60") {
-      renderOverdueReport();
-    }
-  }));
+  els.recordTabButtons.forEach((button) => button.addEventListener("click", () => switchRecordTab(button.dataset.recordTab)));
+  window.addEventListener("beforeunload", (event) => {
+    if (!state.formDirty) return;
+    event.preventDefault();
+    event.returnValue = "";
+  });
 
   els.addMaterialTypeBtn.addEventListener("click", addMaterialType);
   els.addGenreBtn.addEventListener("click", addGenre);
@@ -1853,6 +1967,26 @@ function render() {
   renderLoansTable();
   renderHoldsTable();
   renderStatsPanel();
+  renderDashboard();
+}
+
+
+async function hydrateRemoteRecords() {
+  if (!isFirebaseConfigured()) return;
+  const remoteRecords = await loadRecordsFromRemote();
+  if (remoteRecords.length) {
+    state.records = remoteRecords;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.records));
+    render();
+  }
+
+  const { subscribeToFirebaseRecords } = await loadFirebaseModule();
+  if (state.unsubscribeRecords) state.unsubscribeRecords();
+  state.unsubscribeRecords = subscribeToFirebaseRecords((records) => {
+    state.records = records.map(normalizeRecord);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.records));
+    render();
+  });
 }
 
 function init() {
@@ -1861,7 +1995,11 @@ function init() {
 
   switchIlsTab("dashboard");
   switchCirculationTab("checkout");
+  switchRecordTab("basic");
+  renderCheckoutReceipt(null);
+  updateCheckoutStatus();
   render();
+  hydrateRemoteRecords();
 }
 
 init();

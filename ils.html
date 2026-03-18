@@ -39,17 +39,14 @@
         </div>
 
         <section class="admin-tab-panel hidden" data-ils-panel="dashboard">
-          <h2>Dashboard</h2>
-          <div class="dashboard-tile-grid" aria-label="ILS dashboard shortcuts">
-            <button class="dashboard-tile" type="button" data-ils-target="stats">Daily reports</button>
-            <button class="dashboard-tile" type="button" data-ils-target="acquisitions">Acquisitions</button>
-            <button class="dashboard-tile" type="button" data-ils-target="serials">Serials</button>
-            <button class="dashboard-tile" type="button" data-ils-target="circulation-rules">Circulation Rules</button>
-            <button class="dashboard-tile" type="button" data-ils-target="stats" data-report-target="missing-biblio">Missing Biblio Report</button>
-            <button class="dashboard-tile" type="button" data-ils-target="stats" data-report-target="overdue-60">60+ Days Past Due</button>
-            <button class="dashboard-tile" type="button" data-ils-empty="true">EMPTY</button>
-            <button class="dashboard-tile" type="button" data-ils-empty="true">EMPTY</button>
+          <div class="panel-header">
+            <div>
+              <h2>Dashboard</h2>
+              <p class="muted">At-a-glance staff activity for circulation, acquisitions, and cataloging work.</p>
+            </div>
+            <div class="dashboard-date" id="dashboardDate"></div>
           </div>
+          <div id="dashboardTileGrid" class="dashboard-tile-grid" aria-label="ILS dashboard shortcuts and summaries"></div>
         </section>
 
         <section class="admin-tab-panel hidden" data-ils-panel="acquisitions">
@@ -116,26 +113,46 @@
           </div>
           <section class="admin-block circulation-panel-block" data-circulation-panel="checkout">
             <h3>Check out items</h3>
-            <form id="checkOutForm" class="simple-form circulation-form">
-              <label>Patron card number
-                <input id="checkOutCardNumber" placeholder="Scan card number" required />
-              </label>
-              <p id="checkOutPatronPreview" class="status-message">Scan a card to show patron details.</p>
-              <label>Item material number
-                <input id="checkOutMaterialNumber" placeholder="Scan item material number" />
-              </label>
-              <label>Due date override
-                <input id="checkOutDueDate" type="date" />
-              </label>
-              <p class="muted">Leave blank to use the circulation rule for each queued item's material type.</p>
-              <button id="queueCheckoutItemBtn" class="button button-secondary" type="button">Add Item</button>
-              <div>
-                <strong>Queued items</strong>
-                <ul id="checkOutQueue" class="location-list"></ul>
-              </div>
-              <button class="button" type="submit">Check Out All Scanned Items</button>
-              <p id="circulationMessage" class="status-message" aria-live="polite"></p>
-            </form>
+            <div class="circulation-checkout-layout">
+              <form id="checkOutForm" class="simple-form circulation-form">
+                <label>Patron card number
+                  <input id="checkOutCardNumber" placeholder="Scan card number" required />
+                </label>
+                <p id="checkOutPatronPreview" class="status-message">Scan a card to show patron details.</p>
+                <label>Item material number
+                  <input id="checkOutMaterialNumber" placeholder="Scan item material number" />
+                </label>
+                <div class="circulation-status-card">
+                  <div>
+                    <span class="status-label">Before checkout</span>
+                    <strong id="checkoutStatusBefore">Awaiting item scan.</strong>
+                  </div>
+                  <div>
+                    <span class="status-label">After checkout</span>
+                    <strong id="checkoutStatusAfter">Item will display updated status here.</strong>
+                  </div>
+                </div>
+                <label>Due date override
+                  <input id="checkOutDueDate" type="date" />
+                </label>
+                <p class="muted">Leave blank to use the circulation rule for each queued item's material type.</p>
+                <button id="queueCheckoutItemBtn" class="button button-secondary" type="button">Add Item</button>
+                <div class="circulation-queue-panel">
+                  <strong>Queued items</strong>
+                  <ul id="checkOutQueue" class="location-list"></ul>
+                </div>
+                <button class="button button-primary" type="submit">Check Out All Scanned Items</button>
+                <div id="circulationMessage" class="status-message circulation-message-panel" aria-live="polite"></div>
+              </form>
+              <aside class="circulation-receipt card-like">
+                <div class="receipt-header">
+                  <h4>Checkout receipt</h4>
+                  <p class="muted">UI-only summary for the current transaction.</p>
+                </div>
+                <div id="checkoutReceiptEmpty" class="muted">No checkout completed yet.</div>
+                <div id="checkoutReceipt" class="hidden"></div>
+              </aside>
+            </div>
           </section>
 
           <section class="admin-block circulation-panel-block hidden" data-circulation-panel="checkin">
@@ -319,7 +336,6 @@
           <h2>Edit Records</h2>
         <div class="admin-tools top-space isbn-import-row">
           <button id="fetchMetadataBtn" class="button button-secondary" type="button">Attempt importing record by ISBN</button>
-          <label>ISBN / UPC / Catalog Number <input id="identifier" /></label>
         </div>
         <section class="record-workspace" aria-label="Record workspace">
           <div class="workspace-toolbar-row">
@@ -343,65 +359,107 @@
 
         <form id="recordForm" class="catalog-form">
           <input id="recordId" type="hidden" />
-          <div class="workspace-columns">
-            <fieldset class="workspace-main">
-              <legend>Bibliographic (MARC)</legend>
-              <div class="form-grid">
-                <label>Title* <input id="title" required /></label>
-                <label>Subtitle <input id="subtitle" /></label>
-                <label>Creator / Author / Artist* <input id="creator" required /></label>
-                <label>Statement of Responsibility <input id="statementOfResponsibility" placeholder="e.g., by Jane Doe" /></label>
-                <label>Additional Contributors <input id="contributors" placeholder="Editor, narrator, illustrator..." /></label>
-                <label>Format* <select id="format" required></select></label>
-                <label>Edition <input id="edition" /></label>
-                <label>Publication Year <input id="year" type="number" min="0" /></label>
-                <label>Publication Place <input id="publicationPlace" placeholder="City, State/Country" /></label>
-                <label>Publisher / Label <input id="publisher" /></label>
-                <label>Language Code <input id="languageCode" placeholder="eng" maxlength="3" /></label>
-                <label>LCCN <input id="lccn" /></label>
-                <label>OCLC Number <input id="oclcNumber" /></label>
-                <label>Dewey Class <input id="deweyNumber" /></label>
-                <label>LC Class <input id="lcClassNumber" /></label>
-                <label>Genres <select id="genres" multiple size="6"></select></label>
-                <label>Custom Genre / Category <input id="genre" placeholder="Optional custom" /></label>
-                <label>Material Type <select id="materialType"></select></label>
-                <label>Binding <select id="binding"></select></label>
-                <label>Series Name <input id="seriesName" /></label>
-                <label>Series Number <input id="seriesNumber" type="number" min="0" /></label>
-                <label>Curated Shelf <select id="curatedShelf"></select></label>
-                <label>Page count <input id="pageCount" type="number" min="1" step="1" /></label>
-                <label>Physical Details <input id="physicalDetails" placeholder="illustrations ; 24 cm" /></label>
-                <label>Subjects / Tags <input id="subjects" placeholder="Comma-separated" /></label>
-                <label>Summary Note (520) <textarea id="summaryNote" rows="2"></textarea></label>
-                <label>Target Audience (521) <input id="targetAudience" /></label>
-                <label>Bibliography Note (504) <input id="bibliographyNote" /></label>
-                <label>MARC Leader <input id="marcLeader" placeholder="00000nam a2200000 i 4500" /></label>
-                <label>MARC 008 <input id="marc008" placeholder="YYMMDDsYYYY..." /></label>
+          <div class="record-editor-shell card-like">
+            <div class="record-editor-header">
+              <div>
+                <h3>Record editor</h3>
+                <p class="muted">Required fields are marked with <span class="required-indicator">*</span>. Changes stay local until you save.</p>
               </div>
-            </fieldset>
+              <div id="recordSaveMessage" class="status-message" aria-live="polite"></div>
+            </div>
+            <div class="record-editor-tabs" role="tablist" aria-label="Record editor sections">
+              <button class="button button-secondary record-tab-btn is-active" type="button" data-record-tab="basic" role="tab" aria-selected="true">Basic Info</button>
+              <button class="button button-secondary record-tab-btn" type="button" data-record-tab="marc" role="tab" aria-selected="false">MARC Data</button>
+              <button class="button button-secondary record-tab-btn" type="button" data-record-tab="holdings" role="tab" aria-selected="false">Holdings / Item Info</button>
+              <button class="button button-secondary record-tab-btn" type="button" data-record-tab="subjects" role="tab" aria-selected="false">Subjects / Genres</button>
+            </div>
 
-            <fieldset class="workspace-holdings">
-              <legend>Holdings & Local Data</legend>
-              <div class="workspace-holdings-toolbar">
-                <label>Date Added <input id="dateAdded" type="date" /></label>
-                <label>Cover Image URL <input id="coverUrl" type="url" placeholder="https://..." /></label>
-                <label>Cover Upload <input id="coverUpload" type="file" accept="image/*" /></label>
-                <button id="addHoldingBtn" class="button button-secondary" type="button">Add Holding</button>
+            <section class="record-tab-panel" data-record-panel="basic" role="tabpanel">
+              <div class="editor-section-grid">
+                <section class="editor-panel">
+                  <h4>Basic bibliographic details</h4>
+                  <div class="form-grid">
+                    <label><span>Title <span class="required-indicator">*</span></span><input id="title" required /></label>
+                    <label><span>Subtitle</span><input id="subtitle" /></label>
+                    <label><span>Creator / Author / Artist <span class="required-indicator">*</span></span><input id="creator" required /></label>
+                    <label><span>Statement of Responsibility</span><input id="statementOfResponsibility" placeholder="e.g., by Jane Doe" /></label>
+                    <label><span>Additional Contributors</span><input id="contributors" placeholder="Editor, narrator, illustrator..." /></label>
+                    <label><span>Format <span class="required-indicator">*</span></span><select id="format" required></select></label>
+                    <label><span>Edition</span><input id="edition" /></label>
+                    <label><span>Publication Year</span><input id="year" type="number" min="0" /></label>
+                    <label><span>Publication Place</span><input id="publicationPlace" placeholder="City, State/Country" /></label>
+                    <label><span>Publisher / Label</span><input id="publisher" /></label>
+                    <label><span>Language Code</span><input id="languageCode" placeholder="eng" maxlength="3" /></label>
+                    <label><span>Identifier (ISBN / UPC / Catalog #)</span><input id="identifier" /></label>
+                    <label><span>Material Type</span><select id="materialType"></select></label>
+                    <label><span>Binding</span><select id="binding"></select></label>
+                    <label><span>Series Name</span><input id="seriesName" /></label>
+                    <label><span>Series Number</span><input id="seriesNumber" type="number" min="0" /></label>
+                    <label><span>Curated Shelf</span><select id="curatedShelf"></select></label>
+                    <label><span>Page count</span><input id="pageCount" type="number" min="1" step="1" /></label>
+                    <label><span>Physical Details</span><input id="physicalDetails" placeholder="illustrations ; 24 cm" /></label>
+                    <label class="form-grid-span"><span>Description / Summary</span><textarea id="description" rows="3"></textarea></label>
+                    <label class="form-grid-span"><span>Personal Notes</span><textarea id="notes" rows="2"></textarea></label>
+                  </div>
+                </section>
               </div>
-              <div id="holdingRows" class="holdings-editor"></div>
-              <p id="coverUploadStatus" class="status-message"></p>
-              <label>Description / Summary <textarea id="description" rows="3"></textarea></label>
-              <label>Personal Notes <textarea id="notes" rows="2"></textarea></label>
-              <label>Circulation / Checkout History
-                <textarea id="circulationHistory" rows="4" readonly></textarea>
-              </label>
-            </fieldset>
+            </section>
+
+            <section class="record-tab-panel hidden" data-record-panel="marc" role="tabpanel">
+              <section class="editor-panel">
+                <h4>MARC fields and coding</h4>
+                <div class="form-grid">
+                  <label><span>LCCN</span><input id="lccn" /></label>
+                  <label><span>OCLC Number</span><input id="oclcNumber" /></label>
+                  <label><span>Dewey Class</span><input id="deweyNumber" /></label>
+                  <label><span>LC Class</span><input id="lcClassNumber" /></label>
+                  <label><span>Summary Note (520)</span><textarea id="summaryNote" rows="2"></textarea></label>
+                  <label><span>Target Audience (521)</span><input id="targetAudience" /></label>
+                  <label><span>Bibliography Note (504)</span><input id="bibliographyNote" /></label>
+                  <label><span>MARC Leader</span><input id="marcLeader" placeholder="00000nam a2200000 i 4500" /></label>
+                  <label class="form-grid-span"><span>MARC 008</span><input id="marc008" placeholder="YYMMDDsYYYY..." /></label>
+                </div>
+              </section>
+            </section>
+
+            <section class="record-tab-panel hidden" data-record-panel="holdings" role="tabpanel">
+              <section class="editor-panel">
+                <div class="panel-header compact">
+                  <div>
+                    <h4>Holdings and local item data</h4>
+                    <p class="muted">Manage barcodes, locations, and copy-level status without leaving the editor.</p>
+                  </div>
+                  <button id="addHoldingBtn" class="button button-secondary" type="button">Add Holding</button>
+                </div>
+                <div class="workspace-holdings-toolbar">
+                  <label><span>Date Added</span><input id="dateAdded" type="date" /></label>
+                  <label><span>Cover Image URL</span><input id="coverUrl" type="url" placeholder="https://..." /></label>
+                  <label><span>Cover Upload</span><input id="coverUpload" type="file" accept="image/*" /></label>
+                </div>
+                <div id="holdingRows" class="holdings-editor"></div>
+                <p id="coverUploadStatus" class="status-message"></p>
+                <label><span>Circulation / Checkout History</span>
+                  <textarea id="circulationHistory" rows="4" readonly></textarea>
+                </label>
+              </section>
+            </section>
+
+            <section class="record-tab-panel hidden" data-record-panel="subjects" role="tabpanel">
+              <section class="editor-panel">
+                <h4>Subjects, genres, and access points</h4>
+                <div class="form-grid">
+                  <label><span>Genres</span><select id="genres" multiple size="6"></select></label>
+                  <label><span>Custom Genre / Category</span><input id="genre" placeholder="Optional custom" /></label>
+                  <label class="form-grid-span"><span>Subjects / Tags</span><input id="subjects" placeholder="Comma-separated" /></label>
+                </div>
+              </section>
+            </section>
           </div>
 
           <div id="duplicateWarning" class="warning"></div>
 
           <div class="actions">
-            <button class="button" type="submit">Save Record</button>
+            <button class="button button-primary" type="submit">Save Record</button>
             <button id="cancelEditBtn" class="button button-secondary" type="button">Cancel Edit</button>
           </div>
         </form>
