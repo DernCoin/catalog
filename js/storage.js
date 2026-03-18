@@ -1,7 +1,15 @@
-import { STORAGE_KEY, SETTINGS_KEY } from "./config.js";
-import { fetchAllFirebaseRecords, fetchFirebaseSettings, isFirebaseConfigured, syncFirebaseRecords, syncFirebaseSettings } from "./firebase.js";
+import { STORAGE_KEY, SETTINGS_KEY, FIREBASE_CONFIG, isFirebaseConfigReady } from "./config.js";
 
 let syncQueue = Promise.resolve();
+
+function isFirebaseConfigured() {
+  return isFirebaseConfigReady(FIREBASE_CONFIG);
+}
+
+async function loadFirebaseModule() {
+  return import("./firebase.js");
+}
+
 const DEFAULT_SETTINGS = { locations: [], genres: [], materialTypes: [], curatedShelves: [], formats: [], bindings: [], patrons: [], subscriptions: [], holds: [], circulationRules: [], acquisitionOrders: [], pendingMaterials: [] };
 
 function normalizeHolding(holding = {}, fallback = {}) {
@@ -119,6 +127,7 @@ export function loadRecords() {
 export async function loadRecordsFromRemote() {
   if (!isFirebaseConfigured()) return [];
   try {
+    const { fetchAllFirebaseRecords } = await loadFirebaseModule();
     const records = await fetchAllFirebaseRecords();
     return records.map(normalizeRecord);
   } catch (error) {
@@ -132,7 +141,10 @@ export function saveRecords(records) {
   if (!isFirebaseConfigured()) return;
 
   syncQueue = syncQueue
-    .then(() => syncFirebaseRecords(records))
+    .then(async () => {
+      const { syncFirebaseRecords } = await loadFirebaseModule();
+      return syncFirebaseRecords(records);
+    })
     .catch((error) => {
       console.error("Unable to sync Firebase records", error);
     });
@@ -152,6 +164,7 @@ export function loadSettings() {
 export async function loadSettingsFromRemote() {
   if (!isFirebaseConfigured()) return null;
   try {
+    const { fetchFirebaseSettings } = await loadFirebaseModule();
     const settings = await fetchFirebaseSettings();
     return settings ? { ...DEFAULT_SETTINGS, ...settings } : null;
   } catch (error) {
@@ -163,7 +176,10 @@ export async function loadSettingsFromRemote() {
 export function saveSettings(settings) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   if (!isFirebaseConfigured()) return;
-  syncQueue = syncQueue.then(() => syncFirebaseSettings(settings)).catch((error) => {
+  syncQueue = syncQueue.then(async () => {
+    const { syncFirebaseSettings } = await loadFirebaseModule();
+    return syncFirebaseSettings(settings);
+  }).catch((error) => {
     console.error("Unable to sync Firebase settings", error);
   });
 }

@@ -1,6 +1,21 @@
 import { duplicateCandidates, PRELOADED_GENRES, asArray, getStats } from "./catalog.js";
 import { normalizeRecord, loadRecords, saveRecords, loadSettings, loadSettingsFromRemote, saveSettings } from "./storage.js";
-import { isFirebaseConfigured, loginWithFirebase, logoutFirebase, onFirebaseAuthStateChanged, subscribeToFirebaseRecords, subscribeToFirebaseSettings } from "./firebase.js";
+import { FIREBASE_CONFIG, getMissingFirebaseConfigFields, isFirebaseConfigReady } from "./config.js";
+import { login, logout, isAdminSessionActive } from "./auth.js";
+
+function isFirebaseConfigured() {
+  return isFirebaseConfigReady(FIREBASE_CONFIG);
+}
+
+function getFirebaseConfigStatusMessage() {
+  const missing = getMissingFirebaseConfigFields(FIREBASE_CONFIG);
+  if (!missing.length) return "";
+  return `Firebase config is incomplete (${missing.join(", ")}).`;
+}
+
+async function loadFirebaseModule() {
+  return import("./firebase.js");
+}
 
 const state = {
   records: loadRecords(),
@@ -14,6 +29,7 @@ const state = {
   circulationTab: "checkout",
   queuedCheckoutItems: [],
   activeWorkspaceRecordId: "",
+  authMode: isFirebaseConfigured() ? "firebase" : "local",
   editingPatronId: "",
   draftHoldings: [],
 };
@@ -180,6 +196,9 @@ function setAuthenticatedUI(isAuthed) {
   els.logoutBtn.classList.toggle("hidden", !isAuthed);
 }
 
+function getCredentialLabel() {
+  return state.authMode === "firebase" ? "Firebase email/password account" : "local admin credentials (admin / catalog123)";
+}
 
 
 function getPatrons() {
@@ -1756,16 +1775,28 @@ function bindEvents() {
     els.loginError.textContent = "";
 
     try {
-      await loginWithFirebase(els.email.value.trim(), els.password.value);
+      if (state.authMode === "firebase") {
+        const { loginWithFirebase } = await loadFirebaseModule();
+        await loginWithFirebase(els.email.value.trim(), els.password.value);
+      } else if (!login(els.email.value.trim(), els.password.value)) {
+        throw new Error(`Use ${getCredentialLabel()}.`);
+      }
+
       els.loginForm.reset();
+      if (state.authMode === "local") setAuthenticatedUI(true);
     } catch (error) {
-      els.loginError.textContent = `Unable to log in. ${error?.message || "Check credentials and Firebase setup."}`;
+      els.loginError.textContent = `Unable to log in. ${error?.message || `Check ${getCredentialLabel()}.`}`;
     }
   });
 
   els.logoutBtn.addEventListener("click", async () => {
-    await logoutFirebase();
-    setAuthenticatedUI(false);
+    if (state.authMode === "firebase") {
+      const { logoutFirebase } = await loadFirebaseModule();
+      await logoutFirebase();
+    } else {
+      logout();
+      setAuthenticatedUI(false);
+    }
   });
 
   els.recordForm.addEventListener("submit", saveFormRecord);
@@ -1891,47 +1922,52 @@ function init() {
   bindEvents();
   state.draftHoldings = [sanitizeHolding()];
 
-  if (!isFirebaseConfigured()) {
-    els.loginError.textContent = "Add Firebase configuration in js/config.js to enable the ILS.";
-    return;
+  if (state.authMode === "local") {
+    const firebaseStatus = getFirebaseConfigStatusMessage();
+    els.loginError.textContent = `${firebaseStatus || "Firebase is not configured."} Sign in with ${getCredentialLabel()}.`;
+    setAuthenticatedUI(isAdminSessionActive());
+  } else {
+    loadFirebaseModule().then(({ onFirebaseAuthStateChanged, subscribeToFirebaseRecords, subscribeToFirebaseSettings }) => {
+      onFirebaseAuthStateChanged((user) => {
+        const isAuthed = Boolean(user);
+        setAuthenticatedUI(isAuthed);
+
+        if (state.unsubscribeRecords) {
+          state.unsubscribeRecords();
+          state.unsubscribeRecords = null;
+        }
+        if (state.unsubscribeSettings) {
+          state.unsubscribeSettings();
+          state.unsubscribeSettings = null;
+        }
+
+        if (!isAuthed) return;
+
+        loadSettingsFromRemote().then((settings) => {
+          if (settings) {
+            state.settings = settings;
+            saveSettings(state.settings);
+            render();
+          }
+        });
+        state.unsubscribeSettings = subscribeToFirebaseSettings((settings) => {
+          if (!settings) return;
+          state.settings = settings;
+          saveSettings(state.settings);
+          render();
+        });
+        state.unsubscribeRecords = subscribeToFirebaseRecords((records) => {
+          state.records = records.map(normalizeRecord);
+          saveRecords(state.records);
+          render();
+        }, (error) => {
+          els.loginError.textContent = `Could not load Firebase records. ${error?.message || "Check Firestore permissions."}`;
+        });
+      });
+    }).catch((error) => {
+      els.loginError.textContent = `Could not load Firebase services. ${error?.message || "Check your network connection and Firebase setup."}`;
+    });
   }
-
-  onFirebaseAuthStateChanged((user) => {
-    const isAuthed = Boolean(user);
-    setAuthenticatedUI(isAuthed);
-
-    if (state.unsubscribeRecords) {
-      state.unsubscribeRecords();
-      state.unsubscribeRecords = null;
-    }
-    if (state.unsubscribeSettings) {
-      state.unsubscribeSettings();
-      state.unsubscribeSettings = null;
-    }
-
-    if (!isAuthed) return;
-
-    loadSettingsFromRemote().then((settings) => {
-      if (settings) {
-        state.settings = settings;
-        saveSettings(state.settings);
-        render();
-      }
-    });
-    state.unsubscribeSettings = subscribeToFirebaseSettings((settings) => {
-      if (!settings) return;
-      state.settings = settings;
-      saveSettings(state.settings);
-      render();
-    });
-    state.unsubscribeRecords = subscribeToFirebaseRecords((records) => {
-      state.records = records.map(normalizeRecord);
-      saveRecords(state.records);
-      render();
-    }, (error) => {
-      els.loginError.textContent = `Could not load Firebase records. ${error?.message || "Check Firestore permissions."}`;
-    });
-  });
 
   switchIlsTab("dashboard");
   switchCirculationTab("checkout");

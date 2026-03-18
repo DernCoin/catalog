@@ -24,3 +24,14 @@ export const FIREBASE_CONFIG = {
   messagingSenderId: "",
   appId: "",
 };
+
+
+export const FIREBASE_REQUIRED_FIELDS = ["apiKey", "authDomain", "projectId", "appId"];
+
+export function getMissingFirebaseConfigFields(config = FIREBASE_CONFIG) {
+  return FIREBASE_REQUIRED_FIELDS.filter((field) => !String(config?.[field] || "").trim());
+}
+
+export function isFirebaseConfigReady(config = FIREBASE_CONFIG) {
+  return getMissingFirebaseConfigFields(config).length === 0;
+}

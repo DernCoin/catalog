@@ -1,14 +1,14 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
 import { getFirestore, collection, doc, getDoc, getDocs, onSnapshot, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
-import { FIREBASE_CONFIG, FIREBASE_COLLECTION } from "./config.js";
+import { FIREBASE_CONFIG, FIREBASE_COLLECTION, getMissingFirebaseConfigFields, isFirebaseConfigReady } from "./config.js";
 
 let app;
 let auth;
 let db;
 
 export function isFirebaseConfigured() {
-  return Boolean(FIREBASE_CONFIG?.apiKey && FIREBASE_CONFIG?.projectId);
+  return isFirebaseConfigReady(FIREBASE_CONFIG);
 }
 
 function initFirebase() {
@@ -111,7 +111,10 @@ export function onFirebaseAuthStateChanged(cb) {
 
 export async function loginWithFirebase(email, password) {
   const services = getFirebaseServices();
-  if (!services) throw new Error("Firebase is not configured");
+  if (!services) {
+    const missing = getMissingFirebaseConfigFields(FIREBASE_CONFIG);
+    throw new Error(missing.length ? `Firebase config is incomplete: missing ${missing.join(", ")}.` : "Firebase is not configured");
+  }
   return signInWithEmailAndPassword(services.auth, email, password);
 }
 
