@@ -1,15 +1,7 @@
 import { duplicateCandidates, PRELOADED_GENRES, asArray, getStats } from "./catalog.js";
 import { normalizeRecord, loadRecords, saveRecords, loadSettings, loadSettingsFromRemote, saveSettings } from "./storage.js";
-import { FIREBASE_CONFIG } from "./config.js";
+import { isFirebaseConfigured, loginWithFirebase, logoutFirebase, onFirebaseAuthStateChanged, subscribeToFirebaseRecords, subscribeToFirebaseSettings } from "./firebase.js";
 import { login, logout, isAdminSessionActive } from "./auth.js";
-
-function isFirebaseConfigured() {
-  return Boolean(FIREBASE_CONFIG?.apiKey && FIREBASE_CONFIG?.projectId);
-}
-
-async function loadFirebaseModule() {
-  return import("./firebase.js");
-}
 
 const state = {
   records: loadRecords(),
@@ -1770,7 +1762,6 @@ function bindEvents() {
 
     try {
       if (state.authMode === "firebase") {
-        const { loginWithFirebase } = await loadFirebaseModule();
         await loginWithFirebase(els.email.value.trim(), els.password.value);
       } else if (!login(els.email.value.trim(), els.password.value)) {
         throw new Error(`Use ${getCredentialLabel()}.`);
@@ -1785,7 +1776,6 @@ function bindEvents() {
 
   els.logoutBtn.addEventListener("click", async () => {
     if (state.authMode === "firebase") {
-      const { logoutFirebase } = await loadFirebaseModule();
       await logoutFirebase();
     } else {
       logout();
@@ -1920,45 +1910,41 @@ function init() {
     els.loginError.textContent = `Firebase is not configured. Sign in with ${getCredentialLabel()}.`;
     setAuthenticatedUI(isAdminSessionActive());
   } else {
-    loadFirebaseModule().then(({ onFirebaseAuthStateChanged, subscribeToFirebaseRecords, subscribeToFirebaseSettings }) => {
-      onFirebaseAuthStateChanged((user) => {
-        const isAuthed = Boolean(user);
-        setAuthenticatedUI(isAuthed);
+    onFirebaseAuthStateChanged((user) => {
+      const isAuthed = Boolean(user);
+      setAuthenticatedUI(isAuthed);
 
-        if (state.unsubscribeRecords) {
-          state.unsubscribeRecords();
-          state.unsubscribeRecords = null;
-        }
-        if (state.unsubscribeSettings) {
-          state.unsubscribeSettings();
-          state.unsubscribeSettings = null;
-        }
+      if (state.unsubscribeRecords) {
+        state.unsubscribeRecords();
+        state.unsubscribeRecords = null;
+      }
+      if (state.unsubscribeSettings) {
+        state.unsubscribeSettings();
+        state.unsubscribeSettings = null;
+      }
 
-        if (!isAuthed) return;
+      if (!isAuthed) return;
 
-        loadSettingsFromRemote().then((settings) => {
-          if (settings) {
-            state.settings = settings;
-            saveSettings(state.settings);
-            render();
-          }
-        });
-        state.unsubscribeSettings = subscribeToFirebaseSettings((settings) => {
-          if (!settings) return;
+      loadSettingsFromRemote().then((settings) => {
+        if (settings) {
           state.settings = settings;
           saveSettings(state.settings);
           render();
-        });
-        state.unsubscribeRecords = subscribeToFirebaseRecords((records) => {
-          state.records = records.map(normalizeRecord);
-          saveRecords(state.records);
-          render();
-        }, (error) => {
-          els.loginError.textContent = `Could not load Firebase records. ${error?.message || "Check Firestore permissions."}`;
-        });
+        }
       });
-    }).catch((error) => {
-      els.loginError.textContent = `Could not load Firebase services. ${error?.message || "Check your network connection and Firebase setup."}`;
+      state.unsubscribeSettings = subscribeToFirebaseSettings((settings) => {
+        if (!settings) return;
+        state.settings = settings;
+        saveSettings(state.settings);
+        render();
+      });
+      state.unsubscribeRecords = subscribeToFirebaseRecords((records) => {
+        state.records = records.map(normalizeRecord);
+        saveRecords(state.records);
+        render();
+      }, (error) => {
+        els.loginError.textContent = `Could not load Firebase records. ${error?.message || "Check Firestore permissions."}`;
+      });
     });
   }
 
