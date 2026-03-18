@@ -22,7 +22,6 @@ const state = {
   ilsTab: "dashboard",
   activeSearchIndex: -1,
   unsubscribeRecords: null,
-  unsubscribeSettings: null,
   circulationTab: "checkout",
   queuedCheckoutItems: [],
   activeWorkspaceRecordId: "",
@@ -1967,26 +1966,8 @@ function init() {
         state.unsubscribeRecords();
         state.unsubscribeRecords = null;
       }
-      if (state.unsubscribeSettings) {
-        state.unsubscribeSettings();
-        state.unsubscribeSettings = null;
-      }
-
       if (!state.isFirebaseAuthActive) return;
 
-      loadSettingsFromRemote().then((settings) => {
-        if (settings) {
-          state.settings = settings;
-          saveSettings(state.settings);
-          render();
-        }
-      });
-      state.unsubscribeSettings = subscribeToFirebaseSettings((settings) => {
-        if (!settings) return;
-        state.settings = settings;
-        saveSettings(state.settings);
-        render();
-      });
       state.unsubscribeRecords = subscribeToFirebaseRecords((records) => {
         state.records = records.map(normalizeRecord);
         saveRecords(state.records);
