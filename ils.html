@@ -830,196 +830,185 @@
         </section>
 
         <section class="admin-tab-panel hidden" data-ils-panel="stats">
-          <section class="admin-block">
-            <h3>Collection Stats</h3>
-            <div id="ilsStatsPage" class="stats-page"></div>
-          </section>
-
-          <section class="admin-block report-card">
-            <div class="panel-header compact">
-              <div>
-                <h3>Weeding Report</h3>
-                <p class="muted">Identify inactive and never-circulated items for review.</p>
+          <div class="reports-shell">
+            <section id="reportsLandingView" class="reports-view">
+              <div class="panel-header reports-panel-header">
+                <div>
+                  <p class="eyebrow">Staff reporting</p>
+                  <h2>Reports</h2>
+                  <p class="muted">Browse reports by category, then open a single focused workspace to review filters and results without the clutter of one long page.</p>
+                </div>
               </div>
-            </div>
-            <div class="report-filter-grid">
-              <label>Inactivity period
-                <select id="weedingPreset">
-                  <option value="6-months">6 months</option>
-                  <option value="1-years">1 year</option>
-                  <option value="2-years">2 years</option>
-                  <option value="3-years">3 years</option>
-                  <option value="5-years">5 years</option>
-                  <option value="custom">Custom</option>
-                </select>
-              </label>
-              <label>Custom amount
-                <input id="weedingCustomValue" type="number" min="1" value="1" />
-              </label>
-              <label>Custom unit
-                <select id="weedingCustomUnit"><option value="months">Months</option><option value="years">Years</option></select>
-              </label>
-              <label>Shelf location
-                <select id="weedingLocationFilter"><option value="all">All locations</option></select>
-              </label>
-              <label>Material type
-                <select id="weedingMaterialTypeFilter"><option value="all">All material types</option></select>
-              </label>
-              <label>Status
-                <select id="weedingStatusFilter"><option value="all">All statuses</option></select>
-              </label>
-              <label>Audience / collection
-                <select id="weedingAudienceFilter"><option value="all">All audiences</option></select>
-              </label>
-              <label>Sort by
-                <select id="weedingSort"><option value="oldest">Oldest last checkout</option><option value="lowest-count">Lowest circulation count</option><option value="title">Title</option><option value="location">Location</option></select>
-              </label>
-            </div>
-            <p id="weedingSummary" class="status-message" aria-live="polite"></p>
-            <div id="weedingReportWrap"></div>
-          </section>
+              <div id="reportsCategoryGrid" class="reports-category-grid" aria-label="Report categories"></div>
+            </section>
 
-          <section class="admin-block report-card">
-            <div class="panel-header compact">
-              <div>
-                <h3>Busiest Hours Report</h3>
-                <p class="muted">Use visitor-counter timestamps to spot the busiest service windows.</p>
+            <section id="reportsCategoryView" class="reports-view hidden">
+              <div class="panel-header reports-panel-header">
+                <div>
+                  <p class="eyebrow">Report category</p>
+                  <h2 id="reportsCategoryTitle">Category</h2>
+                  <p id="reportsCategoryDescription" class="muted">Choose a report to open.</p>
+                </div>
+                <button id="reportsBackToLandingBtn" class="button button-secondary" type="button">Back to Reports</button>
               </div>
-            </div>
-            <div class="report-filter-grid">
-              <label>Date range
-                <select id="trafficRangePreset">
-                  <option value="current-week">Current week</option>
-                  <option value="current-month">Current month</option>
-                  <option value="last-30-days">Last 30 days</option>
-                  <option value="custom">Custom</option>
-                </select>
-              </label>
-              <label>Start date
-                <input id="trafficStartDate" type="date" />
-              </label>
-              <label>End date
-                <input id="trafficEndDate" type="date" />
-              </label>
-            </div>
-            <div id="busiestHoursReport" class="reports-stack"></div>
-          </section>
+              <div id="reportsCategoryList" class="reports-list-grid" aria-label="Reports in selected category"></div>
+            </section>
 
-          <section class="admin-block report-card">
-            <div class="panel-header compact">
-              <div>
-                <h3>Most Borrowed Authors</h3>
-                <p class="muted">Aggregate circulation by normalized author key so the grouping can later support authority IDs.</p>
+            <section id="reportsWorkspaceView" class="reports-view hidden">
+              <div class="panel-header reports-panel-header">
+                <div>
+                  <p id="reportsWorkspaceEyebrow" class="eyebrow">Report workspace</p>
+                  <h2 id="reportsWorkspaceTitle">Report</h2>
+                  <p id="reportsWorkspaceDescription" class="muted">Review filters and report output.</p>
+                </div>
+                <div class="reports-workspace-actions">
+                  <button id="reportsBackToCategoryBtn" class="button button-secondary" type="button">Back to Category</button>
+                  <button id="reportsBackToLandingFromWorkspaceBtn" class="button button-secondary" type="button">All Reports</button>
+                </div>
               </div>
-            </div>
-            <div class="report-filter-grid">
-              <label>Start date
-                <input id="authorStartDate" type="date" />
-              </label>
-              <label>End date
-                <input id="authorEndDate" type="date" />
-              </label>
-              <label>Shelf location
-                <select id="authorLocationFilter"><option value="all">All locations</option></select>
-              </label>
-              <label>Material type
-                <select id="authorMaterialTypeFilter"><option value="all">All material types</option></select>
-              </label>
-              <label>Audience / collection
-                <select id="authorAudienceFilter"><option value="all">All audiences</option></select>
-              </label>
-              <label>Sort by
-                <select id="authorSort"><option value="checkouts">Total checkouts</option><option value="name">Author name</option><option value="titles">Number of titles</option></select>
-              </label>
-            </div>
-            <p id="authorReportSummary" class="status-message" aria-live="polite"></p>
-            <div id="authorReportWrap"></div>
-          </section>
 
-          <section class="admin-block report-card">
-            <div class="panel-header compact">
-              <div>
-                <h3>Least Used Sections</h3>
-                <p class="muted">Compare circulation against section size to identify underused locations and collections.</p>
-              </div>
-            </div>
-            <div class="report-filter-grid">
-              <label>Sort by
-                <select id="sectionSort"><option value="avg-asc">Lowest average circulation per item</option><option value="total-asc">Lowest total circulation</option><option value="large-underused">Largest section with weakest circulation</option><option value="name">Section name</option></select>
-              </label>
-            </div>
-            <p id="sectionUsageSummary" class="status-message" aria-live="polite"></p>
-            <div id="sectionUsageWrap"></div>
-          </section>
+              <section id="report-monthly-circulation" class="admin-block report-workspace-panel hidden">
+                <div class="panel-header compact">
+                  <div>
+                    <h3>Monthly Circulation Report</h3>
+                    <p class="muted">View total checkouts over time plus a material-type breakdown for the selected reporting period.</p>
+                  </div>
+                  <button id="monthlyCirculationExportBtn" class="button button-secondary" type="button">Export CSV</button>
+                </div>
+                <div class="report-filter-grid">
+                  <label>Specific month
+                    <input id="monthlyCirculationMonth" type="month" />
+                  </label>
+                  <label>Start date
+                    <input id="monthlyCirculationStartDate" type="date" />
+                  </label>
+                  <label>End date
+                    <input id="monthlyCirculationEndDate" type="date" />
+                  </label>
+                </div>
+                <p id="monthlyCirculationSummary" class="status-message" aria-live="polite"></p>
+                <div id="monthlyCirculationReport" class="reports-stack"></div>
+              </section>
 
-          <section class="admin-block">
-            <h3>Missing Biblio Report</h3>
-            <p class="muted">Choose a bibliographic field to find all materials that are missing that information.</p>
-            <div class="admin-tools">
-              <label for="missingFieldSelect">Report option</label>
-              <select id="missingFieldSelect">
-                <option value="location">Location</option>
-                <option value="callNumber">Call Number</option>
-                <option value="identifier">Identifier / ISBN</option>
-                <option value="publisher">Publisher</option>
-                <option value="year">Publication Year</option>
-                <option value="description">Description</option>
-                <option value="subjects">Subjects</option>
-                <option value="materialNumbers">Material Number</option>
-              </select>
-              <button id="runMissingReportBtn" class="button button-secondary" type="button">Run Missing Report</button>
-            </div>
-            <p id="missingReportSummary" class="status-message" aria-live="polite"></p>
-            <table class="serials-table">
-              <thead>
-                <tr><th>Title</th><th>Creator</th><th>Format</th><th>Missing Field</th><th>Status</th></tr>
-              </thead>
-              <tbody id="missingReportBody"></tbody>
-            </table>
-          </section>
-          <section class="admin-block">
-            <h3>60+ Days Past Due Report</h3>
-            <p id="overdueReportSummary" class="status-message" aria-live="polite"></p>
-            <table class="serials-table">
-              <thead>
-                <tr><th>Title</th><th>Patron</th><th>Material #</th><th>Due Date</th><th>Days Overdue</th></tr>
-              </thead>
-              <tbody id="overdueReportBody"></tbody>
-            </table>
-          </section>
+              <section id="report-weeding" class="admin-block report-workspace-panel hidden report-card">
+                <div class="panel-header compact">
+                  <div>
+                    <h3>Weeding Report</h3>
+                    <p class="muted">Identify inactive and never-circulated items for review.</p>
+                  </div>
+                </div>
+                <div class="report-filter-grid">
+                  <label>Inactivity period
+                    <select id="weedingPreset">
+                      <option value="6-months">6 months</option>
+                      <option value="1-years">1 year</option>
+                      <option value="2-years">2 years</option>
+                      <option value="3-years">3 years</option>
+                      <option value="5-years">5 years</option>
+                      <option value="custom">Custom</option>
+                    </select>
+                  </label>
+                  <label>Custom amount
+                    <input id="weedingCustomValue" type="number" min="1" value="1" />
+                  </label>
+                  <label>Custom unit
+                    <select id="weedingCustomUnit"><option value="months">Months</option><option value="years">Years</option></select>
+                  </label>
+                  <label>Shelf location
+                    <select id="weedingLocationFilter"><option value="all">All locations</option></select>
+                  </label>
+                  <label>Material type
+                    <select id="weedingMaterialTypeFilter"><option value="all">All material types</option></select>
+                  </label>
+                  <label>Status
+                    <select id="weedingStatusFilter"><option value="all">All statuses</option></select>
+                  </label>
+                  <label>Audience / collection
+                    <select id="weedingAudienceFilter"><option value="all">All audiences</option></select>
+                  </label>
+                  <label>Sort by
+                    <select id="weedingSort"><option value="oldest">Oldest last checkout</option><option value="lowest-count">Lowest circulation count</option><option value="title">Title</option><option value="location">Location</option></select>
+                  </label>
+                </div>
+                <p id="weedingSummary" class="status-message" aria-live="polite"></p>
+                <div id="weedingReportWrap"></div>
+              </section>
 
-          <section class="admin-block report-card">
-            <div class="panel-header compact">
-              <div>
-                <h3>Fines and Fees</h3>
-                <p class="muted">Outstanding balances, fee detail, category totals, and monthly charge/payment trends.</p>
-              </div>
-            </div>
-            <div class="report-filter-grid">
-              <label>Fee filter
-                <select id="feeReportStatusFilter"><option value="unpaid-only">Unpaid only</option><option value="all">All statuses</option></select>
-              </label>
-              <label>Category
-                <select id="feeReportCategoryFilter"><option value="all">All categories</option><option>Fine</option><option>Replacement Cost</option><option>Card Replacement</option><option>Fee</option><option>Other</option></select>
-              </label>
-              <label>Patron
-                <select id="feeReportPatronFilter"><option value="all">All patrons</option></select>
-              </label>
-              <label>Start date
-                <input id="feeReportStartDate" type="date" />
-              </label>
-              <label>End date
-                <input id="feeReportEndDate" type="date" />
-              </label>
-            </div>
-            <div id="finesFeesReports" class="reports-stack"></div>
-          </section>
+              <section id="report-authors" class="admin-block report-workspace-panel hidden report-card">
+                <div class="panel-header compact"><div><h3>Most Borrowed Authors</h3><p class="muted">Aggregate circulation by normalized author key so the grouping can later support authority IDs.</p></div></div>
+                <div class="report-filter-grid">
+                  <label>Start date<input id="authorStartDate" type="date" /></label>
+                  <label>End date<input id="authorEndDate" type="date" /></label>
+                  <label>Shelf location<select id="authorLocationFilter"><option value="all">All locations</option></select></label>
+                  <label>Material type<select id="authorMaterialTypeFilter"><option value="all">All material types</option></select></label>
+                  <label>Audience / collection<select id="authorAudienceFilter"><option value="all">All audiences</option></select></label>
+                  <label>Sort by<select id="authorSort"><option value="checkouts">Total checkouts</option><option value="name">Author name</option><option value="titles">Number of titles</option></select></label>
+                </div>
+                <p id="authorReportSummary" class="status-message" aria-live="polite"></p>
+                <div id="authorReportWrap"></div>
+              </section>
 
-          <section class="admin-block">
-            <h3>Operational Reports</h3>
-            <p class="muted">Building use, reference, interlibrary loan, and register activity grouped for staff reporting.</p>
-            <div id="operationalReports" class="reports-stack"></div>
-          </section>
+              <section id="report-sections" class="admin-block report-workspace-panel hidden report-card">
+                <div class="panel-header compact"><div><h3>Least Used Sections</h3><p class="muted">Compare circulation against section size to identify underused locations and collections.</p></div></div>
+                <div class="report-filter-grid"><label>Sort by<select id="sectionSort"><option value="avg-asc">Lowest average circulation per item</option><option value="total-asc">Lowest total circulation</option><option value="large-underused">Largest section with weakest circulation</option><option value="name">Section name</option></select></label></div>
+                <p id="sectionUsageSummary" class="status-message" aria-live="polite"></p>
+                <div id="sectionUsageWrap"></div>
+              </section>
+
+              <section id="report-missing-biblio" class="admin-block report-workspace-panel hidden">
+                <h3>Missing Biblio Report</h3>
+                <p class="muted">Choose a bibliographic field to find all materials that are missing that information.</p>
+                <div class="admin-tools">
+                  <label for="missingFieldSelect">Report option</label>
+                  <select id="missingFieldSelect">
+                    <option value="location">Location</option><option value="callNumber">Call Number</option><option value="identifier">Identifier / ISBN</option><option value="publisher">Publisher</option><option value="year">Publication Year</option><option value="description">Description</option><option value="subjects">Subjects</option><option value="materialNumbers">Material Number</option>
+                  </select>
+                  <button id="runMissingReportBtn" class="button button-secondary" type="button">Run Missing Report</button>
+                </div>
+                <p id="missingReportSummary" class="status-message" aria-live="polite"></p>
+                <table class="serials-table"><thead><tr><th>Title</th><th>Creator</th><th>Format</th><th>Missing Field</th><th>Status</th></tr></thead><tbody id="missingReportBody"></tbody></table>
+              </section>
+
+              <section id="report-overdue" class="admin-block report-workspace-panel hidden">
+                <h3>60+ Days Past Due Report</h3>
+                <p id="overdueReportSummary" class="status-message" aria-live="polite"></p>
+                <table class="serials-table"><thead><tr><th>Title</th><th>Patron</th><th>Material #</th><th>Due Date</th><th>Days Overdue</th></tr></thead><tbody id="overdueReportBody"></tbody></table>
+              </section>
+
+              <section id="report-busiest-hours" class="admin-block report-workspace-panel hidden report-card">
+                <div class="panel-header compact"><div><h3>Busiest Hours Report</h3><p class="muted">Use visitor-counter timestamps to spot the busiest service windows.</p></div></div>
+                <div class="report-filter-grid">
+                  <label>Date range<select id="trafficRangePreset"><option value="current-week">Current week</option><option value="current-month">Current month</option><option value="last-30-days">Last 30 days</option><option value="custom">Custom</option></select></label>
+                  <label>Start date<input id="trafficStartDate" type="date" /></label>
+                  <label>End date<input id="trafficEndDate" type="date" /></label>
+                </div>
+                <div id="busiestHoursReport" class="reports-stack"></div>
+              </section>
+
+              <section id="report-operational" class="admin-block report-workspace-panel hidden">
+                <h3>Operational Reports</h3>
+                <p class="muted">Building use, reference, interlibrary loan, and register activity grouped for staff reporting.</p>
+                <div id="operationalReports" class="reports-stack"></div>
+              </section>
+
+              <section id="report-fines-fees" class="admin-block report-workspace-panel hidden report-card">
+                <div class="panel-header compact"><div><h3>Fines and Fees</h3><p class="muted">Outstanding balances, fee detail, category totals, and monthly charge/payment trends.</p></div></div>
+                <div class="report-filter-grid">
+                  <label>Fee filter<select id="feeReportStatusFilter"><option value="unpaid-only">Unpaid only</option><option value="all">All statuses</option></select></label>
+                  <label>Category<select id="feeReportCategoryFilter"><option value="all">All categories</option><option>Fine</option><option>Replacement Cost</option><option>Card Replacement</option><option>Fee</option><option>Other</option></select></label>
+                  <label>Patron<select id="feeReportPatronFilter"><option value="all">All patrons</option></select></label>
+                  <label>Start date<input id="feeReportStartDate" type="date" /></label>
+                  <label>End date<input id="feeReportEndDate" type="date" /></label>
+                </div>
+                <div id="finesFeesReports" class="reports-stack"></div>
+              </section>
+
+              <section id="report-collection-stats" class="admin-block report-workspace-panel hidden">
+                <h3>Collection Stats</h3>
+                <div id="ilsStatsPage" class="stats-page"></div>
+              </section>
+            </section>
+          </div>
         </section>
 
         <section class="admin-tab-panel hidden" data-ils-panel="utilities">
