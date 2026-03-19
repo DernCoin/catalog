@@ -113,6 +113,13 @@ const els = {
   patronDetailPanel: $("#patronDetailPanel"),
   patronDetailBadge: $("#patronDetailBadge"),
   patronListSummary: $("#patronListSummary"),
+  patronFeeForm: $("#patronFeeForm"),
+  feeCategory: $("#feeCategory"),
+  feeDateAssessed: $("#feeDateAssessed"),
+  feeAmount: $("#feeAmount"),
+  feeStatus: $("#feeStatus"),
+  feeDescription: $("#feeDescription"),
+  patronFeeMessage: $("#patronFeeMessage"),
   serialIssueForm: $("#serialIssueForm"),
   serialTitle: $("#serialTitle"),
   serialIssueLabel: $("#serialIssueLabel"),
@@ -179,6 +186,37 @@ const els = {
   overdueReportSummary: $("#overdueReportSummary"),
   overdueReportBody: $("#overdueReportBody"),
   operationalReports: $("#operationalReports"),
+  weedingPreset: $("#weedingPreset"),
+  weedingCustomValue: $("#weedingCustomValue"),
+  weedingCustomUnit: $("#weedingCustomUnit"),
+  weedingLocationFilter: $("#weedingLocationFilter"),
+  weedingMaterialTypeFilter: $("#weedingMaterialTypeFilter"),
+  weedingStatusFilter: $("#weedingStatusFilter"),
+  weedingAudienceFilter: $("#weedingAudienceFilter"),
+  weedingSort: $("#weedingSort"),
+  weedingSummary: $("#weedingSummary"),
+  weedingReportWrap: $("#weedingReportWrap"),
+  trafficRangePreset: $("#trafficRangePreset"),
+  trafficStartDate: $("#trafficStartDate"),
+  trafficEndDate: $("#trafficEndDate"),
+  busiestHoursReport: $("#busiestHoursReport"),
+  authorStartDate: $("#authorStartDate"),
+  authorEndDate: $("#authorEndDate"),
+  authorLocationFilter: $("#authorLocationFilter"),
+  authorMaterialTypeFilter: $("#authorMaterialTypeFilter"),
+  authorAudienceFilter: $("#authorAudienceFilter"),
+  authorSort: $("#authorSort"),
+  authorReportSummary: $("#authorReportSummary"),
+  authorReportWrap: $("#authorReportWrap"),
+  sectionSort: $("#sectionSort"),
+  sectionUsageSummary: $("#sectionUsageSummary"),
+  sectionUsageWrap: $("#sectionUsageWrap"),
+  feeReportStatusFilter: $("#feeReportStatusFilter"),
+  feeReportCategoryFilter: $("#feeReportCategoryFilter"),
+  feeReportPatronFilter: $("#feeReportPatronFilter"),
+  feeReportStartDate: $("#feeReportStartDate"),
+  feeReportEndDate: $("#feeReportEndDate"),
+  finesFeesReports: $("#finesFeesReports"),
   illOutgoingForm: $("#illOutgoingForm"),
   illOutgoingTitle: $("#illOutgoingTitle"),
   illOutgoingAuthor: $("#illOutgoingAuthor"),
@@ -419,6 +457,8 @@ function incrementDailyCounter(type) {
   const current = { ...getDailyCounterMap(type) };
   current[date] = Number(current[date] || 0) + 1;
   saveDailyCounterMap(type, current);
+  const logEntries = [...getCounterLog(type), { id: `${type}-${Date.now()}-${Math.floor(Math.random() * 1000)}`, timestamp: new Date().toISOString(), source: 'counterButton' }];
+  saveCounterLog(type, logEntries);
   renderQuickCounters();
   renderDashboard();
   renderStatsPanel();
@@ -435,6 +475,376 @@ function summarizeCounterByMonth(type) {
     acc[month] = Number(acc[month] || 0) + Number(count || 0);
     return acc;
   }, {});
+}
+
+
+function getCounterLog(type) {
+  const key = type === "visitor" ? "visitorLog" : `${type}Log`;
+  return Array.isArray(state.settings[key]) ? state.settings[key] : [];
+}
+
+function saveCounterLog(type, entries) {
+  const key = type === "visitor" ? "visitorLog" : `${type}Log`;
+  state.settings[key] = entries;
+  saveSettings(state.settings);
+}
+
+function getFeeEntries() {
+  return Array.isArray(state.settings.patronFees) ? state.settings.patronFees : [];
+}
+
+function saveFeeEntries(entries) {
+  state.settings.patronFees = entries;
+  saveSettings(state.settings);
+}
+
+function toDateInputValue(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value).slice(0, 10);
+  return date.toISOString().slice(0, 10);
+}
+
+function parseCirculationLines(record) {
+  return String(record.circulationHistory || "").split(/
++/).filter(Boolean).map((line) => {
+    const match = line.match(/^\[(.+?)\]\s*(.*)$/);
+    const rawDate = match?.[1] || "";
+    const action = match?.[2] || line;
+    return {
+      line,
+      action,
+      timestamp: rawDate ? new Date(rawDate.replace(" ", "T")).getTime() : NaN,
+      isCheckout: /checked out to/i.test(action),
+      patronText: (action.match(/Checked out to (.+?) \(Card:/i) || [])[1] || "",
+    };
+  });
+}
+
+function getLifetimeCheckoutCount(record) {
+  return parseCirculationLines(record).filter((entry) => entry.isCheckout).length;
+}
+
+function getLastCheckoutDate(record) {
+  const checkoutLines = parseCirculationLines(record).filter((entry) => entry.isCheckout && Number.isFinite(entry.timestamp)).sort((a, b) => b.timestamp - a.timestamp);
+  if (checkoutLines.length) return new Date(checkoutLines[0].timestamp).toISOString();
+  const holdingsDate = (record.holdings || []).map((holding) => holding.checkedOutAt).filter(Boolean).sort().pop();
+  return holdingsDate || "";
+}
+
+function formatDisplayDate(value, fallback = "—") {
+  if (!value) return fallback;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return fallback;
+  return date.toLocaleDateString();
+}
+
+function normalizeAuthorGroupingKey(record = {}) {
+  const authorityId = String(record.authorityId || record.authorId || record.creatorAuthorityId || "").trim();
+  if (authorityId) return { key: `authority:${authorityId}`, display: record.creator || authorityId, source: "authorityId" };
+  const normalized = String(record.creator || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return { key: `name:${normalized || 'unknown'}`, display: record.creator || "Unknown author", source: "normalizedName" };
+}
+
+function getPrimaryHolding(record) {
+  return (record.holdings || [])[0] || {};
+}
+
+function getRecordShelfLocation(record) {
+  return getPrimaryHolding(record).location || record.location || "Unassigned";
+}
+
+function getRecordCallNumber(record) {
+  return getPrimaryHolding(record).callNumber || record.callNumber || "";
+}
+
+function getRecordBarcode(record) {
+  return getPrimaryHolding(record).materialNumbers?.[0] || record.materialNumbers?.[0] || "";
+}
+
+function getRecordAudience(record) {
+  return record.targetAudience || record.curatedShelf || "General";
+}
+
+function getRecordStatus(record) {
+  return getPrimaryHolding(record).status || record.status || "Available";
+}
+
+function buildRecordCirculationSnapshot(record) {
+  return {
+    id: record.id,
+    title: record.title || "Untitled",
+    author: record.creator || "Unknown author",
+    barcode: getRecordBarcode(record),
+    callNumber: getRecordCallNumber(record),
+    location: getRecordShelfLocation(record),
+    materialType: record.materialType || record.format || "Other",
+    audience: getRecordAudience(record),
+    status: getRecordStatus(record),
+    totalCheckouts: getLifetimeCheckoutCount(record),
+    lastCheckoutDate: getLastCheckoutDate(record),
+  };
+}
+
+function getManagedAudienceValues() {
+  return [...new Set(state.records.map(getRecordAudience).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
+function getManagedStatusValues() {
+  return [...new Set(state.records.map(getRecordStatus).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
+function populateReportSelect(selectEl, values, allLabel) {
+  if (!selectEl) return;
+  const current = selectEl.value || "all";
+  selectEl.innerHTML = [`<option value="all">${allLabel}</option>`, ...values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)].join("");
+  selectEl.value = values.includes(current) || current === "all" ? current : "all";
+}
+
+function getCutoffDateFromWeedingFilters() {
+  const preset = els.weedingPreset?.value || "6-months";
+  let amount = 6;
+  let unit = "months";
+  if (preset === "custom") {
+    amount = Number.parseInt(els.weedingCustomValue?.value || "1", 10) || 1;
+    unit = els.weedingCustomUnit?.value || "months";
+  } else {
+    const [rawAmount, rawUnit] = preset.split("-");
+    amount = Number.parseInt(rawAmount || "6", 10) || 6;
+    unit = rawUnit || "months";
+  }
+  const cutoff = new Date();
+  if (unit === "years") cutoff.setFullYear(cutoff.getFullYear() - amount);
+  else cutoff.setMonth(cutoff.getMonth() - amount);
+  return cutoff;
+}
+
+function getFilteredWeedingRows() {
+  const cutoff = getCutoffDateFromWeedingFilters();
+  const locationFilter = els.weedingLocationFilter?.value || "all";
+  const materialTypeFilter = els.weedingMaterialTypeFilter?.value || "all";
+  const statusFilter = els.weedingStatusFilter?.value || "all";
+  const audienceFilter = els.weedingAudienceFilter?.value || "all";
+  const sort = els.weedingSort?.value || "oldest";
+  const rows = state.records.map(buildRecordCirculationSnapshot).filter((row) => {
+    if (locationFilter !== "all" && row.location !== locationFilter) return false;
+    if (materialTypeFilter !== "all" && row.materialType !== materialTypeFilter) return false;
+    if (statusFilter !== "all" && row.status !== statusFilter) return false;
+    if (audienceFilter !== "all" && row.audience !== audienceFilter) return false;
+    if (!row.lastCheckoutDate) return true;
+    return new Date(row.lastCheckoutDate) < cutoff;
+  });
+  rows.sort((a, b) => {
+    if (sort === "lowest-count") return a.totalCheckouts - b.totalCheckouts || a.title.localeCompare(b.title);
+    if (sort === "title") return a.title.localeCompare(b.title);
+    if (sort === "location") return a.location.localeCompare(b.location) || a.title.localeCompare(b.title);
+    const timeA = a.lastCheckoutDate ? new Date(a.lastCheckoutDate).getTime() : -Infinity;
+    const timeB = b.lastCheckoutDate ? new Date(b.lastCheckoutDate).getTime() : -Infinity;
+    return timeA - timeB || a.totalCheckouts - b.totalCheckouts;
+  });
+  return { rows, cutoff };
+}
+
+function getTrafficDateRange() {
+  const preset = els.trafficRangePreset?.value || "current-week";
+  const now = new Date();
+  let start = new Date(now);
+  let end = new Date(now);
+  if (preset === "current-week") {
+    const weekday = (now.getDay() + 6) % 7;
+    start.setDate(now.getDate() - weekday);
+  } else if (preset === "current-month") {
+    start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  } else if (preset === "last-30-days") {
+    start.setDate(now.getDate() - 29);
+  } else {
+    start = new Date((els.trafficStartDate?.value || todayIso()) + 'T00:00:00');
+    end = new Date((els.trafficEndDate?.value || todayIso()) + 'T23:59:59');
+  }
+  start.setHours(0,0,0,0);
+  end.setHours(23,59,59,999);
+  return { start, end };
+}
+
+function ensureCounterLogBackfill(type) {
+  if (type !== "visitor") return;
+  const log = getCounterLog(type);
+  if (log.length) return;
+  const dailyMap = getDailyCounterMap(type);
+  const synthetic = Object.entries(dailyMap).flatMap(([date, count]) => Array.from({ length: Number(count) || 0 }, (_, index) => ({ id: `${type}-${date}-${index}`, timestamp: `${date}T12:00:00.000Z`, source: "dailyBackfill" })));
+  if (synthetic.length) saveCounterLog(type, synthetic);
+}
+
+function groupVisitsByHourAndDay(entries) {
+  const byHour = new Map();
+  const byDayHour = new Map();
+  const weekdayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  entries.forEach((entry) => {
+    const date = new Date(entry.timestamp);
+    if (Number.isNaN(date.getTime())) return;
+    const hour = date.getHours();
+    const day = weekdayNames[date.getDay()];
+    const hourBlock = `${formatHourBlock(hour)}`;
+    byHour.set(hourBlock, Number(byHour.get(hourBlock) || 0) + 1);
+    const key = `${day}||${hour}`;
+    const current = byDayHour.get(key) || { day, hour, hourBlock, count: 0 };
+    current.count += 1;
+    byDayHour.set(key, current);
+  });
+  return {
+    byHour: [...byHour.entries()].map(([hourBlock, count]) => ({ hourBlock, count })).sort((a, b) => b.count - a.count || a.hourBlock.localeCompare(b.hourBlock)),
+    byDayHour: [...byDayHour.values()].sort((a, b) => b.count - a.count || a.day.localeCompare(b.day) || a.hour - b.hour),
+  };
+}
+
+function formatHourBlock(hour) {
+  const start = new Date();
+  start.setHours(hour, 0, 0, 0);
+  const end = new Date();
+  end.setHours((hour + 1) % 24, 0, 0, 0);
+  return `${start.toLocaleTimeString([], { hour: 'numeric' })} – ${end.toLocaleTimeString([], { hour: 'numeric' })}`;
+}
+
+function getBorrowedAuthorRows() {
+  const start = els.authorStartDate?.value ? new Date(`${els.authorStartDate.value}T00:00:00`) : null;
+  const end = els.authorEndDate?.value ? new Date(`${els.authorEndDate.value}T23:59:59`) : null;
+  const locationFilter = els.authorLocationFilter?.value || 'all';
+  const materialTypeFilter = els.authorMaterialTypeFilter?.value || 'all';
+  const audienceFilter = els.authorAudienceFilter?.value || 'all';
+  const rows = new Map();
+  state.records.forEach((record) => {
+    const location = getRecordShelfLocation(record);
+    const materialType = record.materialType || record.format || 'Other';
+    const audience = getRecordAudience(record);
+    if (locationFilter !== 'all' && location !== locationFilter) return;
+    if (materialTypeFilter !== 'all' && materialType !== materialTypeFilter) return;
+    if (audienceFilter !== 'all' && audience !== audienceFilter) return;
+    const authorKey = normalizeAuthorGroupingKey(record);
+    const entry = rows.get(authorKey.key) || { key: authorKey.key, author: authorKey.display, totalCheckouts: 0, titleIds: new Set(), topTitle: '', topTitleCount: 0, mostRecentCheckout: '' };
+    const checkoutLines = parseCirculationLines(record).filter((line) => line.isCheckout);
+    let recordCount = 0;
+    let recordMostRecent = '';
+    checkoutLines.forEach((line) => {
+      if (!Number.isFinite(line.timestamp)) return;
+      const dt = new Date(line.timestamp);
+      if (start && dt < start) return;
+      if (end && dt > end) return;
+      recordCount += 1;
+      const iso = dt.toISOString();
+      if (!recordMostRecent || iso > recordMostRecent) recordMostRecent = iso;
+    });
+    if (!recordCount) return;
+    entry.totalCheckouts += recordCount;
+    entry.titleIds.add(record.id);
+    if (recordCount > entry.topTitleCount) {
+      entry.topTitleCount = recordCount;
+      entry.topTitle = record.title || 'Untitled';
+    }
+    if (recordMostRecent && (!entry.mostRecentCheckout || recordMostRecent > entry.mostRecentCheckout)) entry.mostRecentCheckout = recordMostRecent;
+    rows.set(authorKey.key, entry);
+  });
+  const list = [...rows.values()].map((row) => ({ ...row, titleCount: row.titleIds.size }));
+  const sort = els.authorSort?.value || 'checkouts';
+  list.sort((a, b) => {
+    if (sort === 'name') return a.author.localeCompare(b.author);
+    if (sort === 'titles') return b.titleCount - a.titleCount || b.totalCheckouts - a.totalCheckouts;
+    return b.totalCheckouts - a.totalCheckouts || a.author.localeCompare(b.author);
+  });
+  return list;
+}
+
+function getSectionUsageRows() {
+  const sectionMap = new Map();
+  state.records.forEach((record) => {
+    const section = getRecordShelfLocation(record);
+    const current = sectionMap.get(section) || { section, itemCount: 0, totalCheckouts: 0, lastActivity: '', items: [] };
+    const lastCheckoutDate = getLastCheckoutDate(record);
+    current.itemCount += 1;
+    current.totalCheckouts += getLifetimeCheckoutCount(record);
+    current.items.push(record.id);
+    if (lastCheckoutDate && (!current.lastActivity || lastCheckoutDate > current.lastActivity)) current.lastActivity = lastCheckoutDate;
+    sectionMap.set(section, current);
+  });
+  const totals = [...sectionMap.values()].reduce((acc, row) => ({ items: acc.items + row.itemCount, checkouts: acc.checkouts + row.totalCheckouts }), { items: 0, checkouts: 0 });
+  const list = [...sectionMap.values()].map((row) => {
+    const average = row.itemCount ? row.totalCheckouts / row.itemCount : 0;
+    const collectionShare = totals.items ? (row.itemCount / totals.items) * 100 : 0;
+    const circulationShare = totals.checkouts ? (row.totalCheckouts / totals.checkouts) * 100 : 0;
+    const usageBand = average < 0.5 ? 'underused' : average < 2 ? 'moderate' : 'high use';
+    return { ...row, averageCheckouts: average, collectionShare, circulationShare, usageBand };
+  });
+  const sort = els.sectionSort?.value || 'avg-asc';
+  list.sort((a, b) => {
+    if (sort === 'total-asc') return a.totalCheckouts - b.totalCheckouts || b.itemCount - a.itemCount;
+    if (sort === 'large-underused') return (b.itemCount - a.itemCount) || (a.averageCheckouts - b.averageCheckouts);
+    if (sort === 'name') return a.section.localeCompare(b.section);
+    return a.averageCheckouts - b.averageCheckouts || b.itemCount - a.itemCount;
+  });
+  return { list, totals };
+}
+
+function normalizeFeeEntry(entry = {}) {
+  const amount = Number.parseFloat(entry.amount || 0) || 0;
+  const amountPaid = Number.parseFloat(entry.amountPaid || 0) || 0;
+  const status = String(entry.status || 'Unpaid').trim() || 'Unpaid';
+  return {
+    id: entry.id || `FEE-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    patronId: String(entry.patronId || '').trim(),
+    patronName: String(entry.patronName || '').trim(),
+    patronCardNumber: String(entry.patronCardNumber || '').trim(),
+    dateAssessed: String(entry.dateAssessed || todayIso()).trim(),
+    category: String(entry.category || 'Fine').trim(),
+    amount,
+    description: String(entry.description || '').trim(),
+    status,
+    amountPaid,
+    remainingAmount: Math.max(0, amount - amountPaid),
+    paymentHistory: Array.isArray(entry.paymentHistory) ? entry.paymentHistory : [],
+    createdAt: Number(entry.createdAt) || Date.now(),
+    updatedAt: Date.now(),
+  };
+}
+
+function calculatePatronBalance(patronId) {
+  const entries = getFeeEntries().filter((entry) => entry.patronId === patronId).map(normalizeFeeEntry);
+  const totalBalance = entries.reduce((sum, entry) => sum + entry.amount, 0);
+  const unpaidAmount = entries.reduce((sum, entry) => sum + (entry.status === 'Paid' || entry.status === 'Waived' ? 0 : entry.remainingAmount), 0);
+  const outstandingCharges = entries.filter((entry) => !['Paid', 'Waived'].includes(entry.status)).length;
+  return { entries, totalBalance, unpaidAmount, outstandingCharges };
+}
+
+function summarizeFinesFees(filters = {}) {
+  const patrons = new Map(getPatrons().map((patron) => [patron.id, patron]));
+  const start = filters.startDate ? new Date(`${filters.startDate}T00:00:00`) : null;
+  const end = filters.endDate ? new Date(`${filters.endDate}T23:59:59`) : null;
+  const rows = getFeeEntries().map(normalizeFeeEntry).filter((entry) => {
+    if (filters.status === 'unpaid-only' && ['Paid', 'Waived'].includes(entry.status)) return false;
+    if (filters.category && filters.category !== 'all' && entry.category !== filters.category) return false;
+    if (filters.patronId && filters.patronId !== 'all' && entry.patronId !== filters.patronId) return false;
+    const assessedDate = new Date(`${entry.dateAssessed}T00:00:00`);
+    if (start && assessedDate < start) return false;
+    if (end && assessedDate > end) return false;
+    return true;
+  }).map((entry) => ({ ...entry, patron: patrons.get(entry.patronId) }));
+  const byPatron = new Map();
+  const byCategory = new Map();
+  const monthly = new Map();
+  rows.forEach((entry) => {
+    const currentPatron = byPatron.get(entry.patronId) || { patronName: entry.patronName || entry.patron?.name || 'Unknown patron', cardNumber: entry.patronCardNumber || entry.patron?.cardNumber || '', totalBalance: 0, unpaidAmount: 0, outstandingCharges: 0 };
+    currentPatron.totalBalance += entry.amount;
+    if (!['Paid', 'Waived'].includes(entry.status)) {
+      currentPatron.unpaidAmount += entry.remainingAmount;
+      currentPatron.outstandingCharges += 1;
+    }
+    byPatron.set(entry.patronId, currentPatron);
+    byCategory.set(entry.category, Number(byCategory.get(entry.category) || 0) + entry.amount);
+    const month = getMonthKey(entry.dateAssessed);
+    const monthRow = monthly.get(month) || { assessed: 0, paid: 0 };
+    monthRow.assessed += entry.amount;
+    monthRow.paid += entry.amountPaid;
+    monthly.set(month, monthRow);
+  });
+  return { rows, byPatron: [...byPatron.values()].sort((a, b) => b.unpaidAmount - a.unpaidAmount || a.patronName.localeCompare(b.patronName)), byCategory: [...byCategory.entries()].sort((a, b) => b[1] - a[1]), monthly: [...monthly.entries()].sort((a, b) => b[0].localeCompare(a[0])) };
 }
 
 function getIllTransactions(type) {
@@ -501,6 +911,9 @@ function populateStaticSelects() {
   if (els.registerReportDate && !els.registerReportDate.value) els.registerReportDate.value = todayIso();
   if (els.illOutgoingRequestedDate && !els.illOutgoingRequestedDate.value) els.illOutgoingRequestedDate.value = todayIso();
   if (els.illIncomingRequestDate && !els.illIncomingRequestDate.value) els.illIncomingRequestDate.value = todayIso();
+  if (els.feeDateAssessed && !els.feeDateAssessed.value) els.feeDateAssessed.value = todayIso();
+  if (els.trafficStartDate && !els.trafficStartDate.value) els.trafficStartDate.value = todayIso();
+  if (els.trafficEndDate && !els.trafficEndDate.value) els.trafficEndDate.value = todayIso();
 }
 
 function normalizeIllTransaction(type, entry = {}) {
@@ -1101,6 +1514,21 @@ function renderDashboard() {
 
   const activeIllCount = getIllTransactions("outgoing").filter((entry) => !ILL_COMPLETED_STATUSES.has(entry.status)).length + getIllTransactions("incoming").filter((entry) => !ILL_COMPLETED_STATUSES.has(entry.status)).length;
   const todayRegisterTotal = summarizeRegisterDate(todayIso()).total;
+  const weedingPreview = getFilteredWeedingRows().rows;
+  const topAuthorMonth = (() => {
+    const start = new Date();
+    start.setDate(1);
+    const originalStart = els.authorStartDate?.value;
+    const originalEnd = els.authorEndDate?.value;
+    if (els.authorStartDate) els.authorStartDate.value = toDateInputValue(start);
+    if (els.authorEndDate) els.authorEndDate.value = todayIso();
+    const rows = getBorrowedAuthorRows();
+    if (els.authorStartDate) els.authorStartDate.value = originalStart || '';
+    if (els.authorEndDate) els.authorEndDate.value = originalEnd || '';
+    return rows[0] || null;
+  })();
+  const leastUsedSection = getSectionUsageRows().list[0] || null;
+  const outstandingFinesTotal = getFeeEntries().map(normalizeFeeEntry).reduce((sum, entry) => sum + (!['Paid', 'Waived'].includes(entry.status) ? entry.remainingAmount : 0), 0);
   const stats = [
     { label: "Items Out", value: currentLoans.length, copy: "Currently on loan", target: "circulation" },
     { label: "Overdues", value: overdueLoans.length, copy: "Past due circulation items", target: "circulation" },
@@ -1109,6 +1537,10 @@ function renderDashboard() {
     { label: "Reference Today", value: getDailyCounterTotal("reference"), copy: "Reference questions counted today", target: "stats" },
     { label: "Active ILL", value: activeIllCount, copy: "Outgoing + incoming ILL in progress", target: "ill-outgoing" },
     { label: "Register Today", value: formatCurrency(todayRegisterTotal), copy: "Daily register intake", target: "register" },
+    { label: "Weeding Flags", value: weedingPreview.length, copy: "Items inactive beyond current weeding threshold", target: "stats" },
+    { label: "Top Author", value: topAuthorMonth ? topAuthorMonth.author : '—', copy: topAuthorMonth ? `${topAuthorMonth.totalCheckouts} checkouts this month` : 'No author circulation this month', target: "stats" },
+    { label: "Least Used Section", value: leastUsedSection ? leastUsedSection.section : '—', copy: leastUsedSection ? `${leastUsedSection.averageCheckouts.toFixed(2)} avg circ/item` : 'No section usage data', target: "stats" },
+    { label: "Outstanding Fines", value: formatCurrency(outstandingFinesTotal), copy: "Current unpaid patron account balances", target: "stats" },
     { label: "Pending Materials", value: pendingMaterials.length, copy: "Awaiting activation/cataloging", target: "acquisitions" },
     { label: "Open Orders", value: openOrders.length, copy: "Active vendor orders", target: "acquisitions" },
     { label: "Donations Awaiting Review", value: donationWorkflow.awaitingReviewCount, copy: "Donation items needing staff decision", target: "acquisitions" },
@@ -1377,7 +1809,7 @@ function renderPatronsTable() {
 
   if (!patrons.length) {
     const tr = document.createElement("tr");
-    tr.innerHTML = '<td colspan="6">No patrons added yet. Add a patron to open a full account view.</td>';
+    tr.innerHTML = '<td colspan="7">No patrons added yet. Add a patron to open a full account view.</td>';
     els.patronsBody.appendChild(tr);
     state.selectedPatronId = "";
     return;
@@ -1389,7 +1821,7 @@ function renderPatronsTable() {
     const summary = getPatronAccountSummary(patron);
     const tr = document.createElement("tr");
     tr.classList.toggle("is-selected-row", patron.id === state.selectedPatronId);
-    tr.innerHTML = `<td><button class="text-button" type="button" data-act="select">${patron.name}</button></td><td>${patron.cardNumber || ""}</td><td>${patron.status || "Active"}</td><td>${summary.loans.length}</td><td>${summary.holds.length}</td><td><button class="button button-secondary" type="button" data-act="edit">Edit</button> <button class="button button-secondary" type="button" data-act="delete">Delete</button></td>`;
+    tr.innerHTML = `<td><button class="text-button" type="button" data-act="select">${patron.name}</button></td><td>${patron.cardNumber || ""}</td><td>${patron.status || "Active"}</td><td>${summary.loans.length}</td><td>${summary.holds.length}</td><td>${formatCurrency(summary.unpaidAmount)}</td><td><button class="button button-secondary" type="button" data-act="edit">Edit</button> <button class="button button-secondary" type="button" data-act="delete">Delete</button></td>`;
 
     tr.querySelector('[data-act="select"]').addEventListener("click", () => selectPatron(patron.id));
     tr.querySelector('[data-act="edit"]').addEventListener("click", () => editPatron(patron.id));
@@ -1425,6 +1857,7 @@ function renderPatronDetail() {
         <div><strong>${summary.loans.length}</strong><span>Items out</span></div>
         <div><strong>${summary.holds.length}</strong><span>Holds</span></div>
         <div><strong>${summary.overdue.length}</strong><span>Overdue</span></div>
+        <div><strong>${formatCurrency(summary.unpaidAmount)}</strong><span>Outstanding balance</span></div>
       </div>
     </div>
     <div class="patron-detail-grid">
@@ -1437,9 +1870,11 @@ function renderPatronDetail() {
       <section class="detail-section card-like"><h5>Notes</h5><p>${patron.notes || "No notes."}</p></section>
       <section class="detail-section card-like"><h5>Blocks & alerts</h5><p><strong>Blocks:</strong> ${blocks.length ? blocks.join(", ") : "No blocks."}</p><p><strong>Alerts:</strong> ${alerts.length ? alerts.join(", ") : "No alerts."}</p></section>
     </div>
+    <section class="detail-section card-like"><h5>Fines and fees</h5>${summary.entries.length ? `<ul class="fee-entry-list">${summary.entries.sort((a, b) => String(b.dateAssessed).localeCompare(String(a.dateAssessed))).map((entry) => `<li><div class="fee-entry-meta"><strong>${escapeHtml(entry.category)}</strong><span>${formatCurrency(entry.amount)} · ${escapeHtml(entry.status)}</span></div><span>${escapeHtml(entry.dateAssessed)} · ${escapeHtml(entry.description || 'No description')}</span><p class="fee-entry-payments">Remaining: ${formatCurrency(entry.remainingAmount)}${entry.paymentHistory.length ? ` · Payments: ${entry.paymentHistory.map((payment) => `${payment.date} ${formatCurrency(payment.amount)}`).join(', ')}` : ''}</p>${['Paid', 'Waived'].includes(entry.status) ? '' : `<div class="patron-fee-actions"><button class="button button-secondary" type="button" data-fee-status="${entry.id}" data-next-status="Paid">Mark Paid</button><button class="button button-secondary" type="button" data-fee-status="${entry.id}" data-next-status="Waived">Waive</button></div>`}</li>`).join("")}</ul>` : "<p>No fines or fees have been assessed.</p>"}</section>
     <section class="detail-section card-like"><h5>Items currently out</h5>${summary.loans.length ? `<ul class="patron-activity-list">${summary.loans.map(({ record, holding }) => `<li><strong>${record.title || "Untitled"}</strong><span>${holding.materialNumbers?.[0] || "No barcode"} · Due ${holding.dueDate || "No due date"}</span></li>`).join("")}</ul>` : "<p>No items currently checked out.</p>"}</section>
     <section class="detail-section card-like"><h5>Recent activity</h5>${summary.history.length ? `<ul class="patron-activity-list">${summary.history.map((entry) => `<li><strong>${entry.title}</strong><span>${entry.line}</span></li>`).join("")}</ul>` : "<p>No recent activity.</p>"}</section>
   `;
+  [...els.patronDetailPanel.querySelectorAll('[data-fee-status]')].forEach((button) => button.addEventListener('click', () => updateFeeStatus(button.dataset.feeStatus, button.dataset.nextStatus)));
 }
 
 function renderLoansTable() {
@@ -1553,8 +1988,13 @@ function editPatron(patronId) {
 
 function removePatron(patronId) {
   const hasLoans = state.records.some((record) => (record.holdings || []).some((holding) => holding.checkedOutTo === patronId && String(holding.status) === "On Loan"));
+  const hasOutstandingFees = calculatePatronBalance(patronId).unpaidAmount > 0;
   if (hasLoans) {
     setCirculationMessage("Cannot delete patron with checked out items.", true);
+    return;
+  }
+  if (hasOutstandingFees) {
+    setCirculationMessage("Cannot delete patron with outstanding fines or fees.", true);
     return;
   }
 
@@ -3418,6 +3858,188 @@ function recordFieldIsMissing(record, field) {
   return !String(record?.[field] || "").trim();
 }
 
+
+function setPatronFeeMessage(message, isError = false) {
+  if (!els.patronFeeMessage) return;
+  els.patronFeeMessage.textContent = message;
+  els.patronFeeMessage.classList.toggle('warning', isError);
+}
+
+function addFeeToSelectedPatron(event) {
+  event.preventDefault();
+  const patron = getPatrons().find((entry) => entry.id === state.selectedPatronId);
+  if (!patron) {
+    setPatronFeeMessage('Select a patron before adding a fine or fee.', true);
+    return;
+  }
+  const entry = normalizeFeeEntry({
+    patronId: patron.id,
+    patronName: patron.name,
+    patronCardNumber: patron.cardNumber,
+    category: els.feeCategory?.value,
+    dateAssessed: els.feeDateAssessed?.value || todayIso(),
+    amount: els.feeAmount?.value,
+    description: els.feeDescription?.value,
+    status: els.feeStatus?.value,
+  });
+  saveFeeEntries([entry, ...getFeeEntries()]);
+  els.patronFeeForm?.reset();
+  populateStaticSelects();
+  setPatronFeeMessage(`Added ${entry.category.toLowerCase()} for ${patron.name}.`);
+  renderPatronsTable();
+  renderPatronDetail();
+  renderStatsPanel();
+  renderDashboard();
+}
+
+function updateFeeStatus(feeId, status) {
+  const current = getFeeEntries().map((entry) => {
+    if (entry.id !== feeId) return normalizeFeeEntry(entry);
+    const normalized = normalizeFeeEntry(entry);
+    let amountPaid = normalized.amountPaid;
+    let paymentHistory = [...normalized.paymentHistory];
+    if (status === 'Paid' && normalized.remainingAmount > 0) {
+      amountPaid = normalized.amount;
+      paymentHistory = [...paymentHistory, { date: todayIso(), amount: normalized.remainingAmount, method: 'Staff mark paid' }];
+      const registerEntries = getRegisterTransactions();
+      registerEntries.unshift({ id: `REG-${Date.now()}-${Math.floor(Math.random() * 1000)}`, date: todayIso(), amount: normalized.remainingAmount, category: 'Fines / Fees', paymentType: 'Patron account', staffInitials: '', donationPurpose: '', notes: `Payment for fee ${normalized.id} (${normalized.patronName})`, linkedFeeId: normalized.id, createdAt: Date.now() });
+      saveRegisterTransactions(registerEntries);
+    }
+    if (status === 'Waived') amountPaid = normalized.amountPaid;
+    return normalizeFeeEntry({ ...normalized, status, amountPaid, paymentHistory, updatedAt: Date.now() });
+  });
+  saveFeeEntries(current);
+  renderPatronsTable();
+  renderPatronDetail();
+  renderRegisterWorkspace();
+  renderStatsPanel();
+  renderDashboard();
+}
+
+function renderWeedingReport() {
+  if (!els.weedingReportWrap || !els.weedingSummary) return;
+  populateReportSelect(els.weedingLocationFilter, [...new Set(state.records.map(getRecordShelfLocation).filter(Boolean))].sort((a, b) => a.localeCompare(b)), 'All locations');
+  populateReportSelect(els.weedingMaterialTypeFilter, [...new Set(state.records.map((record) => record.materialType || record.format || 'Other').filter(Boolean))].sort((a, b) => a.localeCompare(b)), 'All material types');
+  populateReportSelect(els.weedingStatusFilter, getManagedStatusValues(), 'All statuses');
+  populateReportSelect(els.weedingAudienceFilter, getManagedAudienceValues(), 'All audiences');
+  const { rows, cutoff } = getFilteredWeedingRows();
+  els.weedingSummary.textContent = rows.length
+    ? `${rows.length} item${rows.length === 1 ? '' : 's'} have no circulation since ${cutoff.toLocaleDateString()}.`
+    : 'No items match the selected inactivity period.';
+  if (!state.records.length) {
+    els.weedingReportWrap.innerHTML = '<div class="empty-state">No circulation data available yet.</div>';
+    return;
+  }
+  if (!rows.length) {
+    els.weedingReportWrap.innerHTML = '<div class="empty-state">No inactive items found for this period. Try a longer time frame or broader filters.</div>';
+    return;
+  }
+  els.weedingReportWrap.innerHTML = `<div class="report-table-wrap"><table class="serials-table"><thead><tr><th>Title</th><th>Author</th><th>Barcode / Item ID</th><th>Call Number</th><th>Shelf Location</th><th>Material Type</th><th>Lifetime Checkouts</th><th>Last Checkout</th><th>Status</th></tr></thead><tbody>${rows.map((row) => `<tr><td>${escapeHtml(row.title)}</td><td>${escapeHtml(row.author)}</td><td>${escapeHtml(row.barcode || '—')}</td><td>${escapeHtml(row.callNumber || '—')}</td><td>${escapeHtml(row.location)}</td><td>${escapeHtml(row.materialType)}</td><td>${row.totalCheckouts}</td><td>${escapeHtml(row.lastCheckoutDate ? formatDisplayDate(row.lastCheckoutDate) : 'Never')}</td><td>${escapeHtml(row.status)}</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+function renderBusiestHoursReport() {
+  if (!els.busiestHoursReport) return;
+  ensureCounterLogBackfill('visitor');
+  const { start, end } = getTrafficDateRange();
+  const entries = getCounterLog('visitor').filter((entry) => {
+    const date = new Date(entry.timestamp);
+    return Number.isFinite(date.getTime()) && date >= start && date <= end;
+  });
+  if (!entries.length) {
+    els.busiestHoursReport.innerHTML = '<div class="empty-state">Not enough visitor activity has been recorded yet to generate this report.</div>';
+    return;
+  }
+  const grouped = groupVisitsByHourAndDay(entries);
+  const topHour = grouped.byHour[0];
+  const topCombo = grouped.byDayHour[0];
+  const weekdayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const hours = Array.from({ length: 24 }, (_, hour) => hour);
+  const heatRows = weekdayOrder.map((day) => `<tr><th>${day}</th>${hours.map((hour) => {
+    const hit = grouped.byDayHour.find((entry) => entry.day === day && entry.hour === hour);
+    const count = hit?.count || 0;
+    const max = topCombo?.count || 1;
+    const level = count === 0 ? 0 : Math.min(4, Math.ceil((count / max) * 4));
+    return `<td class="heat-${level}">${count || '—'}</td>`;
+  }).join('')}</tr>`).join('');
+  const barList = grouped.byHour.slice(0, 8).map((row) => `<li><span>${escapeHtml(row.hourBlock)}</span><div class="bar-track"><div class="bar-fill" style="width:${(row.count / topHour.count) * 100}%"></div></div><strong>${row.count}</strong></li>`).join('');
+  els.busiestHoursReport.innerHTML = `
+    <div class="mini-summary-grid">
+      <article class="traffic-card"><span class="summary-card-label">Selected range</span><strong>${start.toLocaleDateString()} – ${end.toLocaleDateString()}</strong></article>
+      <article class="traffic-card"><span class="summary-card-label">Busiest hour</span><strong>${escapeHtml(topHour.hourBlock)}</strong><span>${topHour.count} visits</span></article>
+      <article class="traffic-card"><span class="summary-card-label">Busiest day/hour</span><strong>${escapeHtml(topCombo.day)} ${new Date(2000,0,1,topCombo.hour).toLocaleTimeString([], { hour: 'numeric' })}</strong><span>${topCombo.count} visits</span></article>
+    </div>
+    <section class="report-split-grid">
+      <div class="report-card"><h4>Busiest Hour of Day</h4><ul class="bar-list">${barList}</ul></div>
+      <div class="report-card"><h4>Busiest Day / Hour Combination</h4><div class="report-table-wrap"><table class="serials-table"><thead><tr><th>Day</th><th>Hour Block</th><th>Visit Count</th></tr></thead><tbody>${grouped.byDayHour.slice(0, 12).map((row) => `<tr><td>${escapeHtml(row.day)}</td><td>${escapeHtml(row.hourBlock)}</td><td>${row.count}</td></tr>`).join('')}</tbody></table></div></div>
+    </section>
+    <section class="report-card heatmap-grid"><h4>Traffic by day and hour</h4><p class="report-note">Visitor clicks are stored with timestamps for this report; older daily-only counts are backfilled at noon for best-effort reporting.</p><table class="serials-table"><thead><tr><th>Day</th>${hours.map((hour) => `<th>${new Date(2000,0,1,hour).toLocaleTimeString([], { hour: 'numeric' })}</th>`).join('')}</tr></thead><tbody>${heatRows}</tbody></table></section>`;
+}
+
+function renderMostBorrowedAuthorsReport() {
+  if (!els.authorReportWrap || !els.authorReportSummary) return;
+  populateReportSelect(els.authorLocationFilter, [...new Set(state.records.map(getRecordShelfLocation).filter(Boolean))].sort((a, b) => a.localeCompare(b)), 'All locations');
+  populateReportSelect(els.authorMaterialTypeFilter, [...new Set(state.records.map((record) => record.materialType || record.format || 'Other').filter(Boolean))].sort((a, b) => a.localeCompare(b)), 'All material types');
+  populateReportSelect(els.authorAudienceFilter, getManagedAudienceValues(), 'All audiences');
+  const rows = getBorrowedAuthorRows();
+  els.authorReportSummary.textContent = rows.length ? `${rows.length} author group${rows.length === 1 ? '' : 's'} have circulation history in the selected filters.` : 'No circulation history is available to calculate author borrowing totals.';
+  if (!rows.length) {
+    els.authorReportWrap.innerHTML = '<div class="empty-state">No circulation history available for authors. Once items circulate, top authors will appear here.</div>';
+    return;
+  }
+  els.authorReportWrap.innerHTML = `<div class="report-table-wrap"><table class="serials-table"><thead><tr><th>Author</th><th>Total Checkouts</th><th>Titles / Items</th><th>Most Recent Checkout</th><th>Top Title</th></tr></thead><tbody>${rows.map((row) => `<tr><td>${escapeHtml(row.author)}</td><td>${row.totalCheckouts}</td><td>${row.titleCount}</td><td>${escapeHtml(row.mostRecentCheckout ? formatDisplayDate(row.mostRecentCheckout) : '—')}</td><td>${escapeHtml(row.topTitle || '—')}</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+function renderSectionUsageReport() {
+  if (!els.sectionUsageWrap || !els.sectionUsageSummary) return;
+  const { list, totals } = getSectionUsageRows();
+  els.sectionUsageSummary.textContent = list.length ? `${list.length} section${list.length === 1 ? '' : 's'} compared against ${totals.items} total items.` : 'No section usage data is available yet.';
+  if (!list.length) {
+    els.sectionUsageWrap.innerHTML = '<div class="empty-state">No section usage data is available yet.</div>';
+    return;
+  }
+  els.sectionUsageWrap.innerHTML = `<div class="report-table-wrap"><table class="serials-table"><thead><tr><th>Section</th><th>Total Items</th><th>Total Checkouts</th><th>Average / Item</th><th>Last Activity</th><th>Collection %</th><th>Circulation %</th><th>Use Level</th></tr></thead><tbody>${list.map((row) => `<tr><td>${escapeHtml(row.section)}</td><td>${row.itemCount}</td><td>${row.totalCheckouts}</td><td>${row.averageCheckouts.toFixed(2)}</td><td>${escapeHtml(row.lastActivity ? formatDisplayDate(row.lastActivity) : 'No circulation yet')}</td><td>${row.collectionShare.toFixed(1)}%</td><td>${row.circulationShare.toFixed(1)}%</td><td><span class="usage-indicator ${row.usageBand === 'underused' ? 'low' : row.usageBand === 'moderate' ? 'medium' : 'high'}">${escapeHtml(row.usageBand)}</span></td></tr>`).join('')}</tbody></table></div>`;
+}
+
+function renderFinesFeesReport() {
+  if (!els.finesFeesReports) return;
+  populateReportSelect(els.feeReportPatronFilter, getPatrons().map((patron) => patron.id), 'All patrons');
+  const patronOptions = getPatrons();
+  if (els.feeReportPatronFilter) {
+    const current = els.feeReportPatronFilter.value || 'all';
+    els.feeReportPatronFilter.innerHTML = ['<option value="all">All patrons</option>', ...patronOptions.map((patron) => `<option value="${patron.id}">${escapeHtml(patron.name || patron.cardNumber || patron.id)}</option>`)].join('');
+    els.feeReportPatronFilter.value = patronOptions.some((patron) => patron.id === current) || current === 'all' ? current : 'all';
+  }
+  const summary = summarizeFinesFees({
+    status: els.feeReportStatusFilter?.value || 'unpaid-only',
+    category: els.feeReportCategoryFilter?.value || 'all',
+    patronId: els.feeReportPatronFilter?.value || 'all',
+    startDate: els.feeReportStartDate?.value || '',
+    endDate: els.feeReportEndDate?.value || '',
+  });
+  if (!summary.rows.length) {
+    els.finesFeesReports.innerHTML = '<div class="empty-state">No fines or fees have been assessed for the selected filters.</div>';
+    return;
+  }
+  const outstandingTotal = summary.byPatron.reduce((sum, row) => sum + row.unpaidAmount, 0);
+  els.finesFeesReports.innerHTML = `
+    <div class="mini-summary-grid">
+      <article class="fee-balance-card"><span class="summary-card-label">Outstanding balances</span><strong>${summary.byPatron.filter((row) => row.unpaidAmount > 0).length}</strong><span>patron accounts</span></article>
+      <article class="fee-balance-card"><span class="summary-card-label">Total unpaid amount</span><strong>${formatCurrency(outstandingTotal)}</strong><span>across filtered charges</span></article>
+      <article class="fee-balance-card"><span class="summary-card-label">Fee entries</span><strong>${summary.rows.length}</strong><span>matching current filters</span></article>
+    </div>
+    <section class="report-card"><h4>Patrons with outstanding balances</h4>${summary.byPatron.length ? `<div class="report-table-wrap"><table class="serials-table"><thead><tr><th>Patron Name</th><th>Card Number</th><th>Total Balance</th><th>Unpaid Amount</th><th>Outstanding Charges</th></tr></thead><tbody>${summary.byPatron.filter((row) => row.unpaidAmount > 0).map((row) => `<tr><td>${escapeHtml(row.patronName)}</td><td>${escapeHtml(row.cardNumber || '—')}</td><td>${formatCurrency(row.totalBalance)}</td><td>${formatCurrency(row.unpaidAmount)}</td><td>${row.outstandingCharges}</td></tr>`).join('') || '<tr><td colspan="5">No patrons currently have outstanding balances.</td></tr>'}</tbody></table></div>` : '<div class="empty-state">No patrons currently have outstanding balances.</div>'}</section>
+    <section class="report-card"><h4>Fee detail</h4><div class="report-table-wrap"><table class="serials-table"><thead><tr><th>Patron</th><th>Date Assessed</th><th>Category</th><th>Amount</th><th>Status</th><th>Description</th></tr></thead><tbody>${summary.rows.map((row) => `<tr><td>${escapeHtml(row.patronName || row.patron?.name || 'Unknown patron')}</td><td>${escapeHtml(row.dateAssessed)}</td><td>${escapeHtml(row.category)}</td><td>${formatCurrency(row.amount)}</td><td>${escapeHtml(row.status)}</td><td>${escapeHtml(row.description || '—')}</td></tr>`).join('')}</tbody></table></div></section>
+    <section class="report-split-grid"><div class="report-card"><h4>Fines / fees by category</h4>${summary.byCategory.length ? `<ul class="totals-list">${summary.byCategory.map(([category, amount]) => `<li><span>${escapeHtml(category)}</span><strong>${formatCurrency(amount)}</strong></li>`).join('')}</ul>` : '<div class="empty-state">No category totals available yet.</div>'}</div><div class="report-card"><h4>Monthly assessed / paid</h4>${summary.monthly.length ? `<div class="report-table-wrap"><table class="serials-table"><thead><tr><th>Month</th><th>Assessed</th><th>Paid</th></tr></thead><tbody>${summary.monthly.map(([month, row]) => `<tr><td>${formatMonthLabel(month)}</td><td>${formatCurrency(row.assessed)}</td><td>${formatCurrency(row.paid)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty-state">No monthly fines or fees data is available yet.</div>'}</div></section>`;
+}
+
+function renderEnhancedReports() {
+  renderWeedingReport();
+  renderBusiestHoursReport();
+  renderMostBorrowedAuthorsReport();
+  renderSectionUsageReport();
+  renderFinesFeesReport();
+}
+
 function renderMissingBiblioReport() {
   if (!els.missingReportBody || !els.missingReportSummary || !els.missingFieldSelect) return;
   const field = els.missingFieldSelect.value || "location";
@@ -3454,6 +4076,7 @@ function renderStatsPanel() {
   const retailTotal = state.records.reduce((sum, record) => sum + (Number.parseFloat(record.retailPrice) || 0), 0);
 
   els.ilsStatsPage.innerHTML = `<p>Total items: <strong>${stats.total}</strong></p><p>Formats: ${formats}</p><p>Most owned authors: ${topCreators}</p><p>Publication year distribution: ${years}</p><p>Newest additions: ${newest}</p><p>Collection value (price paid): <strong>$${paidTotal.toFixed(2)}</strong></p><p>Collection value (retail): <strong>$${retailTotal.toFixed(2)}</strong></p>`;
+  renderEnhancedReports();
   renderMissingBiblioReport();
   renderOverdueReport();
   renderOperationalReports();
@@ -3548,6 +4171,7 @@ function bindEvents() {
   });
   if (els.exportActiveMarcBtn) els.exportActiveMarcBtn.addEventListener("click", exportActiveMarc);
   if (els.patronForm) els.patronForm.addEventListener("submit", addPatron);
+  if (els.patronFeeForm) els.patronFeeForm.addEventListener("submit", addFeeToSelectedPatron);
   if (els.serialIssueForm) els.serialIssueForm.addEventListener("submit", addSerialIssue);
   if (els.serialSubscriptionForm) els.serialSubscriptionForm.addEventListener("submit", saveSubscription);
   if (els.illOutgoingForm) els.illOutgoingForm.addEventListener("submit", saveOutgoingIll);
@@ -3561,6 +4185,8 @@ function bindEvents() {
   if (els.checkOutForm) els.checkOutForm.addEventListener("submit", checkOutRecord);
   if (els.checkOutCardNumber) els.checkOutCardNumber.addEventListener("input", () => renderCheckoutPatronPreview());
   if (els.runMissingReportBtn) els.runMissingReportBtn.addEventListener("click", renderMissingBiblioReport);
+  [els.weedingPreset, els.weedingCustomValue, els.weedingCustomUnit, els.weedingLocationFilter, els.weedingMaterialTypeFilter, els.weedingStatusFilter, els.weedingAudienceFilter, els.weedingSort, els.trafficRangePreset, els.trafficStartDate, els.trafficEndDate, els.authorStartDate, els.authorEndDate, els.authorLocationFilter, els.authorMaterialTypeFilter, els.authorAudienceFilter, els.authorSort, els.sectionSort, els.feeReportStatusFilter, els.feeReportCategoryFilter, els.feeReportPatronFilter, els.feeReportStartDate, els.feeReportEndDate].filter(Boolean).forEach((el) => el.addEventListener('input', renderStatsPanel));
+  [els.weedingPreset, els.weedingLocationFilter, els.weedingMaterialTypeFilter, els.weedingStatusFilter, els.weedingAudienceFilter, els.weedingSort, els.trafficRangePreset, els.authorLocationFilter, els.authorMaterialTypeFilter, els.authorAudienceFilter, els.authorSort, els.sectionSort, els.feeReportStatusFilter, els.feeReportCategoryFilter, els.feeReportPatronFilter].filter(Boolean).forEach((el) => el.addEventListener('change', renderStatsPanel));
   if (els.queueCheckoutItemBtn) els.queueCheckoutItemBtn.addEventListener("click", queueCheckoutItem);
   if (els.addHoldingBtn) els.addHoldingBtn.addEventListener("click", () => {
     state.draftHoldings = [...collectDraftHoldings(), sanitizeHolding()];

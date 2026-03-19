@@ -392,6 +392,7 @@
                     <th>Status</th>
                     <th>Items Out</th>
                     <th>Holds</th>
+                    <th>Balance</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -409,6 +410,45 @@
                   <span id="patronDetailBadge" class="badge badge-status">No patron selected</span>
                 </div>
                 <div id="patronDetailPanel" class="patron-detail-panel empty-state">Select a patron from the list to view account details.</div>
+              </section>
+
+              <section class="admin-block card-like">
+                <div class="panel-header compact">
+                  <div>
+                    <h3>Fines and fees</h3>
+                    <p class="muted">Assess charges and track payments, waivers, and outstanding patron balances.</p>
+                  </div>
+                </div>
+                <form id="patronFeeForm" class="simple-form patron-form-grid">
+                  <label>Fee category
+                    <select id="feeCategory">
+                      <option>Fine</option>
+                      <option>Replacement Cost</option>
+                      <option>Card Replacement</option>
+                      <option>Fee</option>
+                      <option>Other</option>
+                    </select>
+                  </label>
+                  <label>Date assessed
+                    <input id="feeDateAssessed" type="date" />
+                  </label>
+                  <label>Amount
+                    <input id="feeAmount" type="number" min="0" step="0.01" required />
+                  </label>
+                  <label>Status
+                    <select id="feeStatus">
+                      <option>Unpaid</option>
+                      <option>Partially Paid</option>
+                      <option>Paid</option>
+                      <option>Waived</option>
+                    </select>
+                  </label>
+                  <label class="form-grid-span">Description / reason
+                    <textarea id="feeDescription" rows="2" placeholder="Overdue fine, replacement copy, card replacement, etc."></textarea>
+                  </label>
+                  <button id="addFeeBtn" class="button" type="submit">Add fine / fee</button>
+                </form>
+                <p id="patronFeeMessage" class="status-message" aria-live="polite"></p>
               </section>
 
               <section class="admin-block">
@@ -696,6 +736,123 @@
             <div id="ilsStatsPage" class="stats-page"></div>
           </section>
 
+          <section class="admin-block report-card">
+            <div class="panel-header compact">
+              <div>
+                <h3>Weeding Report</h3>
+                <p class="muted">Identify inactive and never-circulated items for review.</p>
+              </div>
+            </div>
+            <div class="report-filter-grid">
+              <label>Inactivity period
+                <select id="weedingPreset">
+                  <option value="6-months">6 months</option>
+                  <option value="1-years">1 year</option>
+                  <option value="2-years">2 years</option>
+                  <option value="3-years">3 years</option>
+                  <option value="5-years">5 years</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </label>
+              <label>Custom amount
+                <input id="weedingCustomValue" type="number" min="1" value="1" />
+              </label>
+              <label>Custom unit
+                <select id="weedingCustomUnit"><option value="months">Months</option><option value="years">Years</option></select>
+              </label>
+              <label>Shelf location
+                <select id="weedingLocationFilter"><option value="all">All locations</option></select>
+              </label>
+              <label>Material type
+                <select id="weedingMaterialTypeFilter"><option value="all">All material types</option></select>
+              </label>
+              <label>Status
+                <select id="weedingStatusFilter"><option value="all">All statuses</option></select>
+              </label>
+              <label>Audience / collection
+                <select id="weedingAudienceFilter"><option value="all">All audiences</option></select>
+              </label>
+              <label>Sort by
+                <select id="weedingSort"><option value="oldest">Oldest last checkout</option><option value="lowest-count">Lowest circulation count</option><option value="title">Title</option><option value="location">Location</option></select>
+              </label>
+            </div>
+            <p id="weedingSummary" class="status-message" aria-live="polite"></p>
+            <div id="weedingReportWrap"></div>
+          </section>
+
+          <section class="admin-block report-card">
+            <div class="panel-header compact">
+              <div>
+                <h3>Busiest Hours Report</h3>
+                <p class="muted">Use visitor-counter timestamps to spot the busiest service windows.</p>
+              </div>
+            </div>
+            <div class="report-filter-grid">
+              <label>Date range
+                <select id="trafficRangePreset">
+                  <option value="current-week">Current week</option>
+                  <option value="current-month">Current month</option>
+                  <option value="last-30-days">Last 30 days</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </label>
+              <label>Start date
+                <input id="trafficStartDate" type="date" />
+              </label>
+              <label>End date
+                <input id="trafficEndDate" type="date" />
+              </label>
+            </div>
+            <div id="busiestHoursReport" class="reports-stack"></div>
+          </section>
+
+          <section class="admin-block report-card">
+            <div class="panel-header compact">
+              <div>
+                <h3>Most Borrowed Authors</h3>
+                <p class="muted">Aggregate circulation by normalized author key so the grouping can later support authority IDs.</p>
+              </div>
+            </div>
+            <div class="report-filter-grid">
+              <label>Start date
+                <input id="authorStartDate" type="date" />
+              </label>
+              <label>End date
+                <input id="authorEndDate" type="date" />
+              </label>
+              <label>Shelf location
+                <select id="authorLocationFilter"><option value="all">All locations</option></select>
+              </label>
+              <label>Material type
+                <select id="authorMaterialTypeFilter"><option value="all">All material types</option></select>
+              </label>
+              <label>Audience / collection
+                <select id="authorAudienceFilter"><option value="all">All audiences</option></select>
+              </label>
+              <label>Sort by
+                <select id="authorSort"><option value="checkouts">Total checkouts</option><option value="name">Author name</option><option value="titles">Number of titles</option></select>
+              </label>
+            </div>
+            <p id="authorReportSummary" class="status-message" aria-live="polite"></p>
+            <div id="authorReportWrap"></div>
+          </section>
+
+          <section class="admin-block report-card">
+            <div class="panel-header compact">
+              <div>
+                <h3>Least Used Sections</h3>
+                <p class="muted">Compare circulation against section size to identify underused locations and collections.</p>
+              </div>
+            </div>
+            <div class="report-filter-grid">
+              <label>Sort by
+                <select id="sectionSort"><option value="avg-asc">Lowest average circulation per item</option><option value="total-asc">Lowest total circulation</option><option value="large-underused">Largest section with weakest circulation</option><option value="name">Section name</option></select>
+              </label>
+            </div>
+            <p id="sectionUsageSummary" class="status-message" aria-live="polite"></p>
+            <div id="sectionUsageWrap"></div>
+          </section>
+
           <section class="admin-block">
             <h3>Missing Biblio Report</h3>
             <p class="muted">Choose a bibliographic field to find all materials that are missing that information.</p>
@@ -730,6 +887,33 @@
               </thead>
               <tbody id="overdueReportBody"></tbody>
             </table>
+          </section>
+
+          <section class="admin-block report-card">
+            <div class="panel-header compact">
+              <div>
+                <h3>Fines and Fees</h3>
+                <p class="muted">Outstanding balances, fee detail, category totals, and monthly charge/payment trends.</p>
+              </div>
+            </div>
+            <div class="report-filter-grid">
+              <label>Fee filter
+                <select id="feeReportStatusFilter"><option value="unpaid-only">Unpaid only</option><option value="all">All statuses</option></select>
+              </label>
+              <label>Category
+                <select id="feeReportCategoryFilter"><option value="all">All categories</option><option>Fine</option><option>Replacement Cost</option><option>Card Replacement</option><option>Fee</option><option>Other</option></select>
+              </label>
+              <label>Patron
+                <select id="feeReportPatronFilter"><option value="all">All patrons</option></select>
+              </label>
+              <label>Start date
+                <input id="feeReportStartDate" type="date" />
+              </label>
+              <label>End date
+                <input id="feeReportEndDate" type="date" />
+              </label>
+            </div>
+            <div id="finesFeesReports" class="reports-stack"></div>
           </section>
 
           <section class="admin-block">

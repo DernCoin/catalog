@@ -860,3 +860,30 @@ label > span, .status-label { display:block; font-size:.83rem; font-weight:700; 
   .header-actions-staff { align-items: stretch; }
   .quick-counter-feedback { text-align:left; }
 }
+
+.report-filter-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap:.7rem; margin-bottom:.9rem; }
+.report-summary-strip, .mini-summary-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:.75rem; margin-bottom:.9rem; }
+.report-kpi, .traffic-card, .fee-balance-card { border:1px solid var(--border); border-radius:14px; padding:.75rem; background:#fcf9ff; display:grid; gap:.2rem; }
+.report-kpi strong, .traffic-card strong, .fee-balance-card strong { font-size:1.2rem; }
+.report-table-wrap { overflow:auto; }
+.report-note { color:var(--muted); font-size:.9rem; }
+.heatmap-grid { overflow:auto; }
+.heatmap-grid table td.heat-0 { background:#fcf9ff; }
+.heatmap-grid table td.heat-1 { background:#f1e7ff; }
+.heatmap-grid table td.heat-2 { background:#e0cbff; }
+.heatmap-grid table td.heat-3 { background:#c69aff; color:#2b1243; font-weight:700; }
+.heatmap-grid table td.heat-4 { background:#8f2bff; color:#fff; font-weight:700; }
+.bar-list { list-style:none; padding:0; margin:0; display:grid; gap:.55rem; }
+.bar-list li { display:grid; grid-template-columns: minmax(110px, 180px) 1fr auto; align-items:center; gap:.7rem; }
+.bar-track { height:10px; background:#f0e8fb; border-radius:999px; overflow:hidden; }
+.bar-fill { height:100%; background:linear-gradient(90deg, var(--accent-3), var(--accent)); border-radius:999px; }
+.usage-indicator { display:inline-flex; align-items:center; border-radius:999px; padding:.18rem .55rem; font-size:.75rem; font-weight:700; }
+.usage-indicator.low { background:#ffe8e8; color:#8c1f1f; }
+.usage-indicator.medium { background:#fff3dc; color:#8a5600; }
+.usage-indicator.high { background:#e5f8ef; color:#176a37; }
+.patron-fee-actions { display:flex; gap:.45rem; flex-wrap:wrap; }
+.fee-entry-list { list-style:none; padding:0; margin:0; display:grid; gap:.65rem; }
+.fee-entry-list li { border:1px solid var(--border); border-radius:12px; background:#fff; padding:.7rem; display:grid; gap:.35rem; }
+.fee-entry-meta { display:flex; gap:.5rem; flex-wrap:wrap; justify-content:space-between; }
+.fee-entry-payments { margin:0; color:var(--muted); font-size:.9rem; }
+@media (max-width: 900px) { .bar-list li { grid-template-columns: 1fr; } }
