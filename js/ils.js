@@ -4630,11 +4630,19 @@ function renderStatsPanel() {
   const retailTotal = state.records.reduce((sum, record) => sum + (Number.parseFloat(record.retailPrice) || 0), 0);
 
   els.ilsStatsPage.innerHTML = `<p>Total items: <strong>${stats.total}</strong></p><p>Formats: ${formats}</p><p>Most owned authors: ${topCreators}</p><p>Publication year distribution: ${years}</p><p>Newest additions: ${newest}</p><p>Collection value (price paid): <strong>$${paidTotal.toFixed(2)}</strong></p><p>Collection value (retail): <strong>$${retailTotal.toFixed(2)}</strong></p>`;
-  renderReportsModule();
-  renderEnhancedReports();
-  renderMissingBiblioReport();
-  renderOverdueReport();
-  renderOperationalReports();
+  [
+    renderReportsModule,
+    renderEnhancedReports,
+    renderMissingBiblioReport,
+    renderOverdueReport,
+    renderOperationalReports,
+  ].forEach((renderFn) => {
+    try {
+      renderFn();
+    } catch (error) {
+      console.error(`Unable to finish ${renderFn.name}.`, error);
+    }
+  });
 }
 
 function renderOverdueReport() {
