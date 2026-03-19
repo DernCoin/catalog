@@ -3377,16 +3377,6 @@ function bindAcquisitionStageEvents() {
   if (els.acqCoverUpload) els.acqCoverUpload.addEventListener("change", handleAcquisitionCoverUpload);
 }
 
-function getManagedMaterialTypes() {
-  return [...new Set([...(state.settings.materialTypes || []), ...DEFAULT_MATERIAL_TYPES, ...state.records.map((r) => r.materialType).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
-}
-
-function getManagedGenres() {
-  return [...new Set([...(state.settings.genres || []), ...PRELOADED_GENRES, ...state.records.flatMap((r) => asArray(r.genres?.length ? r.genres : r.genre))])]
-    .filter(Boolean)
-    .sort((a, b) => a.localeCompare(b));
-}
-
 function getAuthorityStore() {
   if (!state.settings.authorityLists || typeof state.settings.authorityLists !== "object") state.settings.authorityLists = {};
   return state.settings.authorityLists;
@@ -4528,8 +4518,7 @@ function exportMonthlyCirculationCsv() {
     ['Material type', 'Total checkouts', 'Percent of total'],
     ...summary.materialRows.map((row) => [row.type, String(row.count), row.percent.toFixed(1) + '%']),
   ];
-  const csv = rows.map((row) => row.map((cell) => `"${String(cell || '').replace(/"/g, '""')}"`).join(',')).join('
-');
+  const csv = rows.map((row) => row.map((cell) => `"${String(cell || "").replace(/"/g, '""')}"`).join(",")).join("\n");
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
