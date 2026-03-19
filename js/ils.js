@@ -25,6 +25,13 @@ const state = {
   activeDonationBatchId: "",
   donationFilter: "incoming",
   illFilter: "active",
+  authorityView: "home",
+  authorityListKey: "genres",
+  authoritySearch: "",
+  authorityEntrySearch: "",
+  authorityStatusFilter: "all",
+  authoritySort: "alpha",
+  authorityEditingId: "",
 };
 
 
@@ -63,31 +70,43 @@ const els = {
   ilsTabPanels: $$(".admin-tab-panel[data-ils-panel]"),
   ilsSectionTitle: $("#ilsSectionTitle"),
   ilsSectionDescription: $("#ilsSectionDescription"),
-  newGenreInput: $("#newGenreInput"),
-  addGenreBtn: $("#addGenreBtn"),
-  genreList: $("#genreList"),
   materialTypeSelect: $("#materialType"),
-  newMaterialTypeInput: $("#newMaterialTypeInput"),
-  addMaterialTypeBtn: $("#addMaterialTypeBtn"),
-  materialTypeList: $("#materialTypeList"),
-  newFormatInput: $("#newFormatInput"),
-  addFormatBtn: $("#addFormatBtn"),
-  formatList: $("#formatList"),
-  newLocationInput: $("#newLocationInput"),
-  addLocationBtn: $("#addLocationBtn"),
-  locationList: $("#locationList"),
-  newCuratedShelfInput: $("#newCuratedShelfInput"),
-  addCuratedShelfBtn: $("#addCuratedShelfBtn"),
-  curatedShelfList: $("#curatedShelfList"),
-  newBindingInput: $("#newBindingInput"),
-  addBindingBtn: $("#addBindingBtn"),
-  bindingList: $("#bindingList"),
-  materialTypeError: $("#materialTypeError"),
-  genreError: $("#genreError"),
-  formatError: $("#formatError"),
-  locationError: $("#locationError"),
-  curatedShelfError: $("#curatedShelfError"),
-  bindingError: $("#bindingError"),
+  authorityHomeView: $("#authorityHomeView"),
+  authorityWorkspaceView: $("#authorityWorkspaceView"),
+  authoritySummaryStrip: $("#authoritySummaryStrip"),
+  authoritySearchInput: $("#authoritySearchInput"),
+  authorityClearSearchBtn: $("#authorityClearSearchBtn"),
+  authorityCategoryGrid: $("#authorityCategoryGrid"),
+  authorityPinnedLists: $("#authorityPinnedLists"),
+  authorityRecentUpdates: $("#authorityRecentUpdates"),
+  authorityAddEntryBtn: $("#authorityAddEntryBtn"),
+  authorityBackBtn: $("#authorityBackBtn"),
+  authorityWorkspaceTitle: $("#authorityWorkspaceTitle"),
+  authorityWorkspaceDescription: $("#authorityWorkspaceDescription"),
+  authorityWorkspaceAddBtn: $("#authorityWorkspaceAddBtn"),
+  authorityEntrySearchInput: $("#authorityEntrySearchInput"),
+  authorityStatusFilter: $("#authorityStatusFilter"),
+  authoritySortSelect: $("#authoritySortSelect"),
+  authorityWorkspaceStatus: $("#authorityWorkspaceStatus"),
+  authorityEntriesBody: $("#authorityEntriesBody"),
+  authorityEntryModal: $("#authorityEntryModal"),
+  closeAuthorityModalBtn: $("#closeAuthorityModalBtn"),
+  authorityEntryForm: $("#authorityEntryForm"),
+  authorityEntryId: $("#authorityEntryId"),
+  authorityModalTitle: $("#authorityModalTitle"),
+  authorityModalSubtitle: $("#authorityModalSubtitle"),
+  authorityCategorySelect: $("#authorityCategorySelect"),
+  authorityPreferredLabel: $("#authorityPreferredLabel"),
+  authorityDisplayLabel: $("#authorityDisplayLabel"),
+  authorityEntryStatus: $("#authorityEntryStatus"),
+  authorityAltLabels: $("#authorityAltLabels"),
+  authorityEntryNotes: $("#authorityEntryNotes"),
+  authoritySortOrder: $("#authoritySortOrder"),
+  authorityMergeTarget: $("#authorityMergeTarget"),
+  authorityUsagePreview: $("#authorityUsagePreview"),
+  authorityModalMessage: $("#authorityModalMessage"),
+  authorityRetireBtn: $("#authorityRetireBtn"),
+  authorityDeleteBtn: $("#authorityDeleteBtn"),
   ilsStatsPage: $("#ilsStatsPage"),
   dashboardTileGrid: $("#dashboardTileGrid"),
   dashboardDate: $("#dashboardDate"),
@@ -288,7 +307,7 @@ const ILS_SECTIONS = {
   patrons: { label: "Patrons", description: "Review patron accounts, contact data, and circulation activity.", tabs: [{ id: "patrons", label: "Accounts" }] },
   ill: { label: "Interlibrary Loan", description: "Manage outgoing loans, incoming patron requests, temporary ILL items, and monthly ILL activity.", tabs: [{ id: "ill-outgoing", label: "Outgoing ILL" }, { id: "ill-incoming", label: "Incoming Requests" }, { id: "ill-reports", label: "ILL Reports" }] },
   register: { label: "Daily Register", description: "Log staff-side cash intake, service transactions, and daily drawer totals.", tabs: [{ id: "register", label: "Register" }] },
-  administration: { label: "Administration", description: "System settings and controlled list management for staff administration.", tabs: [{ id: "circulation-rules", label: "Circulation Rules" }, { id: "utilities", label: "Utilities" }] },
+  administration: { label: "Administration", description: "System settings, circulation rules, and authority control for staff administration.", tabs: [{ id: "circulation-rules", label: "Circulation Rules" }, { id: "utilities", label: "Authority Control" }] },
   reports: { label: "Reports", description: "Run statistics, operational activity, missing bibliography, and overdue reports from one reporting area.", tabs: [{ id: "stats", label: "Statistics" }] },
 };
 
@@ -296,13 +315,17 @@ const TAB_TO_SECTION = Object.fromEntries(
   Object.entries(ILS_SECTIONS).flatMap(([section, config]) => config.tabs.map((tab) => [tab.id, section])),
 );
 
-const MANAGED_LIST_CONFIG = {
-  materialTypes: { key: "materialTypes", label: "material type", errorEl: "materialTypeError", countId: "materialTypeCount" },
-  genres: { key: "genres", label: "genre", errorEl: "genreError", countId: "genreCount" },
-  formats: { key: "formats", label: "format", errorEl: "formatError", countId: "formatCount" },
-  locations: { key: "locations", label: "shelf location", errorEl: "locationError", countId: "locationCount" },
-  curatedShelves: { key: "curatedShelves", label: "curated shelf", errorEl: "curatedShelfError", countId: "curatedShelfCount" },
-  bindings: { key: "bindings", label: "binding", errorEl: "bindingError", countId: "bindingCount" },
+const AUTHORITY_LIST_CONFIG = {
+  genres: { key: "genres", label: "Genres", singular: "genre", description: "Standard genre terms used in catalog records.", legacyKey: "genres", recordKey: "genre", rich: true, pinned: true },
+  locations: { key: "locations", label: "Shelf Locations", singular: "shelf location", description: "Physical shelving locations and collections.", legacyKey: "locations", recordKey: "location", rich: true, pinned: true },
+  formats: { key: "formats", label: "Formats", singular: "format", description: "Public-facing format labels shown in records.", legacyKey: "formats", recordKey: "format", rich: false, pinned: true },
+  materialTypes: { key: "materialTypes", label: "Material Types", singular: "material type", description: "Loan rule categories and item-type labels.", legacyKey: "materialTypes", recordKey: "materialType", rich: false, pinned: false },
+  bindings: { key: "bindings", label: "Bindings", singular: "binding", description: "Physical binding and carrier details for holdings.", legacyKey: "bindings", recordKey: "binding", rich: false, pinned: false },
+  curatedShelves: { key: "curatedShelves", label: "Curated Shelves", singular: "curated shelf", description: "Featured shelves and local collection names.", legacyKey: "curatedShelves", recordKey: "curatedShelf", rich: true, pinned: true },
+  audience: { key: "audience", label: "Audience", singular: "audience term", description: "Standard audience labels used for reader guidance.", legacyKey: "audience", recordKey: "targetAudience", rich: false, pinned: false },
+  languages: { key: "languages", label: "Languages", singular: "language", description: "Preferred language labels and alternate forms.", legacyKey: "languages", recordKey: "languageCode", rich: true, pinned: false },
+  noteTemplates: { key: "noteTemplates", label: "Note Templates", singular: "note template", description: "Reusable cataloging notes and staff text snippets.", legacyKey: "noteTemplates", recordKey: "", rich: true, pinned: false },
+  statusPresets: { key: "statusPresets", label: "Status Presets", singular: "status preset", description: "Reusable item status labels for holdings and circulation.", legacyKey: "statusPresets", recordKey: "status", rich: true, pinned: false },
 };
 
 
@@ -3320,22 +3343,104 @@ function getManagedGenres() {
     .sort((a, b) => a.localeCompare(b));
 }
 
-function getManagedFormats() {
-  const defaults = ["Book", "Vinyl", "Board Game", "CD", "Zine", "Magazine", "Other"];
-  return [...new Set([...(state.settings.formats || []), ...defaults, ...state.records.map((r) => r.format).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
+function getAuthorityStore() {
+  if (!state.settings.authorityLists || typeof state.settings.authorityLists !== "object") state.settings.authorityLists = {};
+  return state.settings.authorityLists;
 }
 
-function getManagedBindings() {
-  return [...new Set([...(state.settings.bindings || []), "Paperback", "Hardcover", ...state.records.map((r) => r.binding).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
+function createAuthorityEntry(label, overrides = {}) {
+  const now = Date.now();
+  return {
+    id: overrides.id || `authority-${now}-${Math.floor(Math.random() * 1000)}`,
+    preferredLabel: String(label || "").trim(),
+    displayLabel: overrides.displayLabel || "",
+    alternateLabels: Array.isArray(overrides.alternateLabels) ? overrides.alternateLabels.filter(Boolean) : [],
+    notes: overrides.notes || "",
+    status: overrides.status || "active",
+    sortOrder: Number.isFinite(Number(overrides.sortOrder)) ? Number(overrides.sortOrder) : "",
+    createdAt: Number(overrides.createdAt) || now,
+    updatedAt: Number(overrides.updatedAt) || now,
+    retiredAt: Number(overrides.retiredAt) || 0,
+  };
 }
 
-function getManagedLocations() {
-  return [...new Set([...(state.settings.locations || []), ...state.records.map((r) => r.location).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
+function saveAuthorityStore() {
+  saveSettings(state.settings);
 }
 
-function getManagedCuratedShelves() {
-  return [...new Set([...(state.settings.curatedShelves || []), ...state.records.map((r) => r.curatedShelf).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
+function getRecordValuesForAuthority(key) {
+  if (key === "genres") return state.records.flatMap((record) => asArray(record.genres?.length ? record.genres : record.genre));
+  if (key === "locations") return state.records.flatMap((record) => [record.location, ...(record.holdings || []).map((holding) => holding.location)]).filter(Boolean);
+  const recordKey = AUTHORITY_LIST_CONFIG[key]?.recordKey;
+  if (!recordKey) return [];
+  return state.records.map((record) => record[recordKey]).filter(Boolean);
 }
+
+function getAuthorityEntries(key) {
+  const config = AUTHORITY_LIST_CONFIG[key];
+  if (!config) return [];
+  const store = getAuthorityStore();
+  const existing = Array.isArray(store[key]) ? store[key] : [];
+  const fromLegacy = Array.isArray(state.settings[config.legacyKey]) ? state.settings[config.legacyKey] : [];
+  const fromRecords = getRecordValuesForAuthority(key);
+  const combined = [...existing];
+  const known = new Set(existing.map((entry) => String(entry.preferredLabel || "").trim().toLowerCase()));
+  [...fromLegacy, ...fromRecords].map((value) => String(value || "").trim()).filter(Boolean).forEach((value) => {
+    if (known.has(value.toLowerCase())) return;
+    combined.push(createAuthorityEntry(value));
+    known.add(value.toLowerCase());
+  });
+  store[key] = combined.map((entry) => createAuthorityEntry(entry.preferredLabel, entry));
+  return store[key].slice().sort((a, b) => String(a.preferredLabel).localeCompare(String(b.preferredLabel)));
+}
+
+function syncLegacyAuthorityList(key) {
+  const config = AUTHORITY_LIST_CONFIG[key];
+  if (!config?.legacyKey) return;
+  state.settings[config.legacyKey] = getAuthorityEntries(key)
+    .filter((entry) => entry.status !== "retired")
+    .map((entry) => entry.preferredLabel)
+    .sort((a, b) => a.localeCompare(b));
+}
+
+function syncAllLegacyAuthorityLists() {
+  Object.keys(AUTHORITY_LIST_CONFIG).forEach(syncLegacyAuthorityList);
+  saveAuthorityStore();
+}
+
+function getAuthorityUsageDetails(key, label) {
+  if (key === "genres") {
+    const records = state.records.filter((record) => asArray(record.genres?.length ? record.genres : record.genre).includes(label));
+    return { count: records.length, records: records.slice(0, 5).map((record) => `${record.title} — ${record.creator || "Unknown creator"}`) };
+  }
+  if (key === "locations") {
+    const records = state.records.filter((record) => record.location === label || (record.holdings || []).some((holding) => holding.location === label));
+    return { count: records.length, records: records.slice(0, 5).map((record) => `${record.title} — ${record.callNumber || record.location || "No call number"}`) };
+  }
+  const recordKey = AUTHORITY_LIST_CONFIG[key]?.recordKey;
+  const records = recordKey ? state.records.filter((record) => record[recordKey] === label) : [];
+  return { count: records.length, records: records.slice(0, 5).map((record) => `${record.title} — ${record.creator || "Unknown creator"}`) };
+}
+
+function formatDateTime(value) {
+  if (!value) return "—";
+  return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+function getAuthorityListSummary(key) {
+  const entries = getAuthorityEntries(key);
+  const active = entries.filter((entry) => entry.status !== "retired").length;
+  const retired = entries.length - active;
+  const inUse = entries.filter((entry) => getAuthorityUsageDetails(key, entry.preferredLabel).count > 0).length;
+  return { total: entries.length, active, retired, inUse };
+}
+
+function getManagedMaterialTypes() { return getAuthorityEntries("materialTypes").filter((entry) => entry.status !== "retired").map((entry) => entry.preferredLabel); }
+function getManagedGenres() { return getAuthorityEntries("genres").filter((entry) => entry.status !== "retired").map((entry) => entry.preferredLabel); }
+function getManagedFormats() { return getAuthorityEntries("formats").filter((entry) => entry.status !== "retired").map((entry) => entry.preferredLabel); }
+function getManagedBindings() { return getAuthorityEntries("bindings").filter((entry) => entry.status !== "retired").map((entry) => entry.preferredLabel); }
+function getManagedLocations() { return getAuthorityEntries("locations").filter((entry) => entry.status !== "retired").map((entry) => entry.preferredLabel); }
+function getManagedCuratedShelves() { return getAuthorityEntries("curatedShelves").filter((entry) => entry.status !== "retired").map((entry) => entry.preferredLabel); }
 
 function fillMaterialTypes() {
   const managed = getManagedMaterialTypes();
@@ -3344,30 +3449,30 @@ function fillMaterialTypes() {
     els.materialTypeSelect.innerHTML = ['<option value="">Unspecified</option>', ...managed.map((materialType) => `<option value="${materialType}">${materialType}</option>`)].join("");
     els.materialTypeSelect.value = managed.includes(current) ? current : "";
   }
-  renderManagedList(els.materialTypeList, managed, MANAGED_LIST_CONFIG.materialTypes, renameMaterialType, deleteMaterialType);
 }
 
 function fillGenres() {
   const managed = getManagedGenres();
-  const options = managed.map((g) => `<option value="${g}">${g}</option>`).join("");
-  $("#genres").innerHTML = options;
-  renderManagedList(els.genreList, managed, MANAGED_LIST_CONFIG.genres, renameGenre, deleteGenre);
+  const genreInput = $("#genres");
+  if (genreInput) genreInput.innerHTML = managed.map((g) => `<option value="${g}">${g}</option>`).join("");
 }
 
 function fillFormats() {
   const managed = getManagedFormats();
-  const current = els.formatSelect.value || "";
-  els.formatSelect.innerHTML = managed.map((format) => `<option value="${format}">${format}</option>`).join("");
-  els.formatSelect.value = managed.includes(current) ? current : (managed[0] || "Other");
-  renderManagedList(els.formatList, managed, MANAGED_LIST_CONFIG.formats, renameFormat, deleteFormat);
+  const current = els.formatSelect?.value || "";
+  if (els.formatSelect) {
+    els.formatSelect.innerHTML = managed.map((format) => `<option value="${format}">${format}</option>`).join("");
+    els.formatSelect.value = managed.includes(current) ? current : (managed[0] || "Other");
+  }
 }
 
 function fillBindings() {
   const managed = getManagedBindings();
-  const current = els.bindingSelect.value || "";
-  els.bindingSelect.innerHTML = ['<option value="">None</option>', ...managed.map((binding) => `<option value="${binding}">${binding}</option>`)].join("");
-  els.bindingSelect.value = managed.includes(current) ? current : "";
-  renderManagedList(els.bindingList, managed, MANAGED_LIST_CONFIG.bindings, renameBinding, deleteBinding);
+  const current = els.bindingSelect?.value || "";
+  if (els.bindingSelect) {
+    els.bindingSelect.innerHTML = ['<option value="">None</option>', ...managed.map((binding) => `<option value="${binding}">${binding}</option>`)].join("");
+    els.bindingSelect.value = managed.includes(current) ? current : "";
+  }
 }
 
 function fillLocations() {
@@ -3377,256 +3482,308 @@ function fillLocations() {
     els.locationSelect.innerHTML = ['<option value="">Unspecified</option>', ...managed.map((location) => `<option value="${location}">${location}</option>`)].join("");
     els.locationSelect.value = managed.includes(current) ? current : "";
   }
-  renderManagedList(els.locationList, managed, MANAGED_LIST_CONFIG.locations, renameLocation, deleteLocation);
 }
 
 function fillCuratedShelves() {
   const managed = getManagedCuratedShelves();
-  const current = els.curatedShelfSelect.value || "";
-  els.curatedShelfSelect.innerHTML = ['<option value="">None</option>', ...managed.map((shelf) => `<option value="${shelf}">${shelf}</option>`)].join("");
-  els.curatedShelfSelect.value = managed.includes(current) ? current : "";
-  renderManagedList(els.curatedShelfList, managed, MANAGED_LIST_CONFIG.curatedShelves, renameCuratedShelf, deleteCuratedShelf);
+  const current = els.curatedShelfSelect?.value || "";
+  if (els.curatedShelfSelect) {
+    els.curatedShelfSelect.innerHTML = ['<option value="">None</option>', ...managed.map((shelf) => `<option value="${shelf}">${shelf}</option>`)].join("");
+    els.curatedShelfSelect.value = managed.includes(current) ? current : "";
+  }
 }
 
-function setManagedMessage(config, message = "") {
-  if (!config) return;
-  const target = els[config.errorEl];
-  if (target) target.textContent = message;
+function openAuthorityHome() {
+  state.authorityView = "home";
+  if (els.authorityHomeView) els.authorityHomeView.classList.remove("hidden");
+  if (els.authorityWorkspaceView) els.authorityWorkspaceView.classList.add("hidden");
 }
 
-function getManagedUsageCount(key, value) {
-  if (key === "materialTypes") return state.records.filter((record) => record.materialType === value).length;
-  if (key === "genres") return state.records.filter((record) => asArray(record.genres?.length ? record.genres : record.genre).includes(value)).length;
-  if (key === "formats") return state.records.filter((record) => record.format === value).length;
-  if (key === "locations") return state.records.reduce((count, record) => count + (record.location === value ? 1 : 0) + (record.holdings || []).filter((holding) => holding.location === value).length, 0);
-  if (key === "curatedShelves") return state.records.filter((record) => record.curatedShelf === value).length;
-  if (key === "bindings") return state.records.filter((record) => record.binding === value).length;
-  return 0;
+function openAuthorityWorkspace(key) {
+  if (!AUTHORITY_LIST_CONFIG[key]) return;
+  state.authorityListKey = key;
+  state.authorityView = "workspace";
+  if (els.authorityHomeView) els.authorityHomeView.classList.add("hidden");
+  if (els.authorityWorkspaceView) els.authorityWorkspaceView.classList.remove("hidden");
+  renderAuthorityWorkspace();
 }
 
-function renderManagedList(listEl, values, config, onRename, onDelete) {
-  if (!listEl) return;
-  listEl.innerHTML = "";
-  setManagedMessage(config, "");
-  const countEl = document.getElementById(config.countId);
-  if (countEl) countEl.textContent = `${values.length} value${values.length === 1 ? "" : "s"}`;
-  if (!values.length) {
-    listEl.innerHTML = `<li class="managed-empty">No ${config.label}s yet.</li>`;
+function renderAuthorityHome() {
+  if (!els.authorityCategoryGrid) return;
+  const query = state.authoritySearch.trim().toLowerCase();
+  const keys = Object.keys(AUTHORITY_LIST_CONFIG).filter((key) => {
+    const config = AUTHORITY_LIST_CONFIG[key];
+    if (!query) return true;
+    const haystack = `${config.label} ${config.description} ${getAuthorityEntries(key).map((entry) => `${entry.preferredLabel} ${entry.alternateLabels.join(" ")}`).join(" ")}`.toLowerCase();
+    return haystack.includes(query);
+  });
+  els.authorityCategoryGrid.innerHTML = keys.map((key) => {
+    const config = AUTHORITY_LIST_CONFIG[key];
+    const summary = getAuthorityListSummary(key);
+    return `<article class="authority-category-card ${config.rich ? "is-rich" : "is-simple"}" data-authority-open="${key}">
+      <div class="authority-card-topline"><span class="badge badge-status">${config.rich ? "Rich list" : "Simple list"}</span>${config.pinned ? '<span class="badge badge-status">Pinned</span>' : ''}</div>
+      <h3>${config.label}</h3>
+      <p class="muted">${config.description}</p>
+      <div class="authority-card-metrics">
+        <span>${summary.total} entries</span>
+        <span>${summary.active} active</span>
+        <span>${summary.retired} retired</span>
+      </div>
+      <div class="authority-card-footer">
+        <span class="muted">${summary.inUse} currently in use</span>
+        <div class="row-actions"><button class="button button-secondary" type="button" data-authority-view="${key}">View</button><button class="button button-secondary" type="button" data-authority-add="${key}">Add New</button></div>
+      </div>
+    </article>`;
+  }).join("") || '<div class="managed-empty">No authority lists matched that search.</div>';
+  els.authorityCategoryGrid.querySelectorAll("[data-authority-view], [data-authority-open]").forEach((button) => button.addEventListener("click", (event) => openAuthorityWorkspace(event.currentTarget.dataset.authorityView || event.currentTarget.dataset.authorityOpen)));
+  els.authorityCategoryGrid.querySelectorAll("[data-authority-add]").forEach((button) => button.addEventListener("click", (event) => {
+    const key = event.currentTarget.dataset.authorityAdd;
+    openAuthorityWorkspace(key);
+    openAuthorityModal(key);
+  }));
+
+  const summaries = Object.keys(AUTHORITY_LIST_CONFIG).map((key) => ({ key, ...getAuthorityListSummary(key) }));
+  if (els.authoritySummaryStrip) {
+    const totals = summaries.reduce((acc, item) => ({ total: acc.total + item.total, active: acc.active + item.active, retired: acc.retired + item.retired }), { total: 0, active: 0, retired: 0 });
+    els.authoritySummaryStrip.innerHTML = [`<div class="authority-summary-chip"><strong>${totals.total}</strong><span>Total entries</span></div>`,`<div class="authority-summary-chip"><strong>${totals.active}</strong><span>Active</span></div>`,`<div class="authority-summary-chip"><strong>${totals.retired}</strong><span>Retired</span></div>`].join("");
+  }
+  if (els.authorityPinnedLists) {
+    els.authorityPinnedLists.innerHTML = Object.values(AUTHORITY_LIST_CONFIG).filter((config) => config.pinned).map((config) => `<button class="authority-mini-item" type="button" data-authority-view="${config.key}"><strong>${config.label}</strong><span>${getAuthorityListSummary(config.key).active} active terms</span></button>`).join("");
+    els.authorityPinnedLists.querySelectorAll("[data-authority-view]").forEach((button) => button.addEventListener("click", () => openAuthorityWorkspace(button.dataset.authorityView)));
+  }
+  if (els.authorityRecentUpdates) {
+    const recent = Object.keys(AUTHORITY_LIST_CONFIG).flatMap((key) => getAuthorityEntries(key).map((entry) => ({ key, entry }))).sort((a, b) => Number(b.entry.updatedAt || 0) - Number(a.entry.updatedAt || 0)).slice(0, 5);
+    els.authorityRecentUpdates.innerHTML = recent.map(({ key, entry }) => `<button class="authority-mini-item" type="button" data-authority-open-entry="${entry.id}" data-authority-key="${key}"><strong>${entry.preferredLabel}</strong><span>${AUTHORITY_LIST_CONFIG[key].label} · ${formatDateTime(entry.updatedAt)}</span></button>`).join("") || '<div class="managed-empty">No recent authority edits yet.</div>';
+    els.authorityRecentUpdates.querySelectorAll("[data-authority-open-entry]").forEach((button) => button.addEventListener("click", () => { openAuthorityWorkspace(button.dataset.authorityKey); openAuthorityModal(button.dataset.authorityKey, button.dataset.authorityOpenEntry); }));
+  }
+}
+
+function getFilteredAuthorityEntries(key = state.authorityListKey) {
+  const query = state.authorityEntrySearch.trim().toLowerCase();
+  const entries = getAuthorityEntries(key).filter((entry) => {
+    const usage = getAuthorityUsageDetails(key, entry.preferredLabel).count;
+    if (state.authorityStatusFilter === "active" && entry.status === "retired") return false;
+    if (state.authorityStatusFilter === "retired" && entry.status !== "retired") return false;
+    if (state.authorityStatusFilter === "in-use" && usage < 1) return false;
+    if (state.authorityStatusFilter === "unused" && usage > 0) return false;
+    if (!query) return true;
+    return `${entry.preferredLabel} ${entry.displayLabel} ${entry.alternateLabels.join(" ")} ${entry.notes}`.toLowerCase().includes(query);
+  });
+  return entries.sort((a, b) => {
+    if (state.authoritySort === "usage") return getAuthorityUsageDetails(key, b.preferredLabel).count - getAuthorityUsageDetails(key, a.preferredLabel).count || a.preferredLabel.localeCompare(b.preferredLabel);
+    if (state.authoritySort === "updated") return Number(b.updatedAt || 0) - Number(a.updatedAt || 0);
+    return a.preferredLabel.localeCompare(b.preferredLabel);
+  });
+}
+
+function renderAuthorityWorkspace() {
+  const key = state.authorityListKey;
+  const config = AUTHORITY_LIST_CONFIG[key];
+  if (!config || !els.authorityEntriesBody) return;
+  if (els.authorityWorkspaceTitle) els.authorityWorkspaceTitle.textContent = config.label;
+  if (els.authorityWorkspaceDescription) els.authorityWorkspaceDescription.textContent = `${config.description} ${config.rich ? "Preferred terms, alternate terms, retirement, and merge tools are available here." : "This simple list keeps standard labels consistent across the ILS."}`;
+  const entries = getFilteredAuthorityEntries(key);
+  els.authorityEntriesBody.innerHTML = entries.map((entry) => {
+    const usage = getAuthorityUsageDetails(key, entry.preferredLabel);
+    return `<tr>
+      <td><div class="authority-term-cell"><strong>${entry.preferredLabel}</strong>${entry.displayLabel ? `<span class="muted">Display: ${entry.displayLabel}</span>` : ""}${entry.notes ? `<span class="muted">${entry.notes}</span>` : ""}</div></td>
+      <td>${entry.alternateLabels.length ? `<span class="badge badge-status">${entry.alternateLabels.length} alternate</span><div class="authority-alt-list">${entry.alternateLabels.join(", ")}</div>` : '<span class="badge badge-status">Preferred only</span>'}</td>
+      <td><button class="text-button" type="button" data-authority-used-in="${entry.id}">${usage.count} record${usage.count === 1 ? "" : "s"}</button></td>
+      <td><span class="badge badge-status">${entry.status === "retired" ? "Retired" : usage.count ? "Active · In Use" : "Active · Unused"}</span></td>
+      <td>${formatDateTime(entry.updatedAt)}</td>
+      <td><div class="row-actions"><button class="button button-secondary" type="button" data-authority-edit="${entry.id}">Edit</button>${config.rich ? `<button class="button button-secondary" type="button" data-authority-retire="${entry.id}">${entry.status === "retired" ? "Restore" : "Retire"}</button>` : ""}</div></td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="6"><div class="managed-empty">No ${config.singular}s matched these filters.</div></td></tr>`;
+  if (els.authorityWorkspaceStatus) {
+    const summary = getAuthorityListSummary(key);
+    els.authorityWorkspaceStatus.textContent = `${summary.total} entries · ${summary.active} active · ${summary.retired} retired.`;
+  }
+  els.authorityEntriesBody.querySelectorAll("[data-authority-edit]").forEach((button) => button.addEventListener("click", () => openAuthorityModal(key, button.dataset.authorityEdit)));
+  els.authorityEntriesBody.querySelectorAll("[data-authority-retire]").forEach((button) => button.addEventListener("click", () => toggleAuthorityRetirement(key, button.dataset.authorityRetire)));
+  els.authorityEntriesBody.querySelectorAll("[data-authority-used-in]").forEach((button) => button.addEventListener("click", () => showAuthorityUsagePreview(key, button.dataset.authorityUsedIn, true)));
+}
+
+function findAuthorityEntry(key, entryId) {
+  return getAuthorityEntries(key).find((entry) => entry.id === entryId) || null;
+}
+
+function updateAuthorityEntry(key, nextEntry) {
+  const store = getAuthorityStore();
+  const entries = getAuthorityEntries(key);
+  store[key] = entries.map((entry) => entry.id === nextEntry.id ? createAuthorityEntry(nextEntry.preferredLabel, nextEntry) : entry);
+  syncLegacyAuthorityList(key);
+  saveAuthorityStore();
+}
+
+function addAuthorityEntry(key, entry) {
+  const store = getAuthorityStore();
+  store[key] = [...getAuthorityEntries(key), createAuthorityEntry(entry.preferredLabel, entry)];
+  syncLegacyAuthorityList(key);
+  saveAuthorityStore();
+}
+
+function removeAuthorityEntry(key, entryId) {
+  const store = getAuthorityStore();
+  store[key] = getAuthorityEntries(key).filter((entry) => entry.id !== entryId);
+  syncLegacyAuthorityList(key);
+  saveAuthorityStore();
+}
+
+function replaceAuthorityLabelInRecords(key, prev, next = "") {
+  if (key === "genres") {
+    state.records = state.records.map((record) => {
+      const genres = asArray(record.genres?.length ? record.genres : record.genre).map((genre) => genre === prev ? next : genre).filter(Boolean);
+      const unique = [...new Set(genres)];
+      return { ...record, genres: unique, genre: unique.join(", ") };
+    });
+  } else if (key === "locations") {
+    state.records = state.records.map((record) => ({
+      ...record,
+      location: record.location === prev ? next : record.location,
+      holdings: (record.holdings || []).map((holding) => holding.location === prev ? { ...holding, location: next } : holding),
+    }));
+  } else {
+    const recordKey = AUTHORITY_LIST_CONFIG[key]?.recordKey;
+    if (recordKey) state.records = state.records.map((record) => record[recordKey] === prev ? { ...record, [recordKey]: next } : record);
+  }
+  saveRecords(state.records);
+}
+
+function showAuthorityUsagePreview(key, entryId, openModal = false) {
+  const entry = findAuthorityEntry(key, entryId);
+  if (!entry || !els.authorityUsagePreview) return;
+  const usage = getAuthorityUsageDetails(key, entry.preferredLabel);
+  els.authorityUsagePreview.innerHTML = usage.count
+    ? `<strong>Used in ${usage.count} record${usage.count === 1 ? "" : "s"}</strong><ul class="authority-preview-list">${usage.records.map((item) => `<li>${item}</li>`).join("")}</ul>`
+    : `<strong>Unused entry</strong><p class="muted">This standard entry is not attached to any records right now.</p>`;
+  if (openModal) openAuthorityModal(key, entryId);
+}
+
+function populateAuthorityCategorySelect(selectedKey = state.authorityListKey) {
+  if (!els.authorityCategorySelect) return;
+  els.authorityCategorySelect.innerHTML = Object.values(AUTHORITY_LIST_CONFIG).map((config) => `<option value="${config.key}">${config.label}</option>`).join("");
+  els.authorityCategorySelect.value = AUTHORITY_LIST_CONFIG[selectedKey] ? selectedKey : "genres";
+}
+
+function populateAuthorityMergeTargets(key, currentId = "") {
+  if (!els.authorityMergeTarget) return;
+  const options = getAuthorityEntries(key).filter((entry) => entry.id !== currentId && entry.status !== "retired").map((entry) => `<option value="${entry.id}">${entry.preferredLabel}</option>`).join("");
+  els.authorityMergeTarget.innerHTML = `<option value="">Do not merge</option>${options}`;
+}
+
+function openAuthorityModal(key = state.authorityListKey, entryId = "") {
+  state.authorityEditingId = entryId;
+  populateAuthorityCategorySelect(key);
+  populateAuthorityMergeTargets(key, entryId);
+  const config = AUTHORITY_LIST_CONFIG[key];
+  const entry = entryId ? findAuthorityEntry(key, entryId) : null;
+  if (els.authorityModalTitle) els.authorityModalTitle.textContent = entry ? `Edit ${config.singular}` : `Add ${config.singular}`;
+  if (els.authorityModalSubtitle) els.authorityModalSubtitle.textContent = config.description;
+  if (els.authorityEntryId) els.authorityEntryId.value = entry?.id || "";
+  if (els.authorityCategorySelect) els.authorityCategorySelect.value = key;
+  if (els.authorityPreferredLabel) els.authorityPreferredLabel.value = entry?.preferredLabel || "";
+  if (els.authorityDisplayLabel) els.authorityDisplayLabel.value = entry?.displayLabel || "";
+  if (els.authorityEntryStatus) els.authorityEntryStatus.value = entry?.status || "active";
+  if (els.authorityAltLabels) els.authorityAltLabels.value = entry?.alternateLabels.join(", ") || "";
+  if (els.authorityEntryNotes) els.authorityEntryNotes.value = entry?.notes || "";
+  if (els.authoritySortOrder) els.authoritySortOrder.value = entry?.sortOrder ?? "";
+  if (els.authorityModalMessage) els.authorityModalMessage.textContent = "";
+  showAuthorityUsagePreview(key, entryId);
+  if (!entry && els.authorityUsagePreview) els.authorityUsagePreview.innerHTML = `<strong>New entry</strong><p class="muted">Add a preferred term now and alternate terms if your staff uses multiple local wordings.</p>`;
+  if (els.authorityRetireBtn) els.authorityRetireBtn.classList.toggle("hidden", !entry);
+  if (els.authorityDeleteBtn) els.authorityDeleteBtn.classList.toggle("hidden", !entry);
+  if (els.authorityEntryModal) {
+    els.authorityEntryModal.classList.remove("hidden");
+    els.authorityEntryModal.setAttribute("aria-hidden", "false");
+  }
+}
+
+function closeAuthorityModal() {
+  if (!els.authorityEntryModal) return;
+  els.authorityEntryModal.classList.add("hidden");
+  els.authorityEntryModal.setAttribute("aria-hidden", "true");
+}
+
+function toggleAuthorityRetirement(key, entryId, forcedStatus = "") {
+  const entry = findAuthorityEntry(key, entryId);
+  if (!entry) return;
+  const nextStatus = forcedStatus || (entry.status === "retired" ? "active" : "retired");
+  updateAuthorityEntry(key, { ...entry, status: nextStatus, retiredAt: nextStatus === "retired" ? Date.now() : 0, updatedAt: Date.now() });
+  renderAuthorityHome();
+  renderAuthorityWorkspace();
+  fillMaterialTypes(); fillGenres(); fillFormats(); fillBindings(); fillLocations(); fillCuratedShelves();
+}
+
+function deleteAuthorityEntry(key, entryId) {
+  const entry = findAuthorityEntry(key, entryId);
+  if (!entry) return;
+  const usage = getAuthorityUsageDetails(key, entry.preferredLabel);
+  if (usage.count > 0) {
+    if (els.authorityModalMessage) els.authorityModalMessage.textContent = `This entry is in use by ${usage.count} record(s). Merge or retire it instead of deleting.`;
     return;
   }
-  values.forEach((value) => {
-    const li = document.createElement("li");
-    const usage = getManagedUsageCount(config.key, value);
-    li.className = "managed-item";
-    li.innerHTML = `
-      <div class="managed-item-main">
-        <div>
-          <strong>${value}</strong>
-          <p class="muted">Usage count: ${usage}</p>
-        </div>
-        <div class="managed-item-actions">
-          <button class="button button-secondary" data-act="rename" type="button">Edit</button>
-          <button class="button button-secondary" data-act="delete" type="button">Delete</button>
-        </div>
-      </div>
-      <div class="managed-inline-edit hidden">
-        <input type="text" value="${value}" aria-label="Edit ${config.label}" />
-        <button class="button button-secondary" data-act="save" type="button">Save</button>
-        <button class="button button-secondary" data-act="cancel" type="button">Cancel</button>
-      </div>`;
-    const inline = li.querySelector(".managed-inline-edit");
-    li.querySelector('[data-act="rename"]').addEventListener("click", () => inline.classList.remove("hidden"));
-    li.querySelector('[data-act="cancel"]').addEventListener("click", () => inline.classList.add("hidden"));
-    li.querySelector('[data-act="save"]').addEventListener("click", () => {
-      const next = inline.querySelector("input")?.value.trim() || "";
-      if (!next || next === value) {
-        inline.classList.add("hidden");
-        return;
-      }
-      onRename(value, next);
-    });
-    li.querySelector('[data-act="delete"]').addEventListener("click", () => onDelete(value));
-    listEl.appendChild(li);
-  });
+  if (!window.confirm(`Delete ${entry.preferredLabel}? This cannot be undone.`)) return;
+  removeAuthorityEntry(key, entryId);
+  closeAuthorityModal();
+  renderAuthorityHome();
+  renderAuthorityWorkspace();
 }
 
-function addToManagedList(key, inputEl, fillFn) {
-  const value = inputEl.value.trim();
-  const config = MANAGED_LIST_CONFIG[key];
-  if (!value) {
-    setManagedMessage(config, `Enter a ${config.label} before saving.`);
-    return false;
+function saveAuthorityEntry(event) {
+  event.preventDefault();
+  const key = els.authorityCategorySelect?.value || state.authorityListKey;
+  const config = AUTHORITY_LIST_CONFIG[key];
+  const preferredLabel = els.authorityPreferredLabel?.value.trim() || "";
+  const alternateLabels = (els.authorityAltLabels?.value || "").split(",").map((value) => value.trim()).filter(Boolean);
+  const displayLabel = els.authorityDisplayLabel?.value.trim() || "";
+  const notes = els.authorityEntryNotes?.value.trim() || "";
+  const status = els.authorityEntryStatus?.value || "active";
+  const sortOrder = els.authoritySortOrder?.value || "";
+  const mergeTargetId = els.authorityMergeTarget?.value || "";
+  const currentId = els.authorityEntryId?.value || "";
+  const entries = getAuthorityEntries(key);
+  if (!preferredLabel) {
+    if (els.authorityModalMessage) els.authorityModalMessage.textContent = `Enter a preferred ${config.singular} before saving.`;
+    return;
   }
-  const existingValues = ({
-    materialTypes: getManagedMaterialTypes,
-    genres: getManagedGenres,
-    formats: getManagedFormats,
-    locations: getManagedLocations,
-    curatedShelves: getManagedCuratedShelves,
-    bindings: getManagedBindings,
-  }[key] || (() => []))();
-  if (existingValues.some((entry) => entry.toLowerCase() === value.toLowerCase())) {
-    setManagedMessage(config, `${value} already exists.`);
-    return false;
+  if (entries.some((entry) => entry.id !== currentId && entry.preferredLabel.toLowerCase() === preferredLabel.toLowerCase())) {
+    if (els.authorityModalMessage) els.authorityModalMessage.textContent = `${preferredLabel} already exists in ${config.label}.`;
+    return;
   }
-  const set = new Set(state.settings[key] || []);
-  set.add(value);
-  state.settings[key] = [...set].sort((a, b) => a.localeCompare(b));
-  saveSettings(state.settings);
-  inputEl.value = "";
-  setManagedMessage(config, "");
-  fillFn();
-  return true;
-}
-
-function renameInRecords(recordKey, prev, next) {
-  state.records = state.records.map((record) => (record[recordKey] === prev ? { ...record, [recordKey]: next } : record));
-  saveRecords(state.records);
-}
-
-function renameInSettings(key, prev, next) {
-  const set = new Set((state.settings[key] || []).map((value) => (value === prev ? next : value)));
-  state.settings[key] = [...set].sort((a, b) => a.localeCompare(b));
-  saveSettings(state.settings);
-}
-
-function removeFromSettings(key, target) {
-  state.settings[key] = (state.settings[key] || []).filter((value) => value !== target);
-  saveSettings(state.settings);
-}
-
-function addMaterialType() {
-  const value = els.newMaterialTypeInput.value.trim();
-  if (!value) return;
-  if (!addToManagedList("materialTypes", els.newMaterialTypeInput, fillMaterialTypes)) return;
-  if (!getCirculationRules().some((rule) => rule.materialType === value)) {
-    saveCirculationRules([...getCirculationRules(), { materialType: value, loanDays: 21 }]);
+  const payload = createAuthorityEntry(preferredLabel, {
+    id: currentId || undefined,
+    displayLabel,
+    alternateLabels,
+    notes,
+    status,
+    sortOrder,
+    createdAt: currentId ? findAuthorityEntry(key, currentId)?.createdAt : Date.now(),
+    updatedAt: Date.now(),
+    retiredAt: status === "retired" ? Date.now() : 0,
+  });
+  const original = currentId ? findAuthorityEntry(key, currentId) : null;
+  if (mergeTargetId && original) {
+    const mergeTarget = findAuthorityEntry(key, mergeTargetId);
+    if (mergeTarget) {
+      replaceAuthorityLabelInRecords(key, original.preferredLabel, mergeTarget.preferredLabel);
+      updateAuthorityEntry(key, { ...mergeTarget, alternateLabels: [...new Set([...(mergeTarget.alternateLabels || []), original.preferredLabel, ...alternateLabels])], updatedAt: Date.now() });
+      removeAuthorityEntry(key, original.id);
+    }
+  } else if (original) {
+    if (original.preferredLabel !== preferredLabel) replaceAuthorityLabelInRecords(key, original.preferredLabel, preferredLabel);
+    updateAuthorityEntry(key, payload);
+  } else {
+    addAuthorityEntry(key, payload);
   }
-  renderCirculationRulesTable();
-}
-function addGenre() { addToManagedList("genres", els.newGenreInput, fillGenres); }
-function addFormat() { addToManagedList("formats", els.newFormatInput, fillFormats); }
-function addLocation() { addToManagedList("locations", els.newLocationInput, fillLocations); }
-function addCuratedShelf() { addToManagedList("curatedShelves", els.newCuratedShelfInput, fillCuratedShelves); }
-function addBinding() { addToManagedList("bindings", els.newBindingInput, fillBindings); }
-
-function renameMaterialType(prev, next) {
-  if (!next) return setManagedMessage(MANAGED_LIST_CONFIG.materialTypes, "Material type name cannot be empty.");
-  if (getManagedMaterialTypes().some((value) => value !== prev && value.toLowerCase() === next.toLowerCase())) return setManagedMessage(MANAGED_LIST_CONFIG.materialTypes, `${next} already exists.`);
-  renameInRecords("materialType", prev, next);
-  renameInSettings("materialTypes", prev, next);
-  const rules = getCirculationRules().map((rule) => (rule.materialType === prev ? { ...rule, materialType: next } : rule));
-  saveCirculationRules(rules);
+  if (key === "materialTypes" && !getCirculationRules().some((rule) => rule.materialType === preferredLabel)) saveCirculationRules([...getCirculationRules(), { materialType: preferredLabel, loanDays: 21 }]);
+  closeAuthorityModal();
   render();
 }
 
-function deleteMaterialType(target) {
-  if (!window.confirm(`Delete material type "${target}"?`)) return;
-  removeFromSettings("materialTypes", target);
-  saveCirculationRules(getCirculationRules().filter((rule) => rule.materialType !== target));
-  render();
-}
-
-function updateCirculationRule(materialType, loanDays) {
-  const rules = getCirculationRules().filter((rule) => rule.materialType !== materialType);
-  if (Number(loanDays) > 0) rules.push({ materialType, loanDays: Number(loanDays) });
-  saveCirculationRules(rules);
-  renderCirculationRulesTable();
-}
-
-function renderCirculationRulesTable() {
-  if (!els.circulationRulesBody) return;
-  const managed = getManagedMaterialTypes();
-  const rulesByType = new Map(getCirculationRules().map((rule) => [rule.materialType, rule.loanDays]));
-  els.circulationRulesBody.innerHTML = "";
-  managed.forEach((materialType) => {
-    const tr = document.createElement("tr");
-    const loanDays = rulesByType.get(materialType) || "";
-    tr.innerHTML = `<td>${materialType}</td><td><input type="number" min="1" step="1" value="${loanDays}" aria-label="${materialType} loan days" /></td><td><button class="button button-secondary" type="button">Save Rule</button></td>`;
-    const input = tr.querySelector("input");
-    tr.querySelector("button").addEventListener("click", () => updateCirculationRule(materialType, input.value));
-    els.circulationRulesBody.appendChild(tr);
-  });
-}
-
-function renameGenre(prev, next) {
-  if (!next) return setManagedMessage(MANAGED_LIST_CONFIG.genres, "Genre name cannot be empty.");
-  if (getManagedGenres().some((value) => value !== prev && value.toLowerCase() === next.toLowerCase())) return setManagedMessage(MANAGED_LIST_CONFIG.genres, `${next} already exists.`);
-  state.records = state.records.map((record) => {
-    const genres = asArray(record.genres?.length ? record.genres : record.genre).map((g) => (g === prev ? next : g));
-    const unique = [...new Set(genres)];
-    return { ...record, genres: unique, genre: unique.join(", ") };
-  });
-  renameInSettings("genres", prev, next);
-  saveRecords(state.records);
-  render();
-}
-
-function deleteGenre(target) {
-  if (!window.confirm(`Delete genre "${target}"?`)) return;
-  state.records = state.records.map((record) => {
-    const genres = asArray(record.genres?.length ? record.genres : record.genre).filter((g) => g !== target);
-    return { ...record, genres, genre: genres.join(", ") };
-  });
-  removeFromSettings("genres", target);
-  saveRecords(state.records);
-  render();
-}
-
-function renameFormat(prev, next) {
-  if (!next) return setManagedMessage(MANAGED_LIST_CONFIG.formats, "Format name cannot be empty.");
-  if (getManagedFormats().some((value) => value !== prev && value.toLowerCase() === next.toLowerCase())) return setManagedMessage(MANAGED_LIST_CONFIG.formats, `${next} already exists.`);
-  renameInRecords("format", prev, next);
-  renameInSettings("formats", prev, next);
-  render();
-}
-
-function deleteFormat(target) {
-  if (!window.confirm(`Delete format "${target}"?`)) return;
-  removeFromSettings("formats", target);
-  fillFormats();
-}
-
-function renameLocation(prev, next) {
-  if (!next) return setManagedMessage(MANAGED_LIST_CONFIG.locations, "Location name cannot be empty.");
-  if (getManagedLocations().some((value) => value !== prev && value.toLowerCase() === next.toLowerCase())) return setManagedMessage(MANAGED_LIST_CONFIG.locations, `${next} already exists.`);
-  renameInRecords("location", prev, next);
-  renameInSettings("locations", prev, next);
-  render();
-}
-
-function deleteLocation(target) {
-  if (!window.confirm(`Delete location "${target}"?`)) return;
-  removeFromSettings("locations", target);
-  fillLocations();
-}
-
-function renameCuratedShelf(prev, next) {
-  if (!next) return setManagedMessage(MANAGED_LIST_CONFIG.curatedShelves, "Curated shelf name cannot be empty.");
-  if (getManagedCuratedShelves().some((value) => value !== prev && value.toLowerCase() === next.toLowerCase())) return setManagedMessage(MANAGED_LIST_CONFIG.curatedShelves, `${next} already exists.`);
-  renameInRecords("curatedShelf", prev, next);
-  renameInSettings("curatedShelves", prev, next);
-  render();
-}
-
-function deleteCuratedShelf(target) {
-  if (!window.confirm(`Delete curated shelf "${target}"?`)) return;
-  removeFromSettings("curatedShelves", target);
-  fillCuratedShelves();
-}
-
-function renameBinding(prev, next) {
-  if (!next) return setManagedMessage(MANAGED_LIST_CONFIG.bindings, "Binding name cannot be empty.");
-  if (getManagedBindings().some((value) => value !== prev && value.toLowerCase() === next.toLowerCase())) return setManagedMessage(MANAGED_LIST_CONFIG.bindings, `${next} already exists.`);
-  renameInRecords("binding", prev, next);
-  renameInSettings("bindings", prev, next);
-  render();
-}
-
-function deleteBinding(target) {
-  if (!window.confirm(`Delete binding "${target}"?`)) return;
-  removeFromSettings("bindings", target);
-  fillBindings();
+function renderAuthorityControl() {
+  syncAllLegacyAuthorityLists();
+  renderAuthorityHome();
+  if (state.authorityView === "workspace") openAuthorityWorkspace(state.authorityListKey); else openAuthorityHome();
 }
 
 function resetForm() {
@@ -4419,12 +4576,26 @@ function bindEvents() {
     event.returnValue = "";
   });
 
-  els.addMaterialTypeBtn.addEventListener("click", addMaterialType);
-  els.addGenreBtn.addEventListener("click", addGenre);
-  els.addFormatBtn.addEventListener("click", addFormat);
-  els.addLocationBtn.addEventListener("click", addLocation);
-  els.addCuratedShelfBtn.addEventListener("click", addCuratedShelf);
-  els.addBindingBtn.addEventListener("click", addBinding);
+  if (els.authoritySearchInput) els.authoritySearchInput.addEventListener("input", (event) => { state.authoritySearch = event.target.value || ""; renderAuthorityHome(); });
+  if (els.authorityClearSearchBtn) els.authorityClearSearchBtn.addEventListener("click", () => { state.authoritySearch = ""; if (els.authoritySearchInput) els.authoritySearchInput.value = ""; renderAuthorityHome(); });
+  if (els.authorityAddEntryBtn) els.authorityAddEntryBtn.addEventListener("click", () => openAuthorityModal(state.authorityListKey || "genres"));
+  if (els.authorityBackBtn) els.authorityBackBtn.addEventListener("click", openAuthorityHome);
+  if (els.authorityWorkspaceAddBtn) els.authorityWorkspaceAddBtn.addEventListener("click", () => openAuthorityModal(state.authorityListKey));
+  if (els.authorityEntrySearchInput) els.authorityEntrySearchInput.addEventListener("input", (event) => { state.authorityEntrySearch = event.target.value || ""; renderAuthorityWorkspace(); });
+  if (els.authorityStatusFilter) els.authorityStatusFilter.addEventListener("change", (event) => { state.authorityStatusFilter = event.target.value || "all"; renderAuthorityWorkspace(); });
+  if (els.authoritySortSelect) els.authoritySortSelect.addEventListener("change", (event) => { state.authoritySort = event.target.value || "alpha"; renderAuthorityWorkspace(); });
+  if (els.authorityCategorySelect) els.authorityCategorySelect.addEventListener("change", (event) => populateAuthorityMergeTargets(event.target.value, els.authorityEntryId?.value || ""));
+  if (els.authorityEntryForm) els.authorityEntryForm.addEventListener("submit", saveAuthorityEntry);
+  if (els.closeAuthorityModalBtn) els.closeAuthorityModalBtn.addEventListener("click", closeAuthorityModal);
+  if (els.authorityRetireBtn) els.authorityRetireBtn.addEventListener("click", () => {
+    const key = els.authorityCategorySelect?.value || state.authorityListKey;
+    const entryId = els.authorityEntryId?.value || "";
+    toggleAuthorityRetirement(key, entryId, "retired");
+    closeAuthorityModal();
+    render();
+  });
+  if (els.authorityDeleteBtn) els.authorityDeleteBtn.addEventListener("click", () => deleteAuthorityEntry(els.authorityCategorySelect?.value || state.authorityListKey, els.authorityEntryId?.value || ""));
+  if (els.authorityEntryModal) els.authorityEntryModal.addEventListener("click", (event) => { if (event.target === els.authorityEntryModal) closeAuthorityModal(); });
 }
 
 function render() {
@@ -4454,6 +4625,7 @@ function render() {
   renderQuickCounters();
   renderIllWorkspace();
   renderRegisterWorkspace();
+  renderAuthorityControl();
 }
 
 function init() {
