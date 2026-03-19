@@ -13,6 +13,8 @@ const state = {
   unsubscribeRecords: null,
   circulationTab: "checkout",
   queuedCheckoutItems: [],
+  checkoutPatronId: "",
+  lastCheckInResult: null,
   activeWorkspaceRecordId: "",
   editingPatronId: "",
   selectedPatronId: "",
@@ -150,6 +152,12 @@ const els = {
   checkOutForm: $("#checkOutForm"),
   checkOutCardNumber: $("#checkOutCardNumber"),
   checkOutPatronPreview: $("#checkOutPatronPreview"),
+  checkoutPatronCard: $("#checkoutPatronCard"),
+  checkoutPatronItems: $("#checkoutPatronItems"),
+  loadCheckoutPatronBtn: $("#loadCheckoutPatronBtn"),
+  clearCheckoutPatronBtn: $("#clearCheckoutPatronBtn"),
+  checkoutGateBadge: $("#checkoutGateBadge"),
+  checkoutGateMessage: $("#checkoutGateMessage"),
   checkOutMaterialNumber: $("#checkOutMaterialNumber"),
   queueCheckoutItemBtn: $("#queueCheckoutItemBtn"),
   checkOutQueue: $("#checkOutQueue"),
@@ -159,11 +167,14 @@ const els = {
   circulationRulesBody: $("#circulationRulesBody"),
   checkInForm: $("#checkInForm"),
   checkInMaterialNumber: $("#checkInMaterialNumber"),
+  checkInResult: $("#checkInResult"),
   holdForm: $("#holdForm"),
   holdCardNumber: $("#holdCardNumber"),
   holdMaterialNumber: $("#holdMaterialNumber"),
   holdType: $("#holdType"),
-  holdsBody: $("#holdsBody"),
+  holdsActiveBody: $("#holdsActiveBody"),
+  holdsReadyBody: $("#holdsReadyBody"),
+  holdsClosedBody: $("#holdsClosedBody"),
   circulationTabButtons: $$(".circulation-tab-btn"),
   circulationPanels: $$("[data-circulation-panel]"),
   circulationMessage: $("#circulationMessage"),
@@ -171,7 +182,8 @@ const els = {
   checkoutStatusAfter: $("#checkoutStatusAfter"),
   checkoutReceipt: $("#checkoutReceipt"),
   checkoutReceiptEmpty: $("#checkoutReceiptEmpty"),
-  loansBody: $("#loansBody"),
+  recentCheckoutTransactions: $("#recentCheckoutTransactions"),
+  recentCheckinTransactions: $("#recentCheckinTransactions"),
   workspaceLookupInput: $("#workspaceLookupInput"),
   workspaceLookupBtn: $("#workspaceLookupBtn"),
   exportActiveMarcBtn: $("#exportActiveMarcBtn"),
@@ -1738,63 +1750,148 @@ function getRecordByMaterialNumber(materialNumber) {
   return null;
 }
 
+function getCheckoutPatron() {
+  return getPatrons().find((entry) => entry.id === state.checkoutPatronId) || null;
+}
+
+function getPatronWarnings(patron, summary = getPatronAccountSummary(patron)) {
+  if (!patron) return [];
+  const warnings = [];
+  const status = String(patron.status || 'Active');
+  const expirationDate = String(patron.expirationDate || '').trim();
+  const today = todayIso();
+  if (status && status !== 'Active') warnings.push({ type: 'error', label: status, detail: 'Patron account is not in normal active standing.' });
+  if (expirationDate && expirationDate < today) warnings.push({ type: 'error', label: 'Expired account', detail: `Expired ${expirationDate}.` });
+  if (summary.unpaidAmount > 0) warnings.push({ type: 'warning', label: 'Balance due', detail: `${formatCurrency(summary.unpaidAmount)} in unpaid fines / fees.` });
+  if (summary.overdue.length) warnings.push({ type: 'warning', label: 'Overdue items', detail: `${summary.overdue.length} item${summary.overdue.length === 1 ? '' : 's'} already overdue.` });
+  String(patron.blocks || '').split(/\s*,\s*/).filter(Boolean).forEach((block) => warnings.push({ type: 'error', label: 'Block', detail: block }));
+  String(patron.alerts || '').split(/\s*,\s*/).filter(Boolean).forEach((alert) => warnings.push({ type: 'warning', label: 'Alert', detail: alert }));
+  return warnings;
+}
+
 function renderCheckoutQueue() {
   if (!els.checkOutQueue) return;
-  els.checkOutQueue.innerHTML = "";
+  els.checkOutQueue.innerHTML = '';
   if (!state.queuedCheckoutItems.length) {
-    els.checkOutQueue.innerHTML = "<li>No items scanned yet.</li>";
+    els.checkOutQueue.innerHTML = '<li class="empty-state compact-empty-state">No items queued yet. Load a patron, then scan items to build a checkout queue.</li>';
     return;
   }
 
   state.queuedCheckoutItems.forEach((entry) => {
-    const li = document.createElement("li");
-    const dueText = entry.autoDueDate ? ` · Auto due ${entry.autoDueDate}` : "";
-    const typeText = entry.materialType ? ` (${entry.materialType})` : "";
-    li.classList.add("checkout-queue-item");
-    li.innerHTML = `<div class="checkout-queue-main"><img class="checkout-thumb" src="${entry.coverUrl || ""}" alt="" /><span>${entry.materialNumber}: ${entry.title}${typeText}${dueText}</span></div> <button class="button button-secondary" type="button">Remove</button>`;
-    const img = li.querySelector("img");
-    if (!entry.coverUrl) img.classList.add("hidden");
-    li.querySelector("button").addEventListener("click", () => {
+    const li = document.createElement('li');
+    const dueText = entry.autoDueDate ? ` · Auto due ${entry.autoDueDate}` : '';
+    const typeText = entry.materialType ? ` (${entry.materialType})` : '';
+    li.classList.add('checkout-queue-item');
+    li.innerHTML = `<div class="checkout-queue-main"><img class="checkout-thumb" src="${entry.coverUrl || ''}" alt="" /><span>${entry.materialNumber}: ${entry.title}${typeText}${dueText}</span></div> <button class="button button-secondary" type="button">Remove</button>`;
+    const img = li.querySelector('img');
+    if (!entry.coverUrl) img.classList.add('hidden');
+    li.querySelector('button').addEventListener('click', () => {
       state.queuedCheckoutItems = state.queuedCheckoutItems.filter((item) => item.materialNumber !== entry.materialNumber);
       refreshQueuedDueDate();
       renderCheckoutQueue();
+      renderCheckoutGateState();
     });
     els.checkOutQueue.appendChild(li);
   });
 }
 
-function renderCheckoutPatronPreview(cardNumber = els.checkOutCardNumber?.value || "") {
+function renderCheckoutGateState() {
+  const patron = getCheckoutPatron();
+  const locked = !patron;
+  if (els.checkOutMaterialNumber) els.checkOutMaterialNumber.disabled = locked;
+  if (els.queueCheckoutItemBtn) els.queueCheckoutItemBtn.disabled = locked;
+  if (els.checkOutDueDate) els.checkOutDueDate.disabled = locked;
+  if (els.checkoutGateBadge) {
+    els.checkoutGateBadge.textContent = locked ? 'Patron required' : `Patron loaded: ${patron.name}`;
+    els.checkoutGateBadge.className = `circulation-gate-badge ${locked ? 'is-locked' : 'is-ready'}`;
+  }
+  if (els.checkoutGateMessage) {
+    els.checkoutGateMessage.textContent = locked
+      ? 'Scan patron card before scanning items.'
+      : 'Patron verified. Scan items into the queue below.';
+  }
+}
+
+function renderCheckoutPatronPreview(cardNumber = els.checkOutCardNumber?.value || '') {
   if (!els.checkOutPatronPreview) return;
   const patron = findPatronByCardNumber(cardNumber);
+  if (getCheckoutPatron() && patron && patron.id === state.checkoutPatronId) {
+    els.checkOutPatronPreview.textContent = `Checkout session loaded for ${patron.name}.`;
+    els.checkOutPatronPreview.className = 'status-message is-success';
+    return;
+  }
   els.checkOutPatronPreview.textContent = cardNumber.trim()
-    ? (patron ? `Patron: ${patron.name} · Card #${patron.cardNumber}` : "No patron found for that card number.")
-    : "Scan a card to show patron details.";
-  els.checkOutPatronPreview.classList.toggle("warning", Boolean(cardNumber.trim()) && !patron);
+    ? (patron ? `Ready to load ${patron.name} · Card #${patron.cardNumber}` : 'No patron found for that card number.')
+    : 'Scan a patron card to begin checkout.';
+  els.checkOutPatronPreview.className = 'status-message';
+  if (cardNumber.trim() && !patron) els.checkOutPatronPreview.classList.add('is-error');
+}
+
+function renderCheckoutPatronContext() {
+  const patron = getCheckoutPatron();
+  if (!els.checkoutPatronCard || !els.checkoutPatronItems) return;
+  if (!patron) {
+    els.checkoutPatronCard.className = 'checkout-patron-card empty-state';
+    els.checkoutPatronCard.innerHTML = 'Scan a patron card to begin checkout.';
+    els.checkoutPatronItems.className = 'card-like checkout-context-panel empty-state';
+    els.checkoutPatronItems.innerHTML = 'No patron loaded yet.';
+    renderCheckoutGateState();
+    return;
+  }
+  const summary = getPatronAccountSummary(patron);
+  const warnings = getPatronWarnings(patron, summary);
+  els.checkoutPatronCard.className = 'checkout-patron-card';
+  els.checkoutPatronCard.innerHTML = `
+    <div class="checkout-card-chip-row"><span class="checkout-card-chip">Library Card Loaded</span><span class="checkout-card-chip checkout-card-chip-status">${escapeHtml(patron.status || 'Active')}</span></div>
+    <div class="checkout-card-identity"><div><p class="checkout-card-label">Patron</p><h4>${escapeHtml(patron.name || 'Unnamed patron')}</h4></div><div><p class="checkout-card-label">Card number</p><strong>${escapeHtml(patron.cardNumber || 'Not assigned')}</strong></div></div>
+    <div class="checkout-card-grid">
+      <div><span>Expiration</span><strong>${escapeHtml(patron.expirationDate || 'Not set')}</strong></div>
+      <div><span>Items out</span><strong>${summary.loans.length}</strong></div>
+      <div><span>Holds</span><strong>${summary.holds.length}</strong></div>
+      <div><span>Balance</span><strong>${formatCurrency(summary.unpaidAmount)}</strong></div>
+    </div>
+    <div class="checkout-card-warnings">${warnings.length ? warnings.map((warning) => `<div class="checkout-warning-row is-${warning.type}"><strong>${escapeHtml(warning.label)}</strong><span>${escapeHtml(warning.detail)}</span></div>`).join('') : '<div class="checkout-warning-row is-clear"><strong>Account clear</strong><span>No blocks or urgent patron alerts.</span></div>'}</div>
+    <div class="checkout-card-actions"><button class="button button-secondary" type="button" id="openPatronAccountBtn">Open Patron Account</button></div>`;
+  els.checkoutPatronCard.querySelector('#openPatronAccountBtn')?.addEventListener('click', () => {
+    selectPatron(patron.id);
+    switchIlsSection('patrons');
+  });
+
+  els.checkoutPatronItems.className = 'card-like checkout-context-panel';
+  els.checkoutPatronItems.innerHTML = `
+    <div class="panel-header compact"><div><h4>Items currently out</h4><p class="muted">Current account context before scanning more items.</p></div></div>
+    ${summary.loans.length ? `<ul class="patron-activity-list checkout-current-items-list">${summary.loans.map(({ record, holding }) => {
+      const overdue = holding.dueDate && holding.dueDate < todayIso();
+      return `<li><div><strong>${escapeHtml(record.title || 'Untitled')}</strong><span>${escapeHtml(holding.materialNumbers?.[0] || 'No barcode')}</span></div><div class="checkout-current-item-meta"><span>${escapeHtml(holding.dueDate ? `Due ${holding.dueDate}` : 'No due date')}</span>${overdue ? '<span class="badge badge-danger">Overdue</span>' : ''}</div></li>`;
+    }).join('')}</ul>` : '<div class="empty-state compact-empty-state">No items currently checked out to this patron.</div>'}`;
+  renderCheckoutGateState();
 }
 
 function getPatronLoanEntries(patronId) {
   return state.records.flatMap((record) => (record.holdings || [])
-    .filter((holding) => holding.checkedOutTo === patronId && String(holding.status) === "On Loan")
+    .filter((holding) => holding.checkedOutTo === patronId && String(holding.status) === 'On Loan')
     .map((holding) => ({ record, holding })));
 }
 
 function getPatronHolds(patronId) {
-  return getHolds().filter((hold) => hold.patronId === patronId);
+  return getHolds().filter((hold) => hold.patronId === patronId && !['Cancelled', 'Expired', 'Picked Up'].includes(hold.status || 'Active'));
 }
 
 function getPatronAccountSummary(patron) {
   const loans = getPatronLoanEntries(patron.id);
   const holds = getPatronHolds(patron.id);
-  const overdue = loans.filter(({ holding }) => holding.dueDate && holding.dueDate < new Date().toISOString().slice(0, 10));
-  const history = state.records.flatMap((record) => String(record.circulationHistory || "")
-    .split("\n")
+  const overdue = loans.filter(({ holding }) => holding.dueDate && holding.dueDate < todayIso());
+  const history = state.records.flatMap((record) => String(record.circulationHistory || '')
+    .split('
+')
     .filter(Boolean)
-    .filter((line) => line.includes(patron.name || "") || line.includes(patron.cardNumber || ""))
-    .map((line) => ({ title: record.title || "Untitled", line })));
-  return { loans, holds, overdue, history: history.slice(-5).reverse() };
+    .filter((line) => line.includes(patron.name || '') || line.includes(patron.cardNumber || ''))
+    .map((line) => ({ title: record.title || 'Untitled', line })));
+  const balance = calculatePatronBalance(patron.id);
+  return { loans, holds, overdue, history: history.slice(-5).reverse(), ...balance };
 }
 
-function selectPatron(patronId = "") {
+function selectPatron(patronId = '') {
   state.selectedPatronId = patronId;
   renderPatronsTable();
   renderPatronDetail();
@@ -1804,14 +1901,14 @@ function renderPatronsTable() {
   if (!els.patronsBody) return;
 
   const patrons = getPatrons().slice().sort((a, b) => a.name.localeCompare(b.name));
-  els.patronsBody.innerHTML = "";
-  if (els.patronListSummary) els.patronListSummary.textContent = `${patrons.length} patron account${patrons.length === 1 ? "" : "s"}`;
+  els.patronsBody.innerHTML = '';
+  if (els.patronListSummary) els.patronListSummary.textContent = `${patrons.length} patron account${patrons.length === 1 ? '' : 's'}`;
 
   if (!patrons.length) {
-    const tr = document.createElement("tr");
+    const tr = document.createElement('tr');
     tr.innerHTML = '<td colspan="7">No patrons added yet. Add a patron to open a full account view.</td>';
     els.patronsBody.appendChild(tr);
-    state.selectedPatronId = "";
+    state.selectedPatronId = '';
     return;
   }
 
@@ -1819,13 +1916,13 @@ function renderPatronsTable() {
 
   patrons.forEach((patron) => {
     const summary = getPatronAccountSummary(patron);
-    const tr = document.createElement("tr");
-    tr.classList.toggle("is-selected-row", patron.id === state.selectedPatronId);
-    tr.innerHTML = `<td><button class="text-button" type="button" data-act="select">${patron.name}</button></td><td>${patron.cardNumber || ""}</td><td>${patron.status || "Active"}</td><td>${summary.loans.length}</td><td>${summary.holds.length}</td><td>${formatCurrency(summary.unpaidAmount)}</td><td><button class="button button-secondary" type="button" data-act="edit">Edit</button> <button class="button button-secondary" type="button" data-act="delete">Delete</button></td>`;
+    const tr = document.createElement('tr');
+    tr.classList.toggle('is-selected-row', patron.id === state.selectedPatronId);
+    tr.innerHTML = `<td><button class="text-button" type="button" data-act="select">${patron.name}</button></td><td>${patron.cardNumber || ''}</td><td>${patron.status || 'Active'}</td><td>${summary.loans.length}</td><td>${summary.holds.length}</td><td>${formatCurrency(summary.unpaidAmount)}</td><td><button class="button button-secondary" type="button" data-act="edit">Edit</button> <button class="button button-secondary" type="button" data-act="delete">Delete</button></td>`;
 
-    tr.querySelector('[data-act="select"]').addEventListener("click", () => selectPatron(patron.id));
-    tr.querySelector('[data-act="edit"]').addEventListener("click", () => editPatron(patron.id));
-    tr.querySelector('[data-act="delete"]').addEventListener("click", () => removePatron(patron.id));
+    tr.querySelector('[data-act="select"]').addEventListener('click', () => selectPatron(patron.id));
+    tr.querySelector('[data-act="edit"]').addEventListener('click', () => editPatron(patron.id));
+    tr.querySelector('[data-act="delete"]').addEventListener('click', () => removePatron(patron.id));
     els.patronsBody.appendChild(tr);
   });
 }
@@ -1834,24 +1931,24 @@ function renderPatronDetail() {
   if (!els.patronDetailPanel || !els.patronDetailBadge) return;
   const patron = getPatrons().find((entry) => entry.id === state.selectedPatronId);
   if (!patron) {
-    els.patronDetailBadge.textContent = "No patron selected";
-    els.patronDetailPanel.className = "patron-detail-panel empty-state";
-    els.patronDetailPanel.textContent = "Select a patron from the list to view account details.";
+    els.patronDetailBadge.textContent = 'No patron selected';
+    els.patronDetailPanel.className = 'patron-detail-panel empty-state';
+    els.patronDetailPanel.textContent = 'Select a patron from the list to view account details.';
     return;
   }
 
   const summary = getPatronAccountSummary(patron);
-  const blocks = String(patron.blocks || "").split(/\s*,\s*/).filter(Boolean);
-  const alerts = String(patron.alerts || "").split(/\s*,\s*/).filter(Boolean);
-  const status = patron.status || "Active";
+  const blocks = String(patron.blocks || '').split(/\s*,\s*/).filter(Boolean);
+  const alerts = String(patron.alerts || '').split(/\s*,\s*/).filter(Boolean);
+  const status = patron.status || 'Active';
 
   els.patronDetailBadge.textContent = status;
-  els.patronDetailPanel.className = "patron-detail-panel";
+  els.patronDetailPanel.className = 'patron-detail-panel';
   els.patronDetailPanel.innerHTML = `
     <div class="patron-account-header">
       <div>
-        <h4>${patron.name || "Unnamed patron"}</h4>
-        <p class="muted">Card #${patron.cardNumber || "Not assigned"}</p>
+        <h4>${patron.name || 'Unnamed patron'}</h4>
+        <p class="muted">Card #${patron.cardNumber || 'Not assigned'}</p>
       </div>
       <div class="patron-account-metrics">
         <div><strong>${summary.loans.length}</strong><span>Items out</span></div>
@@ -1861,194 +1958,153 @@ function renderPatronDetail() {
       </div>
     </div>
     <div class="patron-detail-grid">
-      <div class="detail-card"><span class="detail-label">Email</span><strong>${patron.email || "No email"}</strong></div>
-      <div class="detail-card"><span class="detail-label">Phone</span><strong>${patron.phone || "No phone number"}</strong></div>
-      <div class="detail-card"><span class="detail-label">Expiration</span><strong>${patron.expirationDate || "No expiration date"}</strong></div>
+      <div class="detail-card"><span class="detail-label">Email</span><strong>${patron.email || 'No email'}</strong></div>
+      <div class="detail-card"><span class="detail-label">Phone</span><strong>${patron.phone || 'No phone number'}</strong></div>
+      <div class="detail-card"><span class="detail-label">Expiration</span><strong>${patron.expirationDate || 'No expiration date'}</strong></div>
       <div class="detail-card"><span class="detail-label">Account status</span><strong>${status}</strong></div>
     </div>
     <div class="patron-detail-columns">
-      <section class="detail-section card-like"><h5>Notes</h5><p>${patron.notes || "No notes."}</p></section>
-      <section class="detail-section card-like"><h5>Blocks & alerts</h5><p><strong>Blocks:</strong> ${blocks.length ? blocks.join(", ") : "No blocks."}</p><p><strong>Alerts:</strong> ${alerts.length ? alerts.join(", ") : "No alerts."}</p></section>
+      <section class="detail-section card-like"><h5>Notes</h5><p>${patron.notes || 'No notes.'}</p></section>
+      <section class="detail-section card-like"><h5>Blocks & alerts</h5><p><strong>Blocks:</strong> ${blocks.length ? blocks.join(', ') : 'No blocks.'}</p><p><strong>Alerts:</strong> ${alerts.length ? alerts.join(', ') : 'No alerts.'}</p></section>
     </div>
-    <section class="detail-section card-like"><h5>Fines and fees</h5>${summary.entries.length ? `<ul class="fee-entry-list">${summary.entries.sort((a, b) => String(b.dateAssessed).localeCompare(String(a.dateAssessed))).map((entry) => `<li><div class="fee-entry-meta"><strong>${escapeHtml(entry.category)}</strong><span>${formatCurrency(entry.amount)} · ${escapeHtml(entry.status)}</span></div><span>${escapeHtml(entry.dateAssessed)} · ${escapeHtml(entry.description || 'No description')}</span><p class="fee-entry-payments">Remaining: ${formatCurrency(entry.remainingAmount)}${entry.paymentHistory.length ? ` · Payments: ${entry.paymentHistory.map((payment) => `${payment.date} ${formatCurrency(payment.amount)}`).join(', ')}` : ''}</p>${['Paid', 'Waived'].includes(entry.status) ? '' : `<div class="patron-fee-actions"><button class="button button-secondary" type="button" data-fee-status="${entry.id}" data-next-status="Paid">Mark Paid</button><button class="button button-secondary" type="button" data-fee-status="${entry.id}" data-next-status="Waived">Waive</button></div>`}</li>`).join("")}</ul>` : "<p>No fines or fees have been assessed.</p>"}</section>
-    <section class="detail-section card-like"><h5>Items currently out</h5>${summary.loans.length ? `<ul class="patron-activity-list">${summary.loans.map(({ record, holding }) => `<li><strong>${record.title || "Untitled"}</strong><span>${holding.materialNumbers?.[0] || "No barcode"} · Due ${holding.dueDate || "No due date"}</span></li>`).join("")}</ul>` : "<p>No items currently checked out.</p>"}</section>
-    <section class="detail-section card-like"><h5>Recent activity</h5>${summary.history.length ? `<ul class="patron-activity-list">${summary.history.map((entry) => `<li><strong>${entry.title}</strong><span>${entry.line}</span></li>`).join("")}</ul>` : "<p>No recent activity.</p>"}</section>
+    <section class="detail-section card-like"><h5>Fines and fees</h5>${summary.entries.length ? `<ul class="fee-entry-list">${summary.entries.sort((a, b) => String(b.dateAssessed).localeCompare(String(a.dateAssessed))).map((entry) => `<li><div class="fee-entry-meta"><strong>${escapeHtml(entry.category)}</strong><span>${formatCurrency(entry.amount)} · ${escapeHtml(entry.status)}</span></div><span>${escapeHtml(entry.dateAssessed)} · ${escapeHtml(entry.description || 'No description')}</span><p class="fee-entry-payments">Remaining: ${formatCurrency(entry.remainingAmount)}${entry.paymentHistory.length ? ` · Payments: ${entry.paymentHistory.map((payment) => `${payment.date} ${formatCurrency(payment.amount)}`).join(', ')}` : ''}</p>${['Paid', 'Waived'].includes(entry.status) ? '' : `<div class="patron-fee-actions"><button class="button button-secondary" type="button" data-fee-status="${entry.id}" data-next-status="Paid">Mark Paid</button><button class="button button-secondary" type="button" data-fee-status="${entry.id}" data-next-status="Waived">Waive</button></div>`}</li>`).join('')}</ul>` : '<p>No fines or fees have been assessed.</p>'}</section>
+    <section class="detail-section card-like"><h5>Items currently out</h5>${summary.loans.length ? `<ul class="patron-activity-list">${summary.loans.map(({ record, holding }) => `<li><strong>${record.title || 'Untitled'}</strong><span>${holding.materialNumbers?.[0] || 'No barcode'} · Due ${holding.dueDate || 'No due date'}</span></li>`).join('')}</ul>` : '<p>No items currently checked out.</p>'}</section>
+    <section class="detail-section card-like"><h5>Recent activity</h5>${summary.history.length ? `<ul class="patron-activity-list">${summary.history.map((entry) => `<li><strong>${entry.title}</strong><span>${entry.line}</span></li>`).join('')}</ul>` : '<p>No recent activity.</p>'}</section>
   `;
   [...els.patronDetailPanel.querySelectorAll('[data-fee-status]')].forEach((button) => button.addEventListener('click', () => updateFeeStatus(button.dataset.feeStatus, button.dataset.nextStatus)));
 }
 
-function renderLoansTable() {
-  if (!els.loansBody) return;
-  const loans = state.records
-    .flatMap((record) => (record.holdings || []).filter((holding) => String(holding.status) === "On Loan").map((holding) => ({ record, holding })))
-    .sort((a, b) => String(a.holding.dueDate || "").localeCompare(String(b.holding.dueDate || "")));
-
-  els.loansBody.innerHTML = "";
-  if (!loans.length) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = '<td colspan="4">No items are currently checked out.</td>';
-    els.loansBody.appendChild(tr);
-    return;
-  }
-
-  loans.forEach(({ record, holding }) => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${record.title}</td><td>${holding.checkedOutToName || "Unknown patron"}</td><td>${holding.dueDate || ""}</td><td><button class="button button-secondary" type="button">Check In</button></td>`;
-    tr.querySelector("button").addEventListener("click", () => checkInRecord(record.id, holding.id));
-    els.loansBody.appendChild(tr);
-  });
-}
-
-function setCirculationMessage(message, type = "info") {
+function setCirculationMessage(message, type = 'info') {
   if (!els.circulationMessage) return;
-  const normalizedType = type === true ? "error" : (type === false ? "info" : type);
+  const normalizedType = type === true ? 'error' : (type === false ? 'info' : type);
   els.circulationMessage.textContent = message;
-  els.circulationMessage.className = "status-message circulation-message-panel";
-  if (normalizedType && normalizedType !== "info") els.circulationMessage.classList.add(`is-${normalizedType}`);
+  els.circulationMessage.className = 'status-message circulation-message-panel';
+  if (normalizedType && normalizedType !== 'info') els.circulationMessage.classList.add(`is-${normalizedType}`);
 }
-
 
 function appendCirculationHistory(record, action) {
-  const stamp = new Date().toISOString().replace("T", " ").slice(0, 16);
-  const existing = String(record.circulationHistory || "").trim();
+  const stamp = new Date().toISOString().replace('T', ' ').slice(0, 16);
+  const existing = String(record.circulationHistory || '').trim();
   const line = `[${stamp}] ${action}`;
-  return existing ? `${existing}\n${line}` : line;
+  return existing ? `${existing}
+${line}` : line;
 }
 
-function resetPatronForm() {
-  if (!els.patronForm) return;
-  els.patronForm.reset();
-  if (els.patronId) els.patronId.value = "";
-  if (els.patronStatus) els.patronStatus.value = "Active";
-  state.editingPatronId = "";
-  if (els.patronSubmitBtn) els.patronSubmitBtn.textContent = "Add Patron";
+function clearCheckoutSession(options = {}) {
+  state.checkoutPatronId = '';
+  state.queuedCheckoutItems = [];
+  if (els.checkOutForm) els.checkOutForm.reset();
+  if (!options.keepReceipt) renderCheckoutReceipt(null);
+  renderCheckoutPatronPreview('');
+  renderCheckoutPatronContext();
+  renderCheckoutQueue();
+  refreshQueuedDueDate();
+  updateCheckoutStatus('Awaiting patron load.', 'Items will display updated status here.');
+  if (!options.silent) setCirculationMessage('Checkout session cleared. Ready for next patron.', 'info');
 }
 
-function addPatron(event) {
-  event.preventDefault();
-  const name = els.patronName.value.trim();
-  const middleName = els.patronMiddleName.value.trim();
-  const cardNumber = els.patronCardNumber.value.trim();
-  const email = els.patronEmail.value.trim();
-  const address = els.patronAddress.value.trim();
-  const phone = els.patronPhone.value.trim();
-  const birthDay = els.patronBirthDay.value;
-  const status = els.patronStatus?.value || "Active";
-  const expirationDate = els.patronExpirationDate?.value || "";
-  const notes = String(els.patronNotes?.value || "").trim();
-  const blocks = String(els.patronBlocks?.value || "").trim();
-  const alerts = String(els.patronAlerts?.value || "").trim();
-  if (!name || !cardNumber) return;
-
-  const patrons = getPatrons();
-  const editingId = els.patronId?.value || "";
-  const duplicate = patrons.some((patron) => patron.id !== editingId && patron.cardNumber?.toLowerCase() === cardNumber.toLowerCase());
-  if (duplicate) {
-    setCirculationMessage("That card number is already assigned to another patron.", true);
-    return;
+function loadCheckoutPatron(cardNumber = els.checkOutCardNumber?.value || '') {
+  const patron = findPatronByCardNumber(cardNumber);
+  if (!cardNumber.trim()) {
+    state.checkoutPatronId = '';
+    renderCheckoutPatronPreview('');
+    renderCheckoutPatronContext();
+    updateCheckoutStatus('Awaiting patron load.', 'Items will display updated status here.');
+    setCirculationMessage('Scan a patron card to begin checkout.', 'info');
+    return null;
   }
-
-  if (editingId) {
-    savePatrons(patrons.map((patron) => (patron.id === editingId ? {
-      ...patron, name, middleName, cardNumber, email, address, phone, birthDay, status, expirationDate, notes, blocks, alerts, updatedAt: Date.now(),
-    } : patron)));
-    setCirculationMessage(`Updated patron ${name}.`);
-  } else {
-    patrons.push({
-      id: crypto.randomUUID(), name, middleName, cardNumber, email, address, phone, birthDay, status, expirationDate, notes, blocks, alerts, createdAt: Date.now(), updatedAt: Date.now(),
-    });
-    savePatrons(patrons);
-    setCirculationMessage(`Added patron ${name}.`);
+  if (!patron) {
+    state.checkoutPatronId = '';
+    renderCheckoutPatronPreview(cardNumber);
+    renderCheckoutPatronContext();
+    updateCheckoutStatus('Awaiting valid patron.', 'Load a valid patron before checking out items.');
+    setCirculationMessage('No patron found with that card number.', 'error');
+    return null;
   }
-
-  resetPatronForm();
-  render();
-}
-
-function editPatron(patronId) {
-  const patron = getPatrons().find((entry) => entry.id === patronId);
-  if (!patron) return;
-  els.patronName.value = patron.name || "";
-  els.patronMiddleName.value = patron.middleName || "";
-  els.patronCardNumber.value = patron.cardNumber || "";
-  els.patronEmail.value = patron.email || "";
-  els.patronAddress.value = patron.address || "";
-  els.patronPhone.value = patron.phone || "";
-  els.patronBirthDay.value = patron.birthDay || "";
-  if (els.patronStatus) els.patronStatus.value = patron.status || "Active";
-  if (els.patronExpirationDate) els.patronExpirationDate.value = patron.expirationDate || "";
-  if (els.patronNotes) els.patronNotes.value = patron.notes || "";
-  if (els.patronBlocks) els.patronBlocks.value = patron.blocks || "";
-  if (els.patronAlerts) els.patronAlerts.value = patron.alerts || "";
-  if (els.patronId) els.patronId.value = patron.id;
-  state.editingPatronId = patron.id;
-  if (els.patronSubmitBtn) els.patronSubmitBtn.textContent = "Update Patron";
-  selectPatron(patron.id);
-}
-
-function removePatron(patronId) {
-  const hasLoans = state.records.some((record) => (record.holdings || []).some((holding) => holding.checkedOutTo === patronId && String(holding.status) === "On Loan"));
-  const hasOutstandingFees = calculatePatronBalance(patronId).unpaidAmount > 0;
-  if (hasLoans) {
-    setCirculationMessage("Cannot delete patron with checked out items.", true);
-    return;
-  }
-  if (hasOutstandingFees) {
-    setCirculationMessage("Cannot delete patron with outstanding fines or fees.", true);
-    return;
-  }
-
-  if (!window.confirm("Delete this patron account?")) return;
-  savePatrons(getPatrons().filter((patron) => patron.id !== patronId));
-  if (state.selectedPatronId === patronId) state.selectedPatronId = "";
-  render();
+  state.checkoutPatronId = patron.id;
+  renderCheckoutPatronPreview(cardNumber);
+  renderCheckoutPatronContext();
+  updateCheckoutStatus(`Patron loaded: ${patron.name}`, 'Ready to scan items into the checkout queue.');
+  setCirculationMessage(`Patron loaded: ${patron.name}. Review account context, then scan items.`, 'success');
+  if (els.checkOutMaterialNumber) els.checkOutMaterialNumber.focus();
+  return patron;
 }
 
 function queueCheckoutItem() {
+  const patron = getCheckoutPatron();
+  if (!patron) {
+    setCirculationMessage('Scan patron card before scanning items.', 'error');
+    renderCheckoutGateState();
+    return;
+  }
   const materialNumber = els.checkOutMaterialNumber.value.trim();
   if (!materialNumber) return;
   const match = getRecordByMaterialNumber(materialNumber);
   if (!match) {
-    setCirculationMessage(`Invalid barcode: ${materialNumber} was not found.`, "error");
+    setCirculationMessage(`Invalid barcode: ${materialNumber} was not found.`, 'error');
     return;
   }
   const { record, holding } = match;
-  updateCheckoutStatus(`Status: ${holding.status || "Available"} · ${record.title}`, `Ready to change to On Loan for ${record.title}.`);
-  if (String(holding.status) === "On Loan") {
-    setCirculationMessage(`Item already checked out: ${materialNumber}.`, "error");
+  updateCheckoutStatus(`Status: ${holding.status || 'Available'} · ${record.title}`, `Ready to check out to ${patron.name}.`);
+  if (String(holding.status) === 'On Loan') {
+    setCirculationMessage(`Item already checked out: ${materialNumber}.`, 'error');
     return;
   }
   if (state.queuedCheckoutItems.some((entry) => entry.materialNumber === materialNumber)) {
-    setCirculationMessage(`Item ${materialNumber} is already queued.`, "error");
+    setCirculationMessage(`Item ${materialNumber} is already queued.`, 'error');
     return;
   }
-  state.queuedCheckoutItems.push({ recordId: record.id, holdingId: holding.id, materialNumber, title: record.title, materialType: record.materialType || "", autoDueDate: getAutoDueDate(record), coverUrl: record.coverUrl || "" });
-  els.checkOutMaterialNumber.value = "";
+  state.queuedCheckoutItems.push({ recordId: record.id, holdingId: holding.id, materialNumber, title: record.title, materialType: record.materialType || '', autoDueDate: getAutoDueDate(record), coverUrl: record.coverUrl || '' });
+  els.checkOutMaterialNumber.value = '';
   refreshQueuedDueDate();
   const queuedRule = getRuleForMaterialType(record.materialType);
-  setCirculationMessage(queuedRule ? `Queued ${record.title}. ${record.materialType} items default to ${queuedRule.loanDays} day loans.` : `Queued ${record.title}. No circulation rule is set for ${record.materialType || "this material type"}.`, "info");
+  setCirculationMessage(queuedRule ? `Queued ${record.title}. ${record.materialType} items default to ${queuedRule.loanDays} day loans.` : `Queued ${record.title}. No circulation rule is set for ${record.materialType || 'this material type'}.`, 'info');
   renderCheckoutQueue();
+}
+
+function getRecentCirculationTransactions(kind = 'all', limit = 8) {
+  const entries = [];
+  state.records.forEach((record) => {
+    parseCirculationLines(record).forEach((line) => {
+      const lower = String(line.action || '').toLowerCase();
+      const type = lower.includes('checked out') ? 'checkout' : lower.includes('checked in') ? 'checkin' : lower.includes('hold') || lower.includes('reserve') ? 'hold' : 'other';
+      if (kind !== 'all' && type !== kind) return;
+      entries.push({
+        type,
+        title: record.title || 'Untitled',
+        action: line.action,
+        timestamp: Number.isFinite(line.timestamp) ? line.timestamp : 0,
+      });
+    });
+  });
+  return entries.sort((a, b) => b.timestamp - a.timestamp).slice(0, limit);
+}
+
+function renderRecentTransactions(target, kind) {
+  if (!target) return;
+  const entries = getRecentCirculationTransactions(kind, 6);
+  if (!entries.length) {
+    target.className = 'recent-transactions-list empty-state';
+    target.innerHTML = 'No recent circulation activity.';
+    return;
+  }
+  target.className = 'recent-transactions-list';
+  target.innerHTML = `<ul>${entries.map((entry) => `<li><div><span class="transaction-badge is-${entry.type}">${entry.type === 'checkout' ? 'Checked Out' : entry.type === 'checkin' ? 'Checked In' : 'Hold'}</span><strong>${escapeHtml(entry.title)}</strong><p class="muted">${escapeHtml(entry.action.replace(/^\[[^\]]+\]\s*/, ''))}</p></div><span class="muted">${formatRelativeTime(entry.timestamp)}</span></li>`).join('')}</ul>`;
 }
 
 function checkOutRecord(event) {
   event.preventDefault();
-  const cardNumber = els.checkOutCardNumber.value.trim();
+  const patron = getCheckoutPatron();
   const dueDate = els.checkOutDueDate.value;
 
-  if (!cardNumber || !state.queuedCheckoutItems.length) {
-    setCirculationMessage("Scan a patron card and add at least one item.", "error");
-    return;
-  }
-
-  const patron = findPatronByCardNumber(cardNumber);
-  if (!patron) {
-    setCirculationMessage("No patron found with that card number.", "error");
+  if (!patron || !state.queuedCheckoutItems.length) {
+    setCirculationMessage('Load a patron and add at least one queued item before checkout.', 'error');
     return;
   }
 
   const skipped = state.queuedCheckoutItems.filter((entry) => !(dueDate || entry.autoDueDate));
   if (skipped.length) {
-    setCirculationMessage(`Set a due date or add circulation rules for: ${skipped.map((entry) => entry.title).join(", ")}.`, "error");
+    setCirculationMessage(`Set a due date or add circulation rules for: ${skipped.map((entry) => entry.title).join(', ')}.`, 'error');
     return;
   }
 
@@ -2061,44 +2117,95 @@ function checkOutRecord(event) {
       if (!queued) return holding;
       const assignedDueDate = dueDate || queued.autoDueDate;
       receiptItems.push({ title: record.title || queued.materialNumber, dueDate: `Due ${assignedDueDate}` });
-      return { ...holding, status: "On Loan", checkedOutTo: patron.id, checkedOutToName: patron.name, checkedOutAt: new Date().toISOString(), dueDate: assignedDueDate };
+      return { ...holding, status: 'On Loan', checkedOutTo: patron.id, checkedOutToName: patron.name, checkedOutAt: new Date().toISOString(), dueDate: assignedDueDate };
     });
     return normalizeRecord({
       ...record,
       holdings: nextHoldings,
-      circulationHistory: appendCirculationHistory(record, `Checked out to ${patron.name} (Card: ${patron.cardNumber || "N/A"}) due ${dueDate || queuedForRecord[0].autoDueDate}`),
+      circulationHistory: appendCirculationHistory(record, `Checked out to ${patron.name} (Card: ${patron.cardNumber || 'N/A'}) due ${dueDate || queuedForRecord[0].autoDueDate}`),
     });
   });
 
+  const updatedHolds = getHolds().map((hold) => {
+    const queued = state.queuedCheckoutItems.find((entry) => entry.materialNumber === hold.materialNumber);
+    if (!queued) return hold;
+    return hold.patronId === patron.id && (hold.status === 'Ready' || hold.status === 'Active') ? { ...hold, status: 'Picked Up', pickedUpAt: new Date().toISOString() } : hold;
+  });
+  saveHolds(updatedHolds);
   saveRecords(state.records);
-  state.queuedCheckoutItems = [];
-  els.checkOutForm.reset();
-  const finalDueDate = dueDate || receiptItems[0]?.dueDate.replace("Due ", "") || "";
-  updateCheckoutStatus(`Status before: Available/Checked In`, `Status after: On Loan to ${patron.name}`);
+  const finalDueDate = dueDate || receiptItems[0]?.dueDate.replace('Due ', '') || '';
   renderCheckoutReceipt({ patron: patron.name, message: `Checked out on ${new Date().toLocaleString()}`, items: receiptItems });
-  setCirculationMessage(`Checked out to ${patron.name} – Due ${finalDueDate}`, "success");
-  els.circulationMessage.classList.add("is-prominent");
+  setCirculationMessage(`Checked out to ${patron.name} – Due ${finalDueDate}`, 'success');
+  updateCheckoutStatus('Status before: Available/Checked In', `Status after: On Loan to ${patron.name}`);
+  clearCheckoutSession({ silent: true, keepReceipt: true });
+  if (els.circulationMessage) els.circulationMessage.classList.add('is-prominent');
   render();
 }
 
-function checkInRecord(recordId, holdingId = "") {
+function buildHoldRoutingResult(record, materialNumber) {
+  const waitingHold = getHolds().find((hold) => hold.materialNumber === materialNumber && ['Active', 'Ready'].includes(hold.status || 'Active'));
+  if (!waitingHold) return { hold: null, message: 'Checked in successfully', route: 'Return to shelf' };
+  const updatedHolds = getHolds().map((hold) => hold.id === waitingHold.id ? { ...hold, status: 'Ready', readyAt: hold.readyAt || new Date().toISOString() } : hold);
+  saveHolds(updatedHolds);
+  return { hold: { ...waitingHold, status: 'Ready' }, message: 'Item has a hold waiting', route: 'Route to holds shelf' };
+}
+
+function renderCheckInResult() {
+  if (!els.checkInResult) return;
+  const result = state.lastCheckInResult;
+  if (!result) {
+    els.checkInResult.className = 'checkin-result-panel empty-state';
+    els.checkInResult.innerHTML = 'Scan an item to begin check-in.';
+    return;
+  }
+  els.checkInResult.className = 'checkin-result-panel';
+  els.checkInResult.innerHTML = `
+    <div class="panel-header compact"><div><h4>${escapeHtml(result.message)}</h4><p class="muted">${escapeHtml(result.title)}</p></div><span class="transaction-badge is-checkin">Checked In</span></div>
+    <div class="checkin-result-grid">
+      <div><span>Material number</span><strong>${escapeHtml(result.materialNumber)}</strong></div>
+      <div><span>Previous patron</span><strong>${escapeHtml(result.previousPatron || 'Not previously checked out')}</strong></div>
+      <div><span>Due / return context</span><strong>${escapeHtml(result.dueDate || result.returnedDate)}</strong></div>
+      <div><span>Status after check-in</span><strong>${escapeHtml(result.status)}</strong></div>
+    </div>
+    <div class="checkout-card-warnings">
+      ${result.holdAlert ? `<div class="checkout-warning-row is-warning"><strong>Hold waiting</strong><span>${escapeHtml(result.holdAlert)}</span></div>` : '<div class="checkout-warning-row is-clear"><strong>No hold waiting</strong><span>Item can return to regular shelving.</span></div>'}
+      <div class="checkout-warning-row is-clear"><strong>Routing</strong><span>${escapeHtml(result.routeMessage)}</span></div>
+    </div>`;
+}
+
+function checkInRecord(recordId, holdingId = '') {
   const idx = state.records.findIndex((entry) => entry.id === recordId);
-  if (idx < 0) return;
+  if (idx < 0) return null;
   const record = state.records[idx];
-  const nextHoldings = (record.holdings || []).map((holding) => (
-    !holdingId || holding.id === holdingId
-      ? { ...holding, status: "Available", checkedOutTo: "", checkedOutToName: "", checkedOutAt: "", dueDate: "" }
-      : holding
-  ));
+  let result = null;
+  const nextHoldings = (record.holdings || []).map((holding) => {
+    if (holdingId && holding.id !== holdingId) return holding;
+    const routing = buildHoldRoutingResult(record, holding.materialNumbers?.[0] || '');
+    result = {
+      title: record.title || 'Untitled',
+      materialNumber: holding.materialNumbers?.[0] || 'No barcode',
+      previousPatron: holding.checkedOutToName || 'Unknown patron',
+      dueDate: holding.dueDate ? `Due ${holding.dueDate}` : 'No due date recorded',
+      returnedDate: `Returned ${new Date().toLocaleString()}`,
+      status: routing.hold ? 'Ready for pickup' : 'Available',
+      holdAlert: routing.hold ? `${routing.hold.patronName} is waiting. ${routing.route}.` : '',
+      routeMessage: routing.route,
+      message: routing.message,
+    };
+    return { ...holding, status: routing.hold ? 'Ready for pickup' : 'Available', checkedOutTo: '', checkedOutToName: '', checkedOutAt: '', dueDate: '' };
+  });
   state.records[idx] = normalizeRecord({
     ...record,
     holdings: nextHoldings,
-    circulationHistory: appendCirculationHistory(record, "Checked in"),
+    circulationHistory: appendCirculationHistory(record, `Checked in${result?.holdAlert ? ` · ${result.holdAlert}` : ''}`),
   });
 
   saveRecords(state.records);
-  setCirculationMessage(`Checked in "${state.records[idx].title}".`);
+  state.lastCheckInResult = result;
+  renderCheckInResult();
+  setCirculationMessage(result ? `${result.message}: ${result.title}.` : `Checked in "${state.records[idx].title}".`, result?.holdAlert ? 'success' : 'info');
   render();
+  return result;
 }
 
 function checkInByMaterialNumber(event) {
@@ -2107,13 +2214,12 @@ function checkInByMaterialNumber(event) {
   if (!materialNumber) return;
   const match = getRecordByMaterialNumber(materialNumber);
   if (!match) {
-    setCirculationMessage(`Invalid barcode: ${materialNumber} was not found.`, "error");
+    setCirculationMessage(`Invalid barcode: ${materialNumber} was not found.`, 'error');
     return;
   }
   checkInRecord(match.record.id, match.holding.id);
-  els.checkInMaterialNumber.value = "";
+  els.checkInMaterialNumber.value = '';
 }
-
 
 function getHolds() {
   return Array.isArray(state.settings.holds) ? state.settings.holds : [];
@@ -2126,46 +2232,68 @@ function saveHolds(holds) {
 
 function placeHold(event) {
   event.preventDefault();
-  const cardNumber = String(els.holdCardNumber?.value || "").trim();
-  const materialNumber = String(els.holdMaterialNumber?.value || "").trim();
-  const type = String(els.holdType?.value || "Hold");
+  const cardNumber = String(els.holdCardNumber?.value || '').trim();
+  const materialNumber = String(els.holdMaterialNumber?.value || '').trim();
+  const type = String(els.holdType?.value || 'Hold');
   const patron = findPatronByCardNumber(cardNumber);
-  if (!patron) return setCirculationMessage("No patron found with that card number.", true);
+  if (!patron) return setCirculationMessage('No patron found with that card number.', true);
   const match = getRecordByMaterialNumber(materialNumber);
-  if (!match) return setCirculationMessage(`Invalid barcode: ${materialNumber} was not found.`, "error");
-  const { record } = match;
+  if (!match) return setCirculationMessage(`Invalid barcode: ${materialNumber} was not found.`, 'error');
+  const { record, holding } = match;
 
+  const status = String(holding.status) === 'Available' ? 'Ready' : 'Active';
   const holds = getHolds();
-  holds.push({ id: crypto.randomUUID(), recordId: record.id, materialNumber, title: record.title, patronId: patron.id, patronName: patron.name, type, placedAt: new Date().toISOString() });
+  holds.push({ id: crypto.randomUUID(), recordId: record.id, materialNumber, title: record.title, patronId: patron.id, patronName: patron.name, type, placedAt: new Date().toISOString(), status, patronCardNumber: patron.cardNumber || '' });
   saveHolds(holds);
   state.records = state.records.map((entry) => entry.id === record.id ? { ...entry, circulationHistory: appendCirculationHistory(entry, `${type} placed for ${patron.name}`) } : entry);
   saveRecords(state.records);
   if (els.holdForm) els.holdForm.reset();
-  setCirculationMessage(`${type} placed for ${patron.name}.`);
+  setCirculationMessage(`${type} placed for ${patron.name}.`, 'success');
+  render();
+}
+
+function updateHoldStatus(holdId, nextStatus) {
+  saveHolds(getHolds().map((hold) => hold.id === holdId ? { ...hold, status: nextStatus, updatedAt: new Date().toISOString() } : hold));
   render();
 }
 
 function cancelHold(holdId) {
-  saveHolds(getHolds().filter((hold) => hold.id !== holdId));
-  renderHoldsTable();
+  updateHoldStatus(holdId, 'Cancelled');
+}
+
+function getHoldBucket(hold) {
+  const status = String(hold.status || 'Active');
+  if (['Cancelled', 'Expired', 'Picked Up'].includes(status)) return 'closed';
+  if (status === 'Ready') return 'ready';
+  return 'active';
+}
+
+function renderHoldRows(target, holds, emptyMessage) {
+  if (!target) return;
+  target.innerHTML = '';
+  if (!holds.length) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="6">${emptyMessage}</td>`;
+    target.appendChild(tr);
+    return;
+  }
+  holds.forEach((hold) => {
+    const tr = document.createElement('tr');
+    const actions = [];
+    if (getHoldBucket(hold) === 'active') actions.push('<button class="button button-secondary" type="button" data-action="ready">Mark Ready</button>');
+    if (getHoldBucket(hold) !== 'closed') actions.push('<button class="button button-secondary" type="button" data-action="cancel">Cancel</button>');
+    tr.innerHTML = `<td>${escapeHtml(hold.title || 'Untitled')}</td><td>${escapeHtml(hold.patronName || 'Unknown patron')}</td><td>${escapeHtml(hold.type || 'Hold')}</td><td><span class="transaction-badge is-hold">${escapeHtml(hold.status || 'Active')}</span></td><td>${escapeHtml(String(hold.readyAt || hold.placedAt || '').slice(0, 10))}</td><td>${actions.join(' ') || '<span class="muted">No actions</span>'}</td>`;
+    tr.querySelector('[data-action="ready"]')?.addEventListener('click', () => updateHoldStatus(hold.id, 'Ready'));
+    tr.querySelector('[data-action="cancel"]')?.addEventListener('click', () => cancelHold(hold.id));
+    target.appendChild(tr);
+  });
 }
 
 function renderHoldsTable() {
-  if (!els.holdsBody) return;
-  const holds = getHolds().slice().sort((a,b)=>String(b.placedAt||"").localeCompare(String(a.placedAt||"")));
-  els.holdsBody.innerHTML = "";
-  if (!holds.length) {
-    const tr=document.createElement("tr");
-    tr.innerHTML='<td colspan="5">No holds or reserves.</td>';
-    els.holdsBody.appendChild(tr);
-    return;
-  }
-  holds.forEach((hold)=>{
-    const tr=document.createElement("tr");
-    tr.innerHTML=`<td>${hold.title}</td><td>${hold.patronName}</td><td>${hold.type}</td><td>${String(hold.placedAt||"").slice(0,10)}</td><td><button class="button button-secondary" type="button">Cancel</button></td>`;
-    tr.querySelector("button").addEventListener("click",()=>cancelHold(hold.id));
-    els.holdsBody.appendChild(tr);
-  });
+  const holds = getHolds().slice().sort((a, b) => String(b.readyAt || b.placedAt || '').localeCompare(String(a.readyAt || a.placedAt || '')));
+  renderHoldRows(els.holdsActiveBody, holds.filter((hold) => getHoldBucket(hold) === 'active'), 'No active holds right now.');
+  renderHoldRows(els.holdsReadyBody, holds.filter((hold) => getHoldBucket(hold) === 'ready'), 'No items are currently ready for pickup.');
+  renderHoldRows(els.holdsClosedBody, holds.filter((hold) => getHoldBucket(hold) === 'closed'), 'No expired or cancelled holds yet.');
 }
 
 function addSerialIssue(event) {
@@ -4188,6 +4316,13 @@ function bindEvents() {
   [els.weedingPreset, els.weedingCustomValue, els.weedingCustomUnit, els.weedingLocationFilter, els.weedingMaterialTypeFilter, els.weedingStatusFilter, els.weedingAudienceFilter, els.weedingSort, els.trafficRangePreset, els.trafficStartDate, els.trafficEndDate, els.authorStartDate, els.authorEndDate, els.authorLocationFilter, els.authorMaterialTypeFilter, els.authorAudienceFilter, els.authorSort, els.sectionSort, els.feeReportStatusFilter, els.feeReportCategoryFilter, els.feeReportPatronFilter, els.feeReportStartDate, els.feeReportEndDate].filter(Boolean).forEach((el) => el.addEventListener('input', renderStatsPanel));
   [els.weedingPreset, els.weedingLocationFilter, els.weedingMaterialTypeFilter, els.weedingStatusFilter, els.weedingAudienceFilter, els.weedingSort, els.trafficRangePreset, els.authorLocationFilter, els.authorMaterialTypeFilter, els.authorAudienceFilter, els.authorSort, els.sectionSort, els.feeReportStatusFilter, els.feeReportCategoryFilter, els.feeReportPatronFilter].filter(Boolean).forEach((el) => el.addEventListener('change', renderStatsPanel));
   if (els.queueCheckoutItemBtn) els.queueCheckoutItemBtn.addEventListener("click", queueCheckoutItem);
+  if (els.loadCheckoutPatronBtn) els.loadCheckoutPatronBtn.addEventListener("click", () => loadCheckoutPatron());
+  if (els.clearCheckoutPatronBtn) els.clearCheckoutPatronBtn.addEventListener("click", () => clearCheckoutSession());
+  if (els.checkOutCardNumber) {
+    els.checkOutCardNumber.addEventListener("input", () => renderCheckoutPatronPreview(els.checkOutCardNumber.value));
+    els.checkOutCardNumber.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); loadCheckoutPatron(); } });
+    els.checkOutCardNumber.addEventListener("blur", () => { if (els.checkOutCardNumber.value.trim()) loadCheckoutPatron(); });
+  }
   if (els.addHoldingBtn) els.addHoldingBtn.addEventListener("click", () => {
     state.draftHoldings = [...collectDraftHoldings(), sanitizeHolding()];
     renderHoldingsEditor(state.draftHoldings);
@@ -4227,8 +4362,12 @@ function render() {
   renderSerialIssuesTable();
   renderAcquisitionsWorkspace();
   renderCheckoutQueue();
+  renderCheckoutPatronPreview();
+  renderCheckoutPatronContext();
+  renderCheckInResult();
+  renderRecentTransactions(els.recentCheckoutTransactions, 'checkout');
+  renderRecentTransactions(els.recentCheckinTransactions, 'checkin');
   renderCirculationRulesTable();
-  renderLoansTable();
   renderHoldsTable();
   renderStatsPanel();
   renderDashboard();
@@ -4247,7 +4386,8 @@ function init() {
   switchCirculationTab("checkout");
   switchRecordTab("basic");
   renderCheckoutReceipt(null);
-  updateCheckoutStatus();
+  updateCheckoutStatus('Awaiting patron load.', 'Items will display updated status here.');
+  renderCheckoutGateState();
   render();
   hydrateRemoteRecords();
 }

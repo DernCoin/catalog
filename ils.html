@@ -122,102 +122,201 @@
         </section>
 
                 <section class="admin-tab-panel hidden" data-ils-panel="circulation">
-          <h2>Circulation</h2>
-          <div class="admin-tab-nav circulation-subtabs" aria-label="Circulation actions">
-            <button class="button button-secondary circulation-tab-btn is-active" type="button" data-circulation-tab="checkout">Check Out</button>
-            <button class="button button-secondary circulation-tab-btn" type="button" data-circulation-tab="checkin">Check In</button>
-            <button class="button button-secondary circulation-tab-btn" type="button" data-circulation-tab="holds">Holds & Reserves</button>
+          <div class="panel-header circulation-header-block">
+            <div>
+              <h2>Circulation</h2>
+              <p class="muted">Use one circulation mode at a time for safer, clearer service-desk workflows.</p>
+            </div>
+            <div class="admin-tab-nav circulation-subtabs" aria-label="Circulation actions">
+              <button class="button button-secondary circulation-tab-btn is-active" type="button" data-circulation-tab="checkout">Check Out</button>
+              <button class="button button-secondary circulation-tab-btn" type="button" data-circulation-tab="checkin">Check In</button>
+              <button class="button button-secondary circulation-tab-btn" type="button" data-circulation-tab="holds">Holds &amp; Reserves</button>
+            </div>
           </div>
+
           <section class="admin-block circulation-panel-block" data-circulation-panel="checkout">
-            <h3>Check out items</h3>
-            <div class="circulation-checkout-layout">
-              <form id="checkOutForm" class="simple-form circulation-form">
-                <label>Patron card number
-                  <input id="checkOutCardNumber" placeholder="Scan card number" required />
-                </label>
-                <p id="checkOutPatronPreview" class="status-message">Scan a card to show patron details.</p>
-                <label>Item material number
-                  <input id="checkOutMaterialNumber" placeholder="Scan item material number" />
-                </label>
-                <div class="circulation-status-card">
-                  <div>
-                    <span class="status-label">Before checkout</span>
-                    <strong id="checkoutStatusBefore">Awaiting item scan.</strong>
-                  </div>
-                  <div>
-                    <span class="status-label">After checkout</span>
-                    <strong id="checkoutStatusAfter">Item will display updated status here.</strong>
-                  </div>
+            <div class="circulation-mode-shell circulation-mode-shell-checkout">
+              <div class="circulation-mode-banner circulation-mode-banner-checkout">
+                <div>
+                  <p class="circulation-mode-eyebrow">Checkout Mode</p>
+                  <h3>You are checking OUT items</h3>
+                  <p class="muted">Load a patron first, then scan items into a checkout queue before completing the transaction.</p>
                 </div>
-                <label>Due date override
-                  <input id="checkOutDueDate" type="date" />
-                </label>
-                <p class="muted">Leave blank to use the circulation rule for each queued item's material type.</p>
-                <button id="queueCheckoutItemBtn" class="button button-secondary" type="button">Add Item</button>
-                <div class="circulation-queue-panel">
-                  <strong>Queued items</strong>
-                  <ul id="checkOutQueue" class="location-list"></ul>
+                <span class="circulation-mode-icon" aria-hidden="true">⬈</span>
+              </div>
+              <div class="circulation-checkout-layout">
+                <div class="circulation-checkout-main">
+                  <form id="checkOutForm" class="simple-form circulation-form circulation-checkout-form">
+                    <section class="card-like circulation-workflow-card">
+                      <div class="panel-header compact">
+                        <div>
+                          <h4>Load patron</h4>
+                          <p class="muted">Scan or enter a library card number to begin a checkout session.</p>
+                        </div>
+                        <button id="clearCheckoutPatronBtn" class="button button-secondary" type="button">End Checkout Session</button>
+                      </div>
+                      <div class="circulation-inline-form circulation-inline-form-checkout">
+                        <label>
+                          <span>Patron card number</span>
+                          <input id="checkOutCardNumber" placeholder="Scan patron card number" autocomplete="off" required />
+                        </label>
+                        <button id="loadCheckoutPatronBtn" class="button button-primary" type="button">Load Patron</button>
+                      </div>
+                      <p id="checkOutPatronPreview" class="status-message">Scan a patron card to begin checkout.</p>
+                      <div id="checkoutPatronCard" class="checkout-patron-card empty-state">Scan a patron card to begin checkout.</div>
+                      <div id="checkoutPatronItems" class="card-like checkout-context-panel empty-state">No patron loaded yet.</div>
+                    </section>
+
+                    <section class="card-like circulation-workflow-card">
+                      <div class="panel-header compact">
+                        <div>
+                          <h4>Scan items for checkout</h4>
+                          <p class="muted">Item scanning stays locked until a valid patron is loaded.</p>
+                        </div>
+                        <span id="checkoutGateBadge" class="circulation-gate-badge is-locked">Patron required</span>
+                      </div>
+                      <label>
+                        <span>Item material number</span>
+                        <input id="checkOutMaterialNumber" placeholder="Scan item material number" disabled />
+                      </label>
+                      <p id="checkoutGateMessage" class="muted">Scan patron card before scanning items.</p>
+                      <div class="circulation-status-card">
+                        <div>
+                          <span class="status-label">Before checkout</span>
+                          <strong id="checkoutStatusBefore">Awaiting patron load.</strong>
+                        </div>
+                        <div>
+                          <span class="status-label">After checkout</span>
+                          <strong id="checkoutStatusAfter">Items will display updated status here.</strong>
+                        </div>
+                      </div>
+                      <label>
+                        <span>Due date override</span>
+                        <input id="checkOutDueDate" type="date" />
+                      </label>
+                      <p class="muted">Leave blank to use the circulation rule for each queued item's material type.</p>
+                      <button id="queueCheckoutItemBtn" class="button button-secondary" type="button">Add Item to Queue</button>
+                      <div class="circulation-queue-panel">
+                        <div class="panel-header compact"><strong>Queued items</strong><span class="muted">Review before finalizing checkout.</span></div>
+                        <ul id="checkOutQueue" class="location-list"></ul>
+                      </div>
+                      <button class="button button-primary" type="submit">Check Out All Scanned Items</button>
+                      <div id="circulationMessage" class="status-message circulation-message-panel" aria-live="polite"></div>
+                    </section>
+                  </form>
                 </div>
-                <button class="button button-primary" type="submit">Check Out All Scanned Items</button>
-                <div id="circulationMessage" class="status-message circulation-message-panel" aria-live="polite"></div>
-              </form>
-              <aside class="circulation-receipt card-like">
-                <div class="receipt-header">
-                  <h4>Checkout receipt</h4>
-                  <p class="muted">UI-only summary for the current transaction.</p>
-                </div>
-                <div id="checkoutReceiptEmpty" class="muted">No checkout completed yet.</div>
-                <div id="checkoutReceipt" class="hidden"></div>
-              </aside>
+
+                <aside class="circulation-checkout-sidebar">
+                  <section class="circulation-receipt card-like">
+                    <div class="receipt-header">
+                      <h4>Checkout receipt</h4>
+                      <p class="muted">Summary for the latest completed patron transaction.</p>
+                    </div>
+                    <div id="checkoutReceiptEmpty" class="muted">No checkout completed yet.</div>
+                    <div id="checkoutReceipt" class="hidden"></div>
+                  </section>
+                  <section class="card-like recent-transactions-panel">
+                    <div class="panel-header compact">
+                      <div>
+                        <h4>Recent checkouts</h4>
+                        <p class="muted">Latest desk activity for confirmation.</p>
+                      </div>
+                    </div>
+                    <div id="recentCheckoutTransactions" class="recent-transactions-list empty-state">No recent circulation activity.</div>
+                  </section>
+                </aside>
+              </div>
             </div>
           </section>
 
           <section class="admin-block circulation-panel-block hidden" data-circulation-panel="checkin">
-            <h3>Check in items</h3>
-            <form id="checkInForm" class="simple-form circulation-form">
-              <label>Item material number
-                <input id="checkInMaterialNumber" placeholder="Scan item material number" required />
-              </label>
-              <button class="button" type="submit">Check In Scanned Item</button>
-            </form>
+            <div class="circulation-mode-shell circulation-mode-shell-checkin">
+              <div class="circulation-mode-banner circulation-mode-banner-checkin">
+                <div>
+                  <p class="circulation-mode-eyebrow">Check-In Mode</p>
+                  <h3>You are checking IN returned items</h3>
+                  <p class="muted">No patron selection is used here. Scan returned items and confirm the return result immediately.</p>
+                </div>
+                <span class="circulation-mode-icon" aria-hidden="true">⬋</span>
+              </div>
+              <div class="circulation-checkin-layout">
+                <div class="circulation-checkin-main">
+                  <form id="checkInForm" class="simple-form circulation-form card-like circulation-workflow-card">
+                    <div class="panel-header compact">
+                      <div>
+                        <h4>Scan returned item</h4>
+                        <p class="muted">Use only the item material number to check in a return.</p>
+                      </div>
+                    </div>
+                    <label>
+                      <span>Item material number</span>
+                      <input id="checkInMaterialNumber" placeholder="Scan item material number" required />
+                    </label>
+                    <button class="button button-primary" type="submit">Check In Scanned Item</button>
+                    <div id="checkInResult" class="checkin-result-panel empty-state">Scan an item to begin check-in.</div>
+                  </form>
+                </div>
+                <aside class="circulation-checkin-sidebar card-like recent-transactions-panel">
+                  <div class="panel-header compact">
+                    <div>
+                      <h4>Recent check-ins</h4>
+                      <p class="muted">Most recent returned items and confirmations.</p>
+                    </div>
+                  </div>
+                  <div id="recentCheckinTransactions" class="recent-transactions-list empty-state">No recent circulation activity.</div>
+                </aside>
+              </div>
+            </div>
           </section>
 
           <section class="admin-block circulation-panel-block hidden" data-circulation-panel="holds">
-            <h3>Place hold or reserve</h3>
-            <form id="holdForm" class="simple-form circulation-form">
-              <label>Patron card number
-                <input id="holdCardNumber" required placeholder="Scan card number" />
-              </label>
-              <label>Item material number
-                <input id="holdMaterialNumber" required placeholder="Scan item material number" />
-              </label>
-              <label>Type
-                <select id="holdType">
-                  <option value="Hold">Hold</option>
-                  <option value="Reserve">Reserve</option>
-                </select>
-              </label>
-              <button class="button" type="submit">Place Request</button>
-            </form>
-            <table class="serials-table">
-              <thead><tr><th>Item</th><th>Patron</th><th>Type</th><th>Date</th><th>Actions</th></tr></thead>
-              <tbody id="holdsBody"></tbody>
-            </table>
-          </section>
-
-          <section class="admin-block circulation-panel-block">
-            <h3>Items currently on loan</h3>
-            <table id="loansTable">
-              <thead>
-                <tr>
-                  <th>Title</th>
-                  <th>Patron</th>
-                  <th>Due Date</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="loansBody"></tbody>
-            </table>
+            <div class="circulation-mode-shell circulation-mode-shell-holds">
+              <div class="circulation-mode-banner circulation-mode-banner-holds">
+                <div>
+                  <p class="circulation-mode-eyebrow">Holds &amp; Reserves</p>
+                  <h3>Manage patron requests</h3>
+                  <p class="muted">Place new requests here and monitor active, ready, and closed hold activity.</p>
+                </div>
+                <span class="circulation-mode-icon" aria-hidden="true">⧗</span>
+              </div>
+              <div class="circulation-holds-layout">
+                <section class="card-like circulation-workflow-card">
+                  <div class="panel-header compact">
+                    <div>
+                      <h4>Place hold or reserve</h4>
+                      <p class="muted">Create a new patron request without interrupting checkout or check-in workflows.</p>
+                    </div>
+                  </div>
+                  <form id="holdForm" class="simple-form circulation-form">
+                    <label><span>Patron card number</span>
+                      <input id="holdCardNumber" required placeholder="Scan patron card number" />
+                    </label>
+                    <label><span>Item material number</span>
+                      <input id="holdMaterialNumber" required placeholder="Scan item material number" />
+                    </label>
+                    <label><span>Type</span>
+                      <select id="holdType">
+                        <option value="Hold">Hold</option>
+                        <option value="Reserve">Reserve</option>
+                      </select>
+                    </label>
+                    <button class="button button-primary" type="submit">Place Request</button>
+                  </form>
+                </section>
+                <section class="card-like holds-list-card">
+                  <div class="panel-header compact"><div><h4>Active holds</h4><p class="muted">Requests still waiting on an item.</p></div></div>
+                  <table class="serials-table holds-table"><thead><tr><th>Item</th><th>Patron</th><th>Type</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="holdsActiveBody"></tbody></table>
+                </section>
+                <section class="card-like holds-list-card">
+                  <div class="panel-header compact"><div><h4>Ready for pickup</h4><p class="muted">Items waiting on the holds shelf or ready to notify patrons.</p></div></div>
+                  <table class="serials-table holds-table"><thead><tr><th>Item</th><th>Patron</th><th>Type</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="holdsReadyBody"></tbody></table>
+                </section>
+                <section class="card-like holds-list-card">
+                  <div class="panel-header compact"><div><h4>Expired / Cancelled</h4><p class="muted">Closed or expired hold activity.</p></div></div>
+                  <table class="serials-table holds-table"><thead><tr><th>Item</th><th>Patron</th><th>Type</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="holdsClosedBody"></tbody></table>
+                </section>
+              </div>
+            </div>
           </section>
         </section>
 
