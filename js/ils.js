@@ -372,6 +372,88 @@ function savePatrons(patrons) {
   saveSettings(state.settings);
 }
 
+function resetPatronForm() {
+  if (!els.patronForm) return;
+  els.patronForm.reset();
+  if (els.patronId) els.patronId.value = "";
+  if (els.patronStatus) els.patronStatus.value = "Active";
+  if (els.patronSubmitBtn) els.patronSubmitBtn.textContent = "Add Patron";
+  state.editingPatronId = "";
+}
+
+function addPatron(event) {
+  event.preventDefault();
+  const patrons = getPatrons();
+  const patronId = (els.patronId?.value || "").trim();
+  const now = Date.now();
+  const payload = {
+    id: patronId || `patron-${now}-${Math.floor(Math.random() * 1000)}`,
+    name: els.patronName?.value.trim() || "",
+    middleName: els.patronMiddleName?.value.trim() || "",
+    cardNumber: els.patronCardNumber?.value.trim() || "",
+    email: els.patronEmail?.value.trim() || "",
+    address: els.patronAddress?.value.trim() || "",
+    phone: els.patronPhone?.value.trim() || "",
+    birthDay: els.patronBirthDay?.value || "",
+    status: els.patronStatus?.value || "Active",
+    expirationDate: els.patronExpirationDate?.value || "",
+    notes: els.patronNotes?.value.trim() || "",
+    blocks: els.patronBlocks?.value.trim() || "",
+    alerts: els.patronAlerts?.value.trim() || "",
+    createdAt: patronId ? patrons.find((entry) => entry.id === patronId)?.createdAt || now : now,
+    updatedAt: now,
+  };
+
+  if (!payload.name || !payload.cardNumber) return;
+
+  const nextPatrons = patronId
+    ? patrons.map((entry) => (entry.id === patronId ? { ...entry, ...payload } : entry))
+    : [...patrons, payload];
+
+  savePatrons(nextPatrons);
+  state.selectedPatronId = payload.id;
+  resetPatronForm();
+  renderPatronsTable();
+  renderPatronDetail();
+  renderCheckoutPatronPreview();
+  renderCheckoutPatronContext();
+  renderDashboard();
+}
+
+function editPatron(patronId) {
+  const patron = getPatrons().find((entry) => entry.id === patronId);
+  if (!patron) return;
+  state.editingPatronId = patronId;
+  if (els.patronId) els.patronId.value = patron.id || "";
+  if (els.patronName) els.patronName.value = patron.name || "";
+  if (els.patronMiddleName) els.patronMiddleName.value = patron.middleName || "";
+  if (els.patronCardNumber) els.patronCardNumber.value = patron.cardNumber || "";
+  if (els.patronEmail) els.patronEmail.value = patron.email || "";
+  if (els.patronAddress) els.patronAddress.value = patron.address || "";
+  if (els.patronPhone) els.patronPhone.value = patron.phone || "";
+  if (els.patronBirthDay) els.patronBirthDay.value = patron.birthDay || "";
+  if (els.patronStatus) els.patronStatus.value = patron.status || "Active";
+  if (els.patronExpirationDate) els.patronExpirationDate.value = patron.expirationDate || "";
+  if (els.patronNotes) els.patronNotes.value = patron.notes || "";
+  if (els.patronBlocks) els.patronBlocks.value = patron.blocks || "";
+  if (els.patronAlerts) els.patronAlerts.value = patron.alerts || "";
+  if (els.patronSubmitBtn) els.patronSubmitBtn.textContent = "Update Patron";
+  els.patronForm?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function removePatron(patronId) {
+  const patron = getPatrons().find((entry) => entry.id === patronId);
+  if (!patron || !window.confirm(`Delete patron account for ${patron.name || "this patron"}?`)) return;
+  savePatrons(getPatrons().filter((entry) => entry.id !== patronId));
+  if (state.selectedPatronId === patronId) state.selectedPatronId = "";
+  if (state.editingPatronId === patronId) resetPatronForm();
+  renderPatronsTable();
+  renderPatronDetail();
+  renderCheckoutPatronPreview();
+  renderCheckoutPatronContext();
+  renderDashboard();
+}
+
 function getSubscriptions() {
   return Array.isArray(state.settings.subscriptions) ? state.settings.subscriptions : [];
 }
@@ -518,8 +600,7 @@ function toDateInputValue(value) {
 }
 
 function parseCirculationLines(record) {
-  return String(record.circulationHistory || "").split(/
-+/).filter(Boolean).map((line) => {
+  return String(record.circulationHistory || "").split(/\n+/).filter(Boolean).map((line) => {
     const match = line.match(/^\[(.+?)\]\s*(.*)$/);
     const rawDate = match?.[1] || "";
     const action = match?.[2] || line;
@@ -1882,8 +1963,7 @@ function getPatronAccountSummary(patron) {
   const holds = getPatronHolds(patron.id);
   const overdue = loans.filter(({ holding }) => holding.dueDate && holding.dueDate < todayIso());
   const history = state.records.flatMap((record) => String(record.circulationHistory || '')
-    .split('
-')
+    .split('\n')
     .filter(Boolean)
     .filter((line) => line.includes(patron.name || '') || line.includes(patron.cardNumber || ''))
     .map((line) => ({ title: record.title || 'Untitled', line })));
