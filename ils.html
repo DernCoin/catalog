@@ -158,14 +158,12 @@
                       </div>
                       <p id="checkOutPatronPreview" class="status-message">Scan a patron card to begin checkout.</p>
                       <div id="checkoutPatronCard" class="checkout-patron-card empty-state">Scan a patron card to begin checkout.</div>
-                      <div id="checkoutPatronItems" class="card-like checkout-context-panel empty-state">No patron loaded yet.</div>
                     </section>
 
                     <section class="card-like circulation-workflow-card">
                       <div class="panel-header compact">
                         <div>
                           <h4>Scan items for checkout</h4>
-                          <p class="muted">Item scanning stays locked until a valid patron is loaded.</p>
                         </div>
                         <span id="checkoutGateBadge" class="circulation-gate-badge is-locked">Patron required</span>
                       </div>
@@ -174,26 +172,12 @@
                         <input id="checkOutMaterialNumber" placeholder="Scan item material number" disabled />
                       </label>
                       <p id="checkoutGateMessage" class="muted">Scan patron card before scanning items.</p>
-                      <div class="circulation-status-card">
-                        <div>
-                          <span class="status-label">Before checkout</span>
-                          <strong id="checkoutStatusBefore">Awaiting patron load.</strong>
-                        </div>
-                        <div>
-                          <span class="status-label">After checkout</span>
-                          <strong id="checkoutStatusAfter">Items will display updated status here.</strong>
-                        </div>
-                      </div>
-                      <label>
-                        <span>Due date override</span>
-                        <input id="checkOutDueDate" type="date" />
-                      </label>
-                      <p class="muted">Leave blank to use the circulation rule for each queued item's material type.</p>
                       <button id="queueCheckoutItemBtn" class="button button-secondary" type="button">Add Item to Queue</button>
                       <div class="circulation-queue-panel">
                         <div class="panel-header compact"><strong>Queued items</strong><span class="muted">Review before finalizing checkout.</span></div>
                         <ul id="checkOutQueue" class="location-list"></ul>
                       </div>
+                      <div id="checkoutPatronItems" class="card-like checkout-context-panel empty-state">No patron loaded yet.</div>
                       <button class="button button-primary" type="submit">Check Out All Scanned Items</button>
                       <div id="circulationMessage" class="status-message circulation-message-panel" aria-live="polite"></div>
                     </section>
