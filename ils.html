@@ -1023,69 +1023,163 @@
         </section>
 
         <section class="admin-tab-panel hidden" data-ils-panel="utilities">
-          <div class="panel-header">
-            <div>
-              <h2>Utilities</h2>
-              <p class="muted">Manage controlled vocabulary lists used throughout cataloging and circulation.</p>
-            </div>
-          </div>
-          <div class="utilities-grid">
-            <section class="location-manager admin-block managed-panel" data-managed-key="materialTypes">
-              <div class="panel-header compact"><div><h3>Material Types</h3><p class="muted">Loan rule categories and item-type labels.</p></div><span class="managed-count" id="materialTypeCount"></span></div>
-              <div class="admin-tools managed-add-row">
-                <input id="newMaterialTypeInput" placeholder="Add material type" />
-                <button id="addMaterialTypeBtn" class="button button-secondary" type="button">Add material type</button>
+          <div class="authority-shell">
+            <section class="authority-home card-like" id="authorityHomeView">
+              <div class="panel-header authority-home-header">
+                <div>
+                  <p class="eyebrow">Cataloging standards</p>
+                  <h2>Authority Control</h2>
+                  <p class="muted">Maintain standard entries, preferred terms, and reusable cataloging values without crowding the rest of the ILS.</p>
+                </div>
+                <div class="authority-summary-strip" id="authoritySummaryStrip" aria-label="Authority control summary"></div>
               </div>
-              <p id="materialTypeError" class="warning managed-message" aria-live="polite"></p>
-              <ul id="materialTypeList" class="location-list managed-list"></ul>
+              <div class="authority-home-tools">
+                <label class="authority-search-field">
+                  <span class="sr-only">Search authority lists</span>
+                  <input id="authoritySearchInput" type="search" placeholder="Search authority lists or standard entries" />
+                </label>
+                <div class="authority-quick-actions">
+                  <button id="authorityAddEntryBtn" class="button" type="button">Add Authority Entry</button>
+                  <button id="authorityClearSearchBtn" class="button button-secondary" type="button">Clear Search</button>
+                </div>
+              </div>
+              <div class="authority-home-sections">
+                <section>
+                  <div class="panel-header compact">
+                    <div>
+                      <h3>Authority Lists</h3>
+                      <p class="muted">Open one list at a time for focused browsing and editing.</p>
+                    </div>
+                  </div>
+                  <div id="authorityCategoryGrid" class="authority-category-grid" aria-label="Authority categories"></div>
+                </section>
+                <section class="authority-activity-grid">
+                  <article class="card-like authority-side-card">
+                    <div class="panel-header compact"><div><h3>Pinned Lists</h3><p class="muted">Fast access to the lists staff touch most often.</p></div></div>
+                    <div id="authorityPinnedLists" class="authority-mini-list"></div>
+                  </article>
+                  <article class="card-like authority-side-card">
+                    <div class="panel-header compact"><div><h3>Recently Updated</h3><p class="muted">Recent changes to preferred terms and standard entries.</p></div></div>
+                    <div id="authorityRecentUpdates" class="authority-mini-list"></div>
+                  </article>
+                </section>
+              </div>
             </section>
-            <section class="location-manager admin-block managed-panel" data-managed-key="genres">
-              <div class="panel-header compact"><div><h3>Genres</h3><p class="muted">Controlled genre and topical labels.</p></div><span class="managed-count" id="genreCount"></span></div>
-              <div class="admin-tools managed-add-row">
-                <input id="newGenreInput" placeholder="Add genre" />
-                <button id="addGenreBtn" class="button button-secondary" type="button">Add genre</button>
+
+            <section class="authority-workspace card-like hidden" id="authorityWorkspaceView">
+              <div class="panel-header authority-workspace-header">
+                <div>
+                  <button id="authorityBackBtn" class="text-button authority-back-btn" type="button">← Back to Authority Lists</button>
+                  <h3 id="authorityWorkspaceTitle">Authority List</h3>
+                  <p id="authorityWorkspaceDescription" class="muted">Focused management workspace for one authority list.</p>
+                </div>
+                <div class="authority-workspace-actions">
+                  <button id="authorityWorkspaceAddBtn" class="button" type="button">Add New Entry</button>
+                </div>
               </div>
-              <p id="genreError" class="warning managed-message" aria-live="polite"></p>
-              <ul id="genreList" class="location-list managed-list"></ul>
-            </section>
-            <section class="location-manager admin-block managed-panel" data-managed-key="formats">
-              <div class="panel-header compact"><div><h3>Formats</h3><p class="muted">Public-facing format labels shown in records.</p></div><span class="managed-count" id="formatCount"></span></div>
-              <div class="admin-tools managed-add-row">
-                <input id="newFormatInput" placeholder="Add format" />
-                <button id="addFormatBtn" class="button button-secondary" type="button">Add format</button>
+              <div class="authority-workspace-tools">
+                <label>
+                  <span class="sr-only">Search authority entries</span>
+                  <input id="authorityEntrySearchInput" type="search" placeholder="Search preferred terms, alternate terms, or notes" />
+                </label>
+                <label>
+                  <span class="sr-only">Filter authority entries</span>
+                  <select id="authorityStatusFilter">
+                    <option value="all">All entries</option>
+                    <option value="active">Active only</option>
+                    <option value="retired">Retired only</option>
+                    <option value="in-use">In use</option>
+                    <option value="unused">Unused</option>
+                  </select>
+                </label>
+                <label>
+                  <span class="sr-only">Sort authority entries</span>
+                  <select id="authoritySortSelect">
+                    <option value="alpha">Alphabetical</option>
+                    <option value="usage">Most used</option>
+                    <option value="updated">Recently updated</option>
+                  </select>
+                </label>
               </div>
-              <p id="formatError" class="warning managed-message" aria-live="polite"></p>
-              <ul id="formatList" class="location-list managed-list"></ul>
-            </section>
-            <section class="location-manager admin-block managed-panel" data-managed-key="locations">
-              <div class="panel-header compact"><div><h3>Shelf Locations</h3><p class="muted">Physical shelving and collection locations.</p></div><span class="managed-count" id="locationCount"></span></div>
-              <div class="admin-tools managed-add-row">
-                <input id="newLocationInput" placeholder="Add shelf location" />
-                <button id="addLocationBtn" class="button button-secondary" type="button">Add location</button>
+              <p id="authorityWorkspaceStatus" class="managed-message muted" aria-live="polite"></p>
+              <div class="authority-table-wrap">
+                <table class="authority-table">
+                  <thead>
+                    <tr>
+                      <th>Preferred Term</th>
+                      <th>Alternate Terms</th>
+                      <th>In Use By</th>
+                      <th>Status</th>
+                      <th>Updated</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="authorityEntriesBody"></tbody>
+                </table>
               </div>
-              <p id="locationError" class="warning managed-message" aria-live="polite"></p>
-              <ul id="locationList" class="location-list managed-list"></ul>
-            </section>
-            <section class="location-manager admin-block managed-panel" data-managed-key="curatedShelves">
-              <div class="panel-header compact"><div><h3>Curated Shelves</h3><p class="muted">Discovery groupings for featured collections.</p></div><span class="managed-count" id="curatedShelfCount"></span></div>
-              <div class="admin-tools managed-add-row">
-                <input id="newCuratedShelfInput" placeholder="Add curated shelf" />
-                <button id="addCuratedShelfBtn" class="button button-secondary" type="button">Add curated shelf</button>
-              </div>
-              <p id="curatedShelfError" class="warning managed-message" aria-live="polite"></p>
-              <ul id="curatedShelfList" class="location-list managed-list"></ul>
-            </section>
-            <section class="location-manager admin-block managed-panel" data-managed-key="bindings">
-              <div class="panel-header compact"><div><h3>Bindings</h3><p class="muted">Physical format details for copies and holdings.</p></div><span class="managed-count" id="bindingCount"></span></div>
-              <div class="admin-tools managed-add-row">
-                <input id="newBindingInput" placeholder="Add binding" />
-                <button id="addBindingBtn" class="button button-secondary" type="button">Add binding</button>
-              </div>
-              <p id="bindingError" class="warning managed-message" aria-live="polite"></p>
-              <ul id="bindingList" class="location-list managed-list"></ul>
             </section>
           </div>
         </section>
+
+        <div id="authorityEntryModal" class="modal hidden" aria-hidden="true">
+          <div class="modal-content authority-modal-content">
+            <div class="record-details-header">
+              <div>
+                <p class="eyebrow">Authority entry</p>
+                <h3 id="authorityModalTitle">Add Authority Entry</h3>
+                <p id="authorityModalSubtitle" class="muted">Create or revise a standard entry.</p>
+              </div>
+              <button id="closeAuthorityModalBtn" class="button button-secondary" type="button">Close</button>
+            </div>
+            <form id="authorityEntryForm" class="authority-entry-form">
+              <input id="authorityEntryId" type="hidden" />
+              <div class="authority-entry-grid">
+                <label>
+                  <span>Authority List</span>
+                  <select id="authorityCategorySelect"></select>
+                </label>
+                <label>
+                  <span>Preferred Term</span>
+                  <input id="authorityPreferredLabel" required placeholder="Science Fiction" />
+                </label>
+                <label>
+                  <span>Public Display Label</span>
+                  <input id="authorityDisplayLabel" placeholder="Optional display wording" />
+                </label>
+                <label>
+                  <span>Status</span>
+                  <select id="authorityEntryStatus">
+                    <option value="active">Active</option>
+                    <option value="retired">Retired</option>
+                  </select>
+                </label>
+                <label class="form-grid-span">
+                  <span>Alternate Terms</span>
+                  <input id="authorityAltLabels" placeholder="Sci-Fi, SF" />
+                </label>
+                <label class="form-grid-span">
+                  <span>Internal Notes</span>
+                  <textarea id="authorityEntryNotes" rows="4" placeholder="Cataloging guidance, scope notes, local reminders"></textarea>
+                </label>
+                <label>
+                  <span>Sort Order</span>
+                  <input id="authoritySortOrder" type="number" step="1" placeholder="Optional" />
+                </label>
+                <label>
+                  <span>Merge Into Another Entry</span>
+                  <select id="authorityMergeTarget"><option value="">Do not merge</option></select>
+                </label>
+              </div>
+              <div id="authorityUsagePreview" class="authority-usage-preview empty-state">Usage preview will appear here for entries already used in records.</div>
+              <p id="authorityModalMessage" class="managed-message" aria-live="polite"></p>
+              <div class="actions authority-modal-actions">
+                <button class="button" type="submit">Save Entry</button>
+                <button id="authorityRetireBtn" class="button button-secondary" type="button">Retire Entry</button>
+                <button id="authorityDeleteBtn" class="button button-secondary" type="button">Delete Entry</button>
+              </div>
+            </form>
+          </div>
+        </div>
         </div>
       </section>
     </main>
