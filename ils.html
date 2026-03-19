@@ -156,8 +156,8 @@
                         </label>
                         <button id="loadCheckoutPatronBtn" class="button button-primary" type="button">Load Patron</button>
                       </div>
-                      <p id="checkOutPatronPreview" class="status-message">Scan a patron card to begin checkout.</p>
-                      <div id="checkoutPatronCard" class="checkout-patron-card empty-state">Scan a patron card to begin checkout.</div>
+                      <p id="checkOutPatronPreview" class="status-message hidden"></p>
+                      <div id="checkoutPatronCard" class="checkout-patron-card empty-state">Ready for patron details.</div>
                     </section>
 
                     <section class="card-like circulation-workflow-card">
@@ -177,7 +177,7 @@
                         <div class="panel-header compact"><strong>Queued items</strong><span class="muted">Review before finalizing checkout.</span></div>
                         <ul id="checkOutQueue" class="location-list"></ul>
                       </div>
-                      <div id="checkoutPatronItems" class="card-like checkout-context-panel empty-state">No patron loaded yet.</div>
+                      <div id="checkoutPatronItems" class="card-like checkout-context-panel empty-state"></div>
                       <button class="button button-primary" type="submit">Check Out All Scanned Items</button>
                       <div id="circulationMessage" class="status-message circulation-message-panel" aria-live="polite"></div>
                     </section>
@@ -187,8 +187,11 @@
                 <aside class="circulation-checkout-sidebar">
                   <section class="circulation-receipt card-like">
                     <div class="receipt-header">
-                      <h4>Checkout receipt</h4>
-                      <p class="muted">Summary for the latest completed patron transaction.</p>
+                      <div>
+                        <h4>Checkout receipt</h4>
+                        <p class="muted">Summary for the latest completed patron transaction.</p>
+                      </div>
+                      <button id="printCheckoutReceiptBtn" class="button button-secondary" type="button">Print Receipt</button>
                     </div>
                     <div id="checkoutReceiptEmpty" class="muted">No checkout completed yet.</div>
                     <div id="checkoutReceipt" class="hidden"></div>
@@ -307,6 +310,39 @@
           </table>
         </section>
 
+        <section class="admin-tab-panel hidden" data-ils-panel="receipt-settings">
+          <div class="card-like receipt-settings-card">
+            <div class="panel-header compact">
+              <div>
+                <h2>Receipt Settings</h2>
+                <p class="muted">Manage thermal receipt branding, contact details, and the message shown at the end of checkout slips.</p>
+              </div>
+            </div>
+            <form id="receiptSettingsForm" class="simple-form receipt-settings-form">
+              <label class="checkbox-row"><input id="receiptLogoEnabled" type="checkbox" /> <span>Show logo at top of receipt</span></label>
+              <label>
+                <span>Logo image URL</span>
+                <input id="receiptLogoUrl" type="url" placeholder="https://example.org/logo.png" />
+              </label>
+              <label>
+                <span>Or upload logo</span>
+                <input id="receiptLogoUpload" type="file" accept="image/*" />
+              </label>
+              <label class="form-grid-span">
+                <span>Library contact information</span>
+                <textarea id="receiptContactInfo" rows="4" placeholder="Library name&#10;Street address&#10;Phone&#10;Email or website"></textarea>
+              </label>
+              <label class="form-grid-span">
+                <span>Receipt end message</span>
+                <textarea id="receiptFooterMessage" rows="4" placeholder="Thank you for visiting the library."></textarea>
+              </label>
+              <div class="row-actions">
+                <button class="button button-primary" type="submit">Save Receipt Settings</button>
+              </div>
+              <p id="receiptSettingsMessage" class="status-message" aria-live="polite"></p>
+            </form>
+          </div>
+        </section>
 
         <section class="admin-tab-panel hidden" data-ils-panel="ill-outgoing">
           <div class="ill-workspace-grid">

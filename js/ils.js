@@ -15,6 +15,7 @@ const state = {
   queuedCheckoutItems: [],
   checkoutPatronId: "",
   lastCheckInResult: null,
+  lastCheckoutReceipt: null,
   activeWorkspaceRecordId: "",
   editingPatronId: "",
   selectedPatronId: "",
@@ -227,6 +228,14 @@ const els = {
   checkoutStatusAfter: $("#checkoutStatusAfter"),
   checkoutReceipt: $("#checkoutReceipt"),
   checkoutReceiptEmpty: $("#checkoutReceiptEmpty"),
+  printCheckoutReceiptBtn: $("#printCheckoutReceiptBtn"),
+  receiptSettingsForm: $("#receiptSettingsForm"),
+  receiptLogoEnabled: $("#receiptLogoEnabled"),
+  receiptLogoUrl: $("#receiptLogoUrl"),
+  receiptLogoUpload: $("#receiptLogoUpload"),
+  receiptContactInfo: $("#receiptContactInfo"),
+  receiptFooterMessage: $("#receiptFooterMessage"),
+  receiptSettingsMessage: $("#receiptSettingsMessage"),
   recentCheckoutTransactions: $("#recentCheckoutTransactions"),
   recentCheckinTransactions: $("#recentCheckinTransactions"),
   workspaceLookupInput: $("#workspaceLookupInput"),
@@ -331,7 +340,7 @@ const ILS_SECTIONS = {
   patrons: { label: "Patrons", description: "Review patron accounts, contact data, and circulation activity.", tabs: [{ id: "patrons", label: "Accounts" }] },
   ill: { label: "Interlibrary Loan", description: "Manage outgoing loans, incoming patron requests, temporary ILL items, and monthly ILL activity.", tabs: [{ id: "ill-outgoing", label: "Outgoing ILL" }, { id: "ill-incoming", label: "Incoming Requests" }, { id: "ill-reports", label: "ILL Reports" }] },
   register: { label: "Daily Register", description: "Log staff-side cash intake, service transactions, and daily drawer totals.", tabs: [{ id: "register", label: "Register" }] },
-  administration: { label: "Administration", description: "System settings, circulation rules, and authority control for staff administration.", tabs: [{ id: "circulation-rules", label: "Circulation Rules" }, { id: "utilities", label: "Authority Control" }] },
+  administration: { label: "Administration", description: "System settings, circulation rules, and authority control for staff administration.", tabs: [{ id: "circulation-rules", label: "Circulation Rules" }, { id: "receipt-settings", label: "Receipt Settings" }, { id: "utilities", label: "Authority Control" }] },
   reports: { label: "Reports", description: "Browse report categories and open one focused reporting workspace at a time.", tabs: [{ id: "stats", label: "Reports Home" }] },
 };
 
@@ -1911,6 +1920,52 @@ function updateCheckoutStatus(before = "Awaiting item scan.", after = "Item will
   if (els.checkoutStatusAfter) els.checkoutStatusAfter.textContent = after;
 }
 
+function getReceiptSettings() {
+  const receiptSettings = state.settings.receiptSettings && typeof state.settings.receiptSettings === "object" ? state.settings.receiptSettings : {};
+  return {
+    showLogo: Boolean(receiptSettings.showLogo),
+    logoUrl: String(receiptSettings.logoUrl || "").trim(),
+    contactInfo: String(receiptSettings.contactInfo || "").trim(),
+    footerMessage: String(receiptSettings.footerMessage || "").trim(),
+  };
+}
+
+function saveReceiptSettings(nextSettings = {}) {
+  state.settings.receiptSettings = { ...getReceiptSettings(), ...nextSettings };
+  saveSettings(state.settings);
+}
+
+function formatReceiptMultiline(text = "") {
+  return escapeHtml(String(text || "").trim()).replace(/\n/g, "<br>");
+}
+
+function buildReceiptMarkup(summary, { printMode = false } = {}) {
+  const settings = getReceiptSettings();
+  return `
+    <article class="receipt-card${printMode ? " receipt-card-print" : ""}">
+      ${settings.showLogo && settings.logoUrl ? `<div class="receipt-logo-wrap"><img class="receipt-logo" src="${escapeHtml(settings.logoUrl)}" alt="Library logo" /></div>` : ""}
+      ${settings.contactInfo ? `<div class="receipt-contact">${formatReceiptMultiline(settings.contactInfo)}</div>` : ""}
+      <div class="receipt-summary-grid">
+        <div><span class="receipt-label">Patron</span><strong>${escapeHtml(summary.patron)}</strong></div>
+        <div><span class="receipt-label">Checked out</span><strong>${escapeHtml(summary.checkedOutAt)}</strong></div>
+        <div><span class="receipt-label">Items this checkout</span><strong>${summary.items.length}</strong></div>
+        <div><span class="receipt-label">Items currently out</span><strong>${summary.itemsCurrentlyOut}</strong></div>
+      </div>
+      <div class="receipt-due-callout">${escapeHtml(summary.dueHeadline)}</div>
+      <ul class="receipt-list">
+        ${summary.items.map((item) => `
+          <li class="receipt-line-item">
+            <div class="receipt-line-copy">
+              <strong>${escapeHtml(item.title)}</strong>
+              <span>${escapeHtml(item.author || "Author unavailable")}</span>
+            </div>
+            <div class="receipt-line-due">${escapeHtml(item.dueDateLabel)}</div>
+          </li>`).join("")}
+      </ul>
+      ${settings.footerMessage ? `<div class="receipt-footer-message">${formatReceiptMultiline(settings.footerMessage)}</div>` : ""}
+    </article>`;
+}
+
 function renderCheckoutReceipt(summary = null) {
   if (!els.checkoutReceipt || !els.checkoutReceiptEmpty) return;
   if (!summary) {
@@ -1921,7 +1976,35 @@ function renderCheckoutReceipt(summary = null) {
   }
   els.checkoutReceiptEmpty.classList.add("hidden");
   els.checkoutReceipt.classList.remove("hidden");
-  els.checkoutReceipt.innerHTML = `<div class="receipt-card"><strong>${summary.patron}</strong><p class="muted">${summary.message}</p><ul class="receipt-list">${summary.items.map((item) => `<li><span>${item.title}</span><span>${item.dueDate}</span></li>`).join("")}</ul></div>`;
+  els.checkoutReceipt.innerHTML = buildReceiptMarkup(summary);
+}
+
+function printCheckoutReceipt() {
+  if (!state.lastCheckoutReceipt) {
+    setCirculationMessage("Complete a checkout before printing a receipt.", "error");
+    return;
+  }
+  const printWindow = window.open("", "checkout-receipt-print", "width=420,height=720");
+  if (!printWindow) {
+    setCirculationMessage("Unable to open the print dialog. Check browser pop-up settings.", "error");
+    return;
+  }
+  printWindow.document.write(`<!doctype html><html><head><title>Checkout Receipt</title><style>
+    body{margin:0;background:#fff;color:#000;font-family:Arial,sans-serif;}
+    .receipt-card{width:80mm;box-sizing:border-box;margin:0 auto;padding:12px 14px;display:grid;gap:10px;}
+    .receipt-logo-wrap{text-align:center;}.receipt-logo{max-width:100%;max-height:72px;object-fit:contain;}
+    .receipt-contact,.receipt-footer-message{text-align:center;font-size:12px;line-height:1.4;word-break:break-word;}
+    .receipt-summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;}
+    .receipt-label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px;}
+    .receipt-due-callout,.receipt-line-due{border:2px solid #000;font-weight:700;text-align:center;}
+    .receipt-due-callout{padding:8px;font-size:16px;}
+    .receipt-list{list-style:none;padding:0;margin:0;display:grid;gap:8px;}
+    .receipt-line-item{display:grid;gap:4px;padding-bottom:8px;border-bottom:1px dashed #000;}
+    .receipt-line-copy strong,.receipt-line-copy span{display:block;word-break:break-word;}
+    .receipt-line-copy span{font-size:12px;}.receipt-line-due{padding:5px 6px;font-size:15px;}
+    @page{size:80mm auto;margin:4mm;}
+  </style></head><body>${buildReceiptMarkup(state.lastCheckoutReceipt, { printMode: true })}<script>window.onload=()=>{window.print();window.close();};</script></body></html>`);
+  printWindow.document.close();
 }
 
 const DEFAULT_MATERIAL_TYPES = ["Fiction", "Young Adult", "Biography"];
@@ -1956,6 +2039,40 @@ function saveCirculationRules(rules) {
     .filter((rule) => rule.materialType && Number.isFinite(rule.loanDays) && rule.loanDays > 0)
     .sort((a, b) => a.materialType.localeCompare(b.materialType));
   saveSettings(state.settings);
+}
+
+function renderReceiptSettings() {
+  const settings = getReceiptSettings();
+  if (els.receiptLogoEnabled) els.receiptLogoEnabled.checked = settings.showLogo;
+  if (els.receiptLogoUrl) els.receiptLogoUrl.value = settings.logoUrl;
+  if (els.receiptContactInfo) els.receiptContactInfo.value = settings.contactInfo;
+  if (els.receiptFooterMessage) els.receiptFooterMessage.value = settings.footerMessage;
+}
+
+function saveReceiptSettingsFromForm(event) {
+  event.preventDefault();
+  saveReceiptSettings({
+    showLogo: Boolean(els.receiptLogoEnabled?.checked),
+    logoUrl: String(els.receiptLogoUrl?.value || "").trim(),
+    contactInfo: String(els.receiptContactInfo?.value || "").trim(),
+    footerMessage: String(els.receiptFooterMessage?.value || "").trim(),
+  });
+  renderReceiptSettings();
+  if (state.lastCheckoutReceipt) renderCheckoutReceipt(state.lastCheckoutReceipt);
+  if (els.receiptSettingsMessage) {
+    els.receiptSettingsMessage.textContent = "Receipt settings saved.";
+    els.receiptSettingsMessage.className = "status-message is-success";
+  }
+}
+
+function handleReceiptLogoUpload(event) {
+  const [file] = event.target.files || [];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    if (els.receiptLogoUrl) els.receiptLogoUrl.value = String(reader.result || "");
+  };
+  reader.readAsDataURL(file);
 }
 
 function getRuleForMaterialType(materialType) {
@@ -2007,17 +2124,13 @@ function getPatronWarnings(patron, summary = getPatronAccountSummary(patron)) {
 function renderCheckoutQueue() {
   if (!els.checkOutQueue) return;
   els.checkOutQueue.innerHTML = '';
-  if (!state.queuedCheckoutItems.length) {
-    els.checkOutQueue.innerHTML = '<li class="empty-state compact-empty-state">No items queued yet. Load a patron, then scan items to build a checkout queue.</li>';
-    return;
-  }
+  if (!state.queuedCheckoutItems.length) return;
 
   state.queuedCheckoutItems.forEach((entry) => {
     const li = document.createElement('li');
     const dueDate = entry.overrideDueDate || entry.autoDueDate || '';
-    const typeText = entry.materialType ? ` (${entry.materialType})` : '';
     li.classList.add('checkout-queue-item');
-    li.innerHTML = `<div class="checkout-queue-main"><img class="checkout-thumb" src="${entry.coverUrl || ''}" alt="" /><div class="checkout-queue-copy"><span>${entry.materialNumber}: ${entry.title}${typeText}</span><span class="muted">${dueDate ? `Due ${dueDate}` : 'No due date available'}</span></div><label class="checkout-inline-due-date"><span>Due date override</span><input type="date" value="${dueDate}" /></label></div><div class="checkout-queue-actions"><button class="button button-secondary" type="button">Remove</button></div>`;
+    li.innerHTML = `<div class="checkout-queue-main"><img class="checkout-thumb" src="${entry.coverUrl || ''}" alt="" /><div class="checkout-queue-copy"><strong>${entry.title}</strong><span class="muted">${entry.materialNumber}${entry.materialType ? ` · ${entry.materialType}` : ''}</span><span class="checkout-due-emphasis">${dueDate ? `Due ${dueDate}` : 'No due date available'}</span></div><label class="checkout-inline-due-date"><span>Due date override</span><input type="date" value="${dueDate}" /></label></div><div class="checkout-queue-actions"><button class="button button-secondary" type="button">Remove</button></div>`;
     const img = li.querySelector('img');
     if (!entry.coverUrl) img.classList.add('hidden');
     li.querySelector('input').addEventListener('input', (event) => {
@@ -2060,10 +2173,10 @@ function renderCheckoutPatronPreview(cardNumber = els.checkOutCardNumber?.value 
   }
   els.checkOutPatronPreview.textContent = cardNumber.trim()
     ? (patron ? `Ready to load ${patron.name} · Card #${patron.cardNumber}` : 'No patron found for that card number.')
-    : 'Scan a patron card to begin checkout.';
-  els.checkOutPatronPreview.className = 'status-message';
+    : '';
+  els.checkOutPatronPreview.className = `status-message${cardNumber.trim() ? '' : ' hidden'}`;
   if (cardNumber.trim() && !patron) els.checkOutPatronPreview.classList.add('is-error');
-  els.checkOutPatronPreview.classList.remove('hidden');
+  if (cardNumber.trim()) els.checkOutPatronPreview.classList.remove('hidden');
 }
 
 function renderCheckoutPatronContext() {
@@ -2071,24 +2184,18 @@ function renderCheckoutPatronContext() {
   if (!els.checkoutPatronCard || !els.checkoutPatronItems) return;
   if (!patron) {
     els.checkoutPatronCard.className = 'checkout-patron-card empty-state';
-    els.checkoutPatronCard.innerHTML = 'Scan a patron card to begin checkout.';
+    els.checkoutPatronCard.innerHTML = 'Ready for patron details.';
     els.checkoutPatronItems.className = 'card-like checkout-context-panel empty-state';
-    els.checkoutPatronItems.innerHTML = 'No patron loaded yet.';
+    els.checkoutPatronItems.innerHTML = '';
     renderCheckoutGateState();
     return;
   }
   const summary = getPatronAccountSummary(patron);
   const warnings = getPatronWarnings(patron, summary);
   els.checkoutPatronCard.className = 'checkout-patron-card';
-  const barcodeDigits = String(patron.cardNumber || '').replace(/\D/g, '') || '000000000000';
-  const barcodeMarkup = barcodeDigits.split('').map((digit, index) => {
-    const height = 26 + (Number(digit) % 3) * 8;
-    return `<span class="checkout-card-bar" style="height:${height}px" aria-hidden="true"></span>${index < barcodeDigits.length - 1 ? '<span class="checkout-card-bar checkout-card-bar-thin" aria-hidden="true"></span>' : ''}`;
-  }).join('');
   els.checkoutPatronCard.innerHTML = `
     <div class="checkout-card-chip-row"><span class="checkout-card-chip checkout-card-chip-status">${escapeHtml(patron.status || 'Active')}</span></div>
     <div class="checkout-card-identity"><div><p class="checkout-card-label">Patron</p><h4>${escapeHtml(patron.name || 'Unnamed patron')}</h4></div><div><p class="checkout-card-label">Card number</p><strong>${escapeHtml(patron.cardNumber || 'Not assigned')}</strong></div></div>
-    <div class="checkout-card-barcode"><div class="checkout-card-barcode-bars">${barcodeMarkup}</div><strong>${escapeHtml(patron.cardNumber || 'Not assigned')}</strong></div>
     <div class="checkout-card-grid">
       <div><span>Expiration</span><strong>${escapeHtml(patron.expirationDate || 'Not set')}</strong></div>
       <div><span>Items out</span><strong>${summary.loans.length}</strong></div>
@@ -2107,8 +2214,8 @@ function renderCheckoutPatronContext() {
     <div class="panel-header compact"><div><h4>Items currently out</h4><p class="muted">Current account context for renewal or review.</p></div></div>
     ${summary.loans.length ? `<ul class="patron-activity-list checkout-current-items-list">${summary.loans.map(({ record, holding }) => {
       const overdue = holding.dueDate && holding.dueDate < todayIso();
-      return `<li><div><strong>${escapeHtml(record.title || 'Untitled')}</strong><span>${escapeHtml(holding.materialNumbers?.[0] || 'No barcode')}</span></div><div class="checkout-current-item-meta"><span>${escapeHtml(holding.dueDate ? `Due ${holding.dueDate}` : 'No due date')}</span>${overdue ? '<span class="badge badge-danger">Overdue</span>' : ''}<button class="button button-secondary checkout-renew-btn" type="button" data-record-id="${escapeHtml(record.id)}" data-holding-id="${escapeHtml(holding.id)}">Renew</button></div></li>`;
-    }).join('')}</ul>` : '<div class="empty-state compact-empty-state">No items currently checked out to this patron.</div>'}`;
+      return `<li class="checkout-queue-item"><div class="checkout-queue-main"><img class="checkout-thumb ${record.coverUrl ? '' : 'hidden'}" src="${record.coverUrl || ''}" alt="" /><div class="checkout-queue-copy"><strong>${escapeHtml(record.title || 'Untitled')}</strong><span class="muted">${escapeHtml(holding.materialNumbers?.[0] || 'No barcode')}</span><span class="checkout-due-emphasis">${escapeHtml(holding.dueDate ? `Due ${holding.dueDate}` : 'No due date')}</span></div></div><div class="checkout-current-item-meta">${overdue ? '<span class="badge badge-danger">Overdue</span>' : ''}<button class="button button-secondary checkout-renew-btn" type="button" data-record-id="${escapeHtml(record.id)}" data-holding-id="${escapeHtml(holding.id)}">Renew</button></div></li>`;
+    }).join('')}</ul>` : ''}`;
   els.checkoutPatronItems.querySelectorAll('.checkout-renew-btn').forEach((button) => {
     button.addEventListener('click', () => renewPatronLoan(button.dataset.recordId, button.dataset.holdingId));
   });
@@ -2381,6 +2488,7 @@ function checkOutRecord(event) {
     return;
   }
 
+  const checkoutTimestamp = new Date();
   const receiptItems = [];
   state.records = state.records.map((record) => {
     const queuedForRecord = state.queuedCheckoutItems.filter((entry) => entry.recordId === record.id);
@@ -2389,7 +2497,11 @@ function checkOutRecord(event) {
       const queued = queuedForRecord.find((entry) => entry.holdingId === holding.id);
       if (!queued) return holding;
       const assignedDueDate = queued.overrideDueDate || queued.autoDueDate;
-      receiptItems.push({ title: record.title || queued.materialNumber, dueDate: `Due ${assignedDueDate}` });
+      receiptItems.push({
+        title: record.title || queued.materialNumber,
+        author: record.creator || record.statementOfResponsibility || "",
+        dueDateLabel: `DUE ${assignedDueDate}`,
+      });
       return { ...holding, status: 'On Loan', checkedOutTo: patron.id, checkedOutToName: patron.name, checkedOutAt: new Date().toISOString(), dueDate: assignedDueDate };
     });
     return normalizeRecord({
@@ -2406,9 +2518,16 @@ function checkOutRecord(event) {
   });
   saveHolds(updatedHolds);
   saveRecords(state.records);
-  const finalDueDate = receiptItems[0]?.dueDate.replace('Due ', '') || '';
-  renderCheckoutReceipt({ patron: patron.name, message: `Checked out on ${new Date().toLocaleString()}`, items: receiptItems });
-  setCirculationMessage(`Checked out to ${patron.name} – Due ${finalDueDate}`, 'success');
+  const headlineDueDate = receiptItems.map((item) => item.dueDateLabel.replace('DUE ', '')).sort()[0] || '';
+  state.lastCheckoutReceipt = {
+    patron: patron.name,
+    checkedOutAt: checkoutTimestamp.toLocaleString(),
+    itemsCurrentlyOut: getPatronLoanEntries(patron.id).length,
+    dueHeadline: headlineDueDate ? `DUE: ${headlineDueDate}` : 'DUE DATE REQUIRES STAFF REVIEW',
+    items: receiptItems,
+  };
+  renderCheckoutReceipt(state.lastCheckoutReceipt);
+  setCirculationMessage(`Checked out to ${patron.name} – Due ${headlineDueDate}`, 'success');
   updateCheckoutStatus('Status before: Available/Checked In', `Status after: On Loan to ${patron.name}`);
   clearCheckoutSession({ silent: true, keepReceipt: true });
   if (els.circulationMessage) els.circulationMessage.classList.add('is-prominent');
@@ -4983,6 +5102,9 @@ function bindEvents() {
   if (els.queueCheckoutItemBtn) els.queueCheckoutItemBtn.addEventListener("click", queueCheckoutItem);
   if (els.loadCheckoutPatronBtn) els.loadCheckoutPatronBtn.addEventListener("click", () => loadCheckoutPatron());
   if (els.clearCheckoutPatronBtn) els.clearCheckoutPatronBtn.addEventListener("click", () => clearCheckoutSession());
+  if (els.printCheckoutReceiptBtn) els.printCheckoutReceiptBtn.addEventListener("click", printCheckoutReceipt);
+  if (els.receiptSettingsForm) els.receiptSettingsForm.addEventListener("submit", saveReceiptSettingsFromForm);
+  if (els.receiptLogoUpload) els.receiptLogoUpload.addEventListener("change", handleReceiptLogoUpload);
   if (els.checkOutCardNumber) {
     els.checkOutCardNumber.addEventListener("input", () => renderCheckoutPatronPreview(els.checkOutCardNumber.value));
     els.checkOutCardNumber.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); loadCheckoutPatron(); } });
@@ -5046,6 +5168,7 @@ function render() {
   renderRecentTransactions(els.recentCheckoutTransactions, 'checkout');
   renderRecentTransactions(els.recentCheckinTransactions, 'checkin');
   renderCirculationRulesTable();
+  renderReceiptSettings();
   renderHoldsTable();
   renderStatsPanel();
   renderDashboard();
@@ -5063,6 +5186,7 @@ function init() {
 
   switchIlsSection("dashboard");
   switchCirculationTab("checkout");
+  renderReceiptSettings();
   renderCheckoutReceipt(null);
   updateCheckoutStatus('Awaiting patron load.', 'Items will display updated status here.');
   renderCheckoutGateState();
