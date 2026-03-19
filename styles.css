@@ -731,11 +731,6 @@ label > span, .status-label { display:block; font-size:.83rem; font-weight:700; 
 .checkout-card-chip-row { display:flex; justify-content:space-between; gap:.5rem; flex-wrap:wrap; }
 .checkout-card-chip { display:inline-flex; padding:.3rem .7rem; border-radius:999px; background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.25); font-size:.78rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; }
 .checkout-card-chip-row { justify-content:flex-end; }
-.checkout-card-barcode { display:grid; gap:.45rem; padding:.8rem .9rem; border-radius:14px; background:rgba(255,255,255,.12); }
-.checkout-card-barcode strong { letter-spacing:.22em; font-size:.95rem; }
-.checkout-card-barcode-bars { display:flex; align-items:flex-end; gap:2px; min-height:42px; }
-.checkout-card-bar { width:3px; border-radius:999px; background:rgba(255,255,255,.96); }
-.checkout-card-bar-thin { width:1px; opacity:.72; }
 .checkout-card-identity { display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; align-items:end; }
 .checkout-card-label, .checkout-patron-card span { color:rgba(255,255,255,.82); }
 .checkout-card-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:.75rem; }
@@ -761,6 +756,10 @@ label > span, .status-label { display:block; font-size:.83rem; font-weight:700; 
 .checkout-inline-due-date input { min-width:0; padding:.45rem .55rem; font-size:.86rem; }
 .checkout-queue-actions { flex:0 0 auto; }
 .checkout-thumb { width: 42px; height: 58px; object-fit: contain; border-radius: 6px; background:#f3ecfb; border:1px solid var(--border); flex:0 0 auto; }
+.checkout-due-emphasis { font-weight:800; color:#5b2e8d; }
+.receipt-settings-card, .receipt-settings-form { display:grid; gap:1rem; }
+.receipt-settings-form { grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); }
+.checkbox-row { display:flex; align-items:center; gap:.65rem; }
 .recent-transactions-panel { display:grid; gap:.75rem; }
 .recent-transactions-list ul { list-style:none; margin:0; padding:0; display:grid; gap:.7rem; }
 .recent-transactions-list li { display:flex; justify-content:space-between; gap:.8rem; align-items:flex-start; padding:.85rem; border:1px solid var(--border); border-radius:14px; background:#fff; }
@@ -785,11 +784,22 @@ label > span, .status-label { display:block; font-size:.83rem; font-weight:700; 
 .status-message.is-success { color: #176a37; background: #eefaf2; border-color: #bfe7ca; }
 .status-message.is-error, .warning { color: var(--danger); }
 .status-message.is-prominent { font-size: 1.2rem; font-weight: 800; }
+.receipt-header { display:flex; justify-content:space-between; gap:.75rem; align-items:flex-start; }
 .receipt-header h4 { margin:.1rem 0; }
 #checkoutReceipt { display:grid; gap:.8rem; }
-.receipt-card { border:1px dashed var(--border); border-radius:14px; padding:.85rem; background:#fff; }
+.receipt-card { border:1px dashed var(--border); border-radius:14px; padding:1rem; background:#fff; display:grid; gap:.85rem; }
+.receipt-logo-wrap { text-align:center; }
+.receipt-logo { max-width:100%; max-height:84px; object-fit:contain; }
+.receipt-contact, .receipt-footer-message { text-align:center; white-space:normal; word-break:break-word; line-height:1.45; }
+.receipt-summary-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:.7rem; }
+.receipt-summary-grid > div { display:grid; gap:.15rem; }
+.receipt-label { font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+.receipt-due-callout { border:2px solid #5b2e8d; border-radius:12px; padding:.8rem; text-align:center; font-size:1.2rem; font-weight:900; color:#5b2e8d; background:#f7f0ff; }
 .receipt-list { list-style:none; margin:0; padding:0; display:grid; gap:.45rem; }
-.receipt-list li { display:flex; justify-content:space-between; gap:.75rem; font-size:.95rem; }
+.receipt-line-item { display:grid; gap:.45rem; padding-bottom:.65rem; border-bottom:1px dashed var(--border); }
+.receipt-line-copy { display:grid; gap:.2rem; min-width:0; }
+.receipt-line-copy strong, .receipt-line-copy span { overflow-wrap:anywhere; }
+.receipt-line-due { border:2px solid #5b2e8d; border-radius:10px; padding:.5rem .65rem; text-align:center; font-size:1rem; font-weight:900; color:#5b2e8d; background:#f7f0ff; }
 .record-editor-shell { display:grid; gap:1rem; }
 .record-editor-header { display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; flex-wrap:wrap; }
 .cataloging-workspace-form { display:grid; gap:1rem; }
