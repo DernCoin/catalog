@@ -1969,9 +1969,7 @@ function getAutoDueDate(record) {
 }
 
 function refreshQueuedDueDate() {
-  if (!els.checkOutDueDate) return;
-  const suggestions = state.queuedCheckoutItems.map((entry) => entry.autoDueDate).filter(Boolean).sort();
-  if (!els.checkOutDueDate.value) els.checkOutDueDate.value = suggestions[0] || "";
+  return state.queuedCheckoutItems.map((entry) => entry.overrideDueDate || entry.autoDueDate).filter(Boolean).sort()[0] || "";
 }
 
 
@@ -2016,12 +2014,16 @@ function renderCheckoutQueue() {
 
   state.queuedCheckoutItems.forEach((entry) => {
     const li = document.createElement('li');
-    const dueText = entry.autoDueDate ? ` · Auto due ${entry.autoDueDate}` : '';
+    const dueDate = entry.overrideDueDate || entry.autoDueDate || '';
     const typeText = entry.materialType ? ` (${entry.materialType})` : '';
     li.classList.add('checkout-queue-item');
-    li.innerHTML = `<div class="checkout-queue-main"><img class="checkout-thumb" src="${entry.coverUrl || ''}" alt="" /><span>${entry.materialNumber}: ${entry.title}${typeText}${dueText}</span></div> <button class="button button-secondary" type="button">Remove</button>`;
+    li.innerHTML = `<div class="checkout-queue-main"><img class="checkout-thumb" src="${entry.coverUrl || ''}" alt="" /><div class="checkout-queue-copy"><span>${entry.materialNumber}: ${entry.title}${typeText}</span><span class="muted">${dueDate ? `Due ${dueDate}` : 'No due date available'}</span></div><label class="checkout-inline-due-date"><span>Due date override</span><input type="date" value="${dueDate}" /></label></div><div class="checkout-queue-actions"><button class="button button-secondary" type="button">Remove</button></div>`;
     const img = li.querySelector('img');
     if (!entry.coverUrl) img.classList.add('hidden');
+    li.querySelector('input').addEventListener('input', (event) => {
+      entry.overrideDueDate = event.target.value;
+      renderCheckoutQueue();
+    });
     li.querySelector('button').addEventListener('click', () => {
       state.queuedCheckoutItems = state.queuedCheckoutItems.filter((item) => item.materialNumber !== entry.materialNumber);
       refreshQueuedDueDate();
@@ -2037,8 +2039,7 @@ function renderCheckoutGateState() {
   const locked = !patron;
   if (els.checkOutMaterialNumber) els.checkOutMaterialNumber.disabled = locked;
   if (els.queueCheckoutItemBtn) els.queueCheckoutItemBtn.disabled = locked;
-  if (els.checkOutDueDate) els.checkOutDueDate.disabled = locked;
-  if (els.checkoutGateBadge) {
+    if (els.checkoutGateBadge) {
     els.checkoutGateBadge.textContent = locked ? 'Patron required' : `Patron loaded: ${patron.name}`;
     els.checkoutGateBadge.className = `circulation-gate-badge ${locked ? 'is-locked' : 'is-ready'}`;
   }
@@ -2053,8 +2054,8 @@ function renderCheckoutPatronPreview(cardNumber = els.checkOutCardNumber?.value 
   if (!els.checkOutPatronPreview) return;
   const patron = findPatronByCardNumber(cardNumber);
   if (getCheckoutPatron() && patron && patron.id === state.checkoutPatronId) {
-    els.checkOutPatronPreview.textContent = `Checkout session loaded for ${patron.name}.`;
-    els.checkOutPatronPreview.className = 'status-message is-success';
+    els.checkOutPatronPreview.textContent = '';
+    els.checkOutPatronPreview.className = 'status-message hidden';
     return;
   }
   els.checkOutPatronPreview.textContent = cardNumber.trim()
@@ -2062,6 +2063,7 @@ function renderCheckoutPatronPreview(cardNumber = els.checkOutCardNumber?.value 
     : 'Scan a patron card to begin checkout.';
   els.checkOutPatronPreview.className = 'status-message';
   if (cardNumber.trim() && !patron) els.checkOutPatronPreview.classList.add('is-error');
+  els.checkOutPatronPreview.classList.remove('hidden');
 }
 
 function renderCheckoutPatronContext() {
@@ -2078,9 +2080,15 @@ function renderCheckoutPatronContext() {
   const summary = getPatronAccountSummary(patron);
   const warnings = getPatronWarnings(patron, summary);
   els.checkoutPatronCard.className = 'checkout-patron-card';
+  const barcodeDigits = String(patron.cardNumber || '').replace(/\D/g, '') || '000000000000';
+  const barcodeMarkup = barcodeDigits.split('').map((digit, index) => {
+    const height = 26 + (Number(digit) % 3) * 8;
+    return `<span class="checkout-card-bar" style="height:${height}px" aria-hidden="true"></span>${index < barcodeDigits.length - 1 ? '<span class="checkout-card-bar checkout-card-bar-thin" aria-hidden="true"></span>' : ''}`;
+  }).join('');
   els.checkoutPatronCard.innerHTML = `
-    <div class="checkout-card-chip-row"><span class="checkout-card-chip">Library Card Loaded</span><span class="checkout-card-chip checkout-card-chip-status">${escapeHtml(patron.status || 'Active')}</span></div>
+    <div class="checkout-card-chip-row"><span class="checkout-card-chip checkout-card-chip-status">${escapeHtml(patron.status || 'Active')}</span></div>
     <div class="checkout-card-identity"><div><p class="checkout-card-label">Patron</p><h4>${escapeHtml(patron.name || 'Unnamed patron')}</h4></div><div><p class="checkout-card-label">Card number</p><strong>${escapeHtml(patron.cardNumber || 'Not assigned')}</strong></div></div>
+    <div class="checkout-card-barcode"><div class="checkout-card-barcode-bars">${barcodeMarkup}</div><strong>${escapeHtml(patron.cardNumber || 'Not assigned')}</strong></div>
     <div class="checkout-card-grid">
       <div><span>Expiration</span><strong>${escapeHtml(patron.expirationDate || 'Not set')}</strong></div>
       <div><span>Items out</span><strong>${summary.loans.length}</strong></div>
@@ -2096,11 +2104,14 @@ function renderCheckoutPatronContext() {
 
   els.checkoutPatronItems.className = 'card-like checkout-context-panel';
   els.checkoutPatronItems.innerHTML = `
-    <div class="panel-header compact"><div><h4>Items currently out</h4><p class="muted">Current account context before scanning more items.</p></div></div>
+    <div class="panel-header compact"><div><h4>Items currently out</h4><p class="muted">Current account context for renewal or review.</p></div></div>
     ${summary.loans.length ? `<ul class="patron-activity-list checkout-current-items-list">${summary.loans.map(({ record, holding }) => {
       const overdue = holding.dueDate && holding.dueDate < todayIso();
-      return `<li><div><strong>${escapeHtml(record.title || 'Untitled')}</strong><span>${escapeHtml(holding.materialNumbers?.[0] || 'No barcode')}</span></div><div class="checkout-current-item-meta"><span>${escapeHtml(holding.dueDate ? `Due ${holding.dueDate}` : 'No due date')}</span>${overdue ? '<span class="badge badge-danger">Overdue</span>' : ''}</div></li>`;
+      return `<li><div><strong>${escapeHtml(record.title || 'Untitled')}</strong><span>${escapeHtml(holding.materialNumbers?.[0] || 'No barcode')}</span></div><div class="checkout-current-item-meta"><span>${escapeHtml(holding.dueDate ? `Due ${holding.dueDate}` : 'No due date')}</span>${overdue ? '<span class="badge badge-danger">Overdue</span>' : ''}<button class="button button-secondary checkout-renew-btn" type="button" data-record-id="${escapeHtml(record.id)}" data-holding-id="${escapeHtml(holding.id)}">Renew</button></div></li>`;
     }).join('')}</ul>` : '<div class="empty-state compact-empty-state">No items currently checked out to this patron.</div>'}`;
+  els.checkoutPatronItems.querySelectorAll('.checkout-renew-btn').forEach((button) => {
+    button.addEventListener('click', () => renewPatronLoan(button.dataset.recordId, button.dataset.holdingId));
+  });
   renderCheckoutGateState();
 }
 
@@ -2290,12 +2301,40 @@ function queueCheckoutItem() {
     setCirculationMessage(`Item ${materialNumber} is already queued.`, 'error');
     return;
   }
-  state.queuedCheckoutItems.push({ recordId: record.id, holdingId: holding.id, materialNumber, title: record.title, materialType: record.materialType || '', autoDueDate: getAutoDueDate(record), coverUrl: record.coverUrl || '' });
+  state.queuedCheckoutItems.push({ recordId: record.id, holdingId: holding.id, materialNumber, title: record.title, materialType: record.materialType || '', autoDueDate: getAutoDueDate(record), overrideDueDate: getAutoDueDate(record), coverUrl: record.coverUrl || '' });
   els.checkOutMaterialNumber.value = '';
   refreshQueuedDueDate();
   const queuedRule = getRuleForMaterialType(record.materialType);
   setCirculationMessage(queuedRule ? `Queued ${record.title}. ${record.materialType} items default to ${queuedRule.loanDays} day loans.` : `Queued ${record.title}. No circulation rule is set for ${record.materialType || 'this material type'}.`, 'info');
   renderCheckoutQueue();
+}
+
+
+function renewPatronLoan(recordId, holdingId) {
+  const idx = state.records.findIndex((entry) => entry.id === recordId);
+  if (idx < 0) return;
+  const record = state.records[idx];
+  const rule = getRuleForMaterialType(record.materialType);
+  if (!rule?.loanDays) {
+    setCirculationMessage(`No circulation rule is set for ${record.materialType || 'this material type'}.`, 'error');
+    return;
+  }
+  let renewedDueDate = '';
+  const updatedHoldings = (record.holdings || []).map((holding) => {
+    if (holding.id !== holdingId) return holding;
+    const baseline = holding.dueDate && holding.dueDate > todayIso() ? holding.dueDate : todayIso();
+    renewedDueDate = addDaysToDate(new Date(`${baseline}T00:00:00Z`), Number(rule.loanDays) || 0);
+    return { ...holding, dueDate: renewedDueDate };
+  });
+  state.records[idx] = normalizeRecord({
+    ...record,
+    holdings: updatedHoldings,
+    circulationHistory: appendCirculationHistory(record, `Renewed for ${getCheckoutPatron()?.name || 'patron'} until ${renewedDueDate}`),
+  });
+  saveRecords(state.records);
+  renderCheckoutPatronContext();
+  renderRecentTransactions(els.recentCheckoutTransactions, 'checkout');
+  setCirculationMessage(`Renewed ${record.title || 'item'} until ${renewedDueDate}.`, 'success');
 }
 
 function getRecentCirculationTransactions(kind = 'all', limit = 8) {
@@ -2331,14 +2370,12 @@ function renderRecentTransactions(target, kind) {
 function checkOutRecord(event) {
   event.preventDefault();
   const patron = getCheckoutPatron();
-  const dueDate = els.checkOutDueDate.value;
-
   if (!patron || !state.queuedCheckoutItems.length) {
     setCirculationMessage('Load a patron and add at least one queued item before checkout.', 'error');
     return;
   }
 
-  const skipped = state.queuedCheckoutItems.filter((entry) => !(dueDate || entry.autoDueDate));
+  const skipped = state.queuedCheckoutItems.filter((entry) => !(entry.overrideDueDate || entry.autoDueDate));
   if (skipped.length) {
     setCirculationMessage(`Set a due date or add circulation rules for: ${skipped.map((entry) => entry.title).join(', ')}.`, 'error');
     return;
@@ -2351,14 +2388,14 @@ function checkOutRecord(event) {
     const nextHoldings = (record.holdings || []).map((holding) => {
       const queued = queuedForRecord.find((entry) => entry.holdingId === holding.id);
       if (!queued) return holding;
-      const assignedDueDate = dueDate || queued.autoDueDate;
+      const assignedDueDate = queued.overrideDueDate || queued.autoDueDate;
       receiptItems.push({ title: record.title || queued.materialNumber, dueDate: `Due ${assignedDueDate}` });
       return { ...holding, status: 'On Loan', checkedOutTo: patron.id, checkedOutToName: patron.name, checkedOutAt: new Date().toISOString(), dueDate: assignedDueDate };
     });
     return normalizeRecord({
       ...record,
       holdings: nextHoldings,
-      circulationHistory: appendCirculationHistory(record, `Checked out to ${patron.name} (Card: ${patron.cardNumber || 'N/A'}) due ${dueDate || queuedForRecord[0].autoDueDate}`),
+      circulationHistory: appendCirculationHistory(record, `Checked out to ${patron.name} (Card: ${patron.cardNumber || 'N/A'}) due ${(queuedForRecord[0].overrideDueDate || queuedForRecord[0].autoDueDate)}`),
     });
   });
 
@@ -2369,7 +2406,7 @@ function checkOutRecord(event) {
   });
   saveHolds(updatedHolds);
   saveRecords(state.records);
-  const finalDueDate = dueDate || receiptItems[0]?.dueDate.replace('Due ', '') || '';
+  const finalDueDate = receiptItems[0]?.dueDate.replace('Due ', '') || '';
   renderCheckoutReceipt({ patron: patron.name, message: `Checked out on ${new Date().toLocaleString()}`, items: receiptItems });
   setCirculationMessage(`Checked out to ${patron.name} – Due ${finalDueDate}`, 'success');
   updateCheckoutStatus('Status before: Available/Checked In', `Status after: On Loan to ${patron.name}`);
