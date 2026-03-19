@@ -10,7 +10,7 @@ async function loadFirebaseModule() {
   return import("./firebase.js");
 }
 
-const DEFAULT_SETTINGS = { locations: [], genres: [], materialTypes: [], curatedShelves: [], formats: [], bindings: [], patrons: [], subscriptions: [], holds: [], circulationRules: [], acquisitionOrders: [], pendingMaterials: [], donationBatches: [] };
+const DEFAULT_SETTINGS = { locations: [], genres: [], materialTypes: [], curatedShelves: [], formats: [], bindings: [], patrons: [], subscriptions: [], holds: [], circulationRules: [], acquisitionOrders: [], pendingMaterials: [], donationBatches: [], visitorCounts: {}, referenceCounts: {}, outgoingIllTransactions: [], incomingIllTransactions: [], registerTransactions: [] };
 
 function normalizeHolding(holding = {}, fallback = {}) {
   const parsedMaterialNumbers = Array.isArray(holding.materialNumbers)

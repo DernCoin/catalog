@@ -13,7 +13,12 @@
         <h1>Catalog Staff Workspace</h1>
         <p class="muted">Manage records in Firebase. OPAC reads from this same record set.</p>
       </div>
-      <div class="header-actions">
+      <div class="header-actions header-actions-staff">
+        <div class="header-quick-counters" aria-label="Daily building counters">
+          <button class="button quick-counter-btn" id="visitorCounterBtn" type="button">Visitor +1 <span id="visitorCounterTotal" class="quick-counter-total">Today: 0</span></button>
+          <button class="button quick-counter-btn quick-counter-reference" id="referenceCounterBtn" type="button">Reference +1 <span id="referenceCounterTotal" class="quick-counter-total">Today: 0</span></button>
+        </div>
+        <p id="headerCounterFeedback" class="quick-counter-feedback" aria-live="polite"></p>
         <a class="button button-secondary" href="./index.html">Back to OPAC</a>
       </div>
     </header>
@@ -44,6 +49,14 @@
                 <div class="ils-nav-item">
                   <button class="button button-secondary ils-section-btn" data-ils-section="patrons" type="button">Patrons</button>
                   <nav id="ilsSubnav-patrons" class="ils-subnav" aria-label="Patron tools"></nav>
+                </div>
+                <div class="ils-nav-item">
+                  <button class="button button-secondary ils-section-btn" data-ils-section="ill" type="button">Interlibrary Loan</button>
+                  <nav id="ilsSubnav-ill" class="ils-subnav" aria-label="Interlibrary loan tools"></nav>
+                </div>
+                <div class="ils-nav-item">
+                  <button class="button button-secondary ils-section-btn" data-ils-section="register" type="button">Daily Register</button>
+                  <nav id="ilsSubnav-register" class="ils-subnav" aria-label="Register tools"></nav>
                 </div>
                 <div class="ils-nav-item">
                   <button class="button button-secondary ils-section-btn" data-ils-section="administration" type="button">Administration</button>
@@ -217,6 +230,144 @@
           </table>
         </section>
 
+
+        <section class="admin-tab-panel hidden" data-ils-panel="ill-outgoing">
+          <div class="panel-header">
+            <div>
+              <h2>Interlibrary Loan</h2>
+              <p class="muted">Track outgoing loans to partner libraries and incoming patron requests without creating permanent catalog items.</p>
+            </div>
+          </div>
+          <div class="ill-workspace-grid">
+            <section class="admin-block card-like">
+              <h3>Create outgoing ILL</h3>
+              <form id="illOutgoingForm" class="simple-form ill-form-grid">
+                <label>Title<input id="illOutgoingTitle" required /></label>
+                <label>Author<input id="illOutgoingAuthor" /></label>
+                <label>Owning item / material #<input id="illOutgoingItemRef" placeholder="Optional material number" /></label>
+                <label>Borrowing library<input id="illOutgoingLibrary" required /></label>
+                <label>Library contact<input id="illOutgoingContact" placeholder="Email or phone" /></label>
+                <label>Date requested<input id="illOutgoingRequestedDate" type="date" /></label>
+                <label>Date sent<input id="illOutgoingSentDate" type="date" /></label>
+                <label>Due date<input id="illOutgoingDueDate" type="date" /></label>
+                <label>Status
+                  <select id="illOutgoingStatus"></select>
+                </label>
+                <label class="form-grid-span">Notes<textarea id="illOutgoingNotes" rows="3"></textarea></label>
+                <button class="button" type="submit">Save outgoing ILL</button>
+              </form>
+              <p id="illOutgoingMessage" class="status-message" aria-live="polite"></p>
+            </section>
+            <section class="admin-block card-like">
+              <div class="panel-header compact">
+                <div>
+                  <h3>Active outgoing ILL</h3>
+                  <p class="muted">Requested, in transit, and returning transactions from this library.</p>
+                </div>
+                <span id="illOutgoingSummary" class="badge badge-status">0 active</span>
+              </div>
+              <div id="illOutgoingList" class="stack-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="admin-tab-panel hidden" data-ils-panel="ill-incoming">
+          <div class="ill-workspace-grid">
+            <section class="admin-block card-like">
+              <h3>Create incoming / patron ILL</h3>
+              <form id="illIncomingForm" class="simple-form ill-form-grid">
+                <label>Patron name<input id="illIncomingPatronName" required /></label>
+                <label>Patron card number<input id="illIncomingPatronCard" placeholder="Optional linked card #" /></label>
+                <label>Requested title<input id="illIncomingTitle" required /></label>
+                <label>Author<input id="illIncomingAuthor" /></label>
+                <label>Format / material type<input id="illIncomingFormat" placeholder="Book, DVD, etc." /></label>
+                <label>Lending library<input id="illIncomingLibrary" required /></label>
+                <label>Request date<input id="illIncomingRequestDate" type="date" /></label>
+                <label>Date received<input id="illIncomingReceivedDate" type="date" /></label>
+                <label>Due date<input id="illIncomingDueDate" type="date" /></label>
+                <label>Status
+                  <select id="illIncomingStatus"></select>
+                </label>
+                <label>Pickup status<input id="illIncomingPickupStatus" placeholder="Awaiting notice, picked up, etc." /></label>
+                <label class="form-grid-span">Notes<textarea id="illIncomingNotes" rows="3"></textarea></label>
+                <button class="button" type="submit">Save incoming ILL</button>
+              </form>
+              <p id="illIncomingMessage" class="status-message" aria-live="polite"></p>
+            </section>
+            <section class="admin-block card-like">
+              <div class="panel-header compact">
+                <div>
+                  <h3>Active incoming ILL</h3>
+                  <p class="muted">Patron requests, temporary inbound items, and holds awaiting pickup or return.</p>
+                </div>
+                <span id="illIncomingSummary" class="badge badge-status">0 active</span>
+              </div>
+              <div id="illIncomingList" class="stack-list"></div>
+            </section>
+          </div>
+          <section class="admin-block card-like">
+            <div class="panel-header compact">
+              <div>
+                <h3>Completed and past due ILL</h3>
+                <p class="muted">Quick view of recently finished or overdue interlibrary loan activity.</p>
+              </div>
+            </div>
+            <div class="ill-summary-grid" id="illStatusCards"></div>
+            <div id="illCompletedList" class="stack-list"></div>
+          </section>
+        </section>
+
+        <section class="admin-tab-panel hidden" data-ils-panel="ill-reports">
+          <section class="admin-block card-like">
+            <div class="panel-header compact">
+              <div>
+                <h3>Monthly ILL activity</h3>
+                <p class="muted">Outgoing and incoming workload totals grouped by month.</p>
+              </div>
+            </div>
+            <div id="illReportsSummary" class="summary-card-grid"></div>
+            <div id="illReportsTableWrap"></div>
+          </section>
+        </section>
+
+        <section class="admin-tab-panel hidden" data-ils-panel="register">
+          <div class="panel-header">
+            <div>
+              <h2>Daily Register</h2>
+              <p class="muted">Record service-desk cash intake and daily money transactions by category.</p>
+            </div>
+          </div>
+          <div class="register-workspace-grid">
+            <section class="admin-block card-like">
+              <h3>Add register transaction</h3>
+              <form id="registerForm" class="simple-form register-form-grid">
+                <label>Date<input id="registerDate" type="date" required /></label>
+                <label>Amount<input id="registerAmount" type="number" min="0" step="0.01" required /></label>
+                <label>Category<select id="registerCategory"></select></label>
+                <label>Payment type<input id="registerPaymentType" placeholder="Cash, check, card" /></label>
+                <label>Staff initials<input id="registerStaffInitials" placeholder="Optional" /></label>
+                <label id="registerDonationPurposeLabel" class="hidden">Donation purpose<select id="registerDonationPurpose"></select></label>
+                <label id="registerDonationOtherLabel" class="hidden">Other donation purpose<input id="registerDonationOther" placeholder="Describe donation purpose" /></label>
+                <label class="form-grid-span">Notes<textarea id="registerNotes" rows="3"></textarea></label>
+                <button class="button" type="submit">Record transaction</button>
+              </form>
+              <p id="registerMessage" class="status-message" aria-live="polite"></p>
+            </section>
+            <section class="admin-block card-like">
+              <div class="panel-header compact">
+                <div>
+                  <h3>Daily totals</h3>
+                  <p class="muted">Review today's deposit activity and category breakdowns.</p>
+                </div>
+              </div>
+              <div id="registerSummaryCards" class="summary-card-grid"></div>
+              <label>Selected date
+                <input id="registerReportDate" type="date" />
+              </label>
+              <div id="registerDailyTableWrap"></div>
+            </section>
+          </div>
+        </section>
         <section class="admin-tab-panel hidden" data-ils-panel="patrons">
           <div class="panel-header">
             <div>
@@ -579,6 +730,12 @@
               </thead>
               <tbody id="overdueReportBody"></tbody>
             </table>
+          </section>
+
+          <section class="admin-block">
+            <h3>Operational Reports</h3>
+            <p class="muted">Building use, reference, interlibrary loan, and register activity grouped for staff reporting.</p>
+            <div id="operationalReports" class="reports-stack"></div>
           </section>
         </section>
 

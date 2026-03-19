@@ -22,6 +22,7 @@ const state = {
   acquisitionsStage: "orders",
   activeDonationBatchId: "",
   donationFilter: "incoming",
+  illFilter: "active",
 };
 
 
@@ -88,6 +89,11 @@ const els = {
   ilsStatsPage: $("#ilsStatsPage"),
   dashboardTileGrid: $("#dashboardTileGrid"),
   dashboardDate: $("#dashboardDate"),
+  visitorCounterBtn: $("#visitorCounterBtn"),
+  visitorCounterTotal: $("#visitorCounterTotal"),
+  referenceCounterBtn: $("#referenceCounterBtn"),
+  referenceCounterTotal: $("#referenceCounterTotal"),
+  headerCounterFeedback: $("#headerCounterFeedback"),
   patronForm: $("#patronForm"),
   patronName: $("#patronName"),
   patronMiddleName: $("#patronMiddleName"),
@@ -172,6 +178,56 @@ const els = {
   missingReportBody: $("#missingReportBody"),
   overdueReportSummary: $("#overdueReportSummary"),
   overdueReportBody: $("#overdueReportBody"),
+  operationalReports: $("#operationalReports"),
+  illOutgoingForm: $("#illOutgoingForm"),
+  illOutgoingTitle: $("#illOutgoingTitle"),
+  illOutgoingAuthor: $("#illOutgoingAuthor"),
+  illOutgoingItemRef: $("#illOutgoingItemRef"),
+  illOutgoingLibrary: $("#illOutgoingLibrary"),
+  illOutgoingContact: $("#illOutgoingContact"),
+  illOutgoingRequestedDate: $("#illOutgoingRequestedDate"),
+  illOutgoingSentDate: $("#illOutgoingSentDate"),
+  illOutgoingDueDate: $("#illOutgoingDueDate"),
+  illOutgoingStatus: $("#illOutgoingStatus"),
+  illOutgoingNotes: $("#illOutgoingNotes"),
+  illOutgoingMessage: $("#illOutgoingMessage"),
+  illOutgoingList: $("#illOutgoingList"),
+  illOutgoingSummary: $("#illOutgoingSummary"),
+  illIncomingForm: $("#illIncomingForm"),
+  illIncomingPatronName: $("#illIncomingPatronName"),
+  illIncomingPatronCard: $("#illIncomingPatronCard"),
+  illIncomingTitle: $("#illIncomingTitle"),
+  illIncomingAuthor: $("#illIncomingAuthor"),
+  illIncomingFormat: $("#illIncomingFormat"),
+  illIncomingLibrary: $("#illIncomingLibrary"),
+  illIncomingRequestDate: $("#illIncomingRequestDate"),
+  illIncomingReceivedDate: $("#illIncomingReceivedDate"),
+  illIncomingDueDate: $("#illIncomingDueDate"),
+  illIncomingStatus: $("#illIncomingStatus"),
+  illIncomingPickupStatus: $("#illIncomingPickupStatus"),
+  illIncomingNotes: $("#illIncomingNotes"),
+  illIncomingMessage: $("#illIncomingMessage"),
+  illIncomingList: $("#illIncomingList"),
+  illIncomingSummary: $("#illIncomingSummary"),
+  illStatusCards: $("#illStatusCards"),
+  illCompletedList: $("#illCompletedList"),
+  illReportsSummary: $("#illReportsSummary"),
+  illReportsTableWrap: $("#illReportsTableWrap"),
+  registerForm: $("#registerForm"),
+  registerDate: $("#registerDate"),
+  registerAmount: $("#registerAmount"),
+  registerCategory: $("#registerCategory"),
+  registerPaymentType: $("#registerPaymentType"),
+  registerStaffInitials: $("#registerStaffInitials"),
+  registerDonationPurposeLabel: $("#registerDonationPurposeLabel"),
+  registerDonationPurpose: $("#registerDonationPurpose"),
+  registerDonationOtherLabel: $("#registerDonationOtherLabel"),
+  registerDonationOther: $("#registerDonationOther"),
+  registerNotes: $("#registerNotes"),
+  registerMessage: $("#registerMessage"),
+  registerSummaryCards: $("#registerSummaryCards"),
+  registerReportDate: $("#registerReportDate"),
+  registerDailyTableWrap: $("#registerDailyTableWrap"),
 };
 
 const ILS_SECTIONS = {
@@ -180,8 +236,10 @@ const ILS_SECTIONS = {
   cataloging: { label: "Cataloging", description: "Catalog maintenance and serials work grouped together for easier navigation.", tabs: [{ id: "records", label: "Edit Records" }, { id: "serials", label: "Serials" }] },
   acquisitions: { label: "Acquisitions", description: "Manage orders, receive incoming materials, and move items through pending processing into the catalog.", tabs: [{ id: "acquisitions", label: "Acquisitions Workspace" }] },
   patrons: { label: "Patrons", description: "Review patron accounts, contact data, and circulation activity.", tabs: [{ id: "patrons", label: "Accounts" }] },
+  ill: { label: "Interlibrary Loan", description: "Manage outgoing loans, incoming patron requests, temporary ILL items, and monthly ILL activity.", tabs: [{ id: "ill-outgoing", label: "Outgoing ILL" }, { id: "ill-incoming", label: "Incoming Requests" }, { id: "ill-reports", label: "ILL Reports" }] },
+  register: { label: "Daily Register", description: "Log staff-side cash intake, service transactions, and daily drawer totals.", tabs: [{ id: "register", label: "Register" }] },
   administration: { label: "Administration", description: "System settings and controlled list management for staff administration.", tabs: [{ id: "circulation-rules", label: "Circulation Rules" }, { id: "utilities", label: "Utilities" }] },
-  reports: { label: "Reports", description: "Run statistics, missing bibliography, and overdue reports from one reporting area.", tabs: [{ id: "stats", label: "Statistics" }] },
+  reports: { label: "Reports", description: "Run statistics, operational activity, missing bibliography, and overdue reports from one reporting area.", tabs: [{ id: "stats", label: "Statistics" }] },
 };
 
 const TAB_TO_SECTION = Object.fromEntries(
@@ -307,6 +365,422 @@ function getPendingMaterials() {
 function savePendingMaterials(materials) {
   state.settings.pendingMaterials = materials;
   saveSettings(state.settings);
+}
+
+
+const COUNTER_KEYS = {
+  visitor: "visitorCounts",
+  reference: "referenceCounts",
+};
+const COUNTER_LABELS = {
+  visitor: "building visits",
+  reference: "reference questions",
+};
+const ILL_OUTGOING_STATUSES = ["Requested", "Pulled", "In Transit", "Received by Borrowing Library", "Checked Out to Borrowing Library Patron", "Returning", "Returned", "Completed", "Cancelled"];
+const ILL_INCOMING_STATUSES = ["Requested", "Submitted", "Located", "In Transit", "Received", "On Hold for Patron", "Checked Out to Patron", "Returned by Patron", "Returned to Lending Library", "Completed", "Cancelled"];
+const ILL_COMPLETED_STATUSES = new Set(["Completed", "Cancelled"]);
+const REGISTER_CATEGORIES = ["Copies", "Faxing", "New Cards", "Cash Donations", "Replacement Costs", "Fines / Fees"];
+const DONATION_PURPOSES = ["Memorial", "Adopted Author", "State Funding", "General Donation", "Other"];
+
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getMonthKey(dateString) {
+  return String(dateString || "").slice(0, 7);
+}
+
+function formatMonthLabel(monthKey) {
+  if (!monthKey) return "Unknown month";
+  const [year, month] = monthKey.split("-").map(Number);
+  return new Date(Date.UTC(year || 0, (month || 1) - 1, 1)).toLocaleDateString(undefined, { month: "long", year: "numeric", timeZone: "UTC" });
+}
+
+function formatCurrency(value) {
+  return `$${(Number(value) || 0).toFixed(2)}`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+}
+
+function getDailyCounterMap(type) {
+  const key = COUNTER_KEYS[type];
+  return state.settings[key] && typeof state.settings[key] === "object" ? state.settings[key] : {};
+}
+
+function saveDailyCounterMap(type, map) {
+  state.settings[COUNTER_KEYS[type]] = map;
+  saveSettings(state.settings);
+}
+
+function incrementDailyCounter(type) {
+  const date = todayIso();
+  const current = { ...getDailyCounterMap(type) };
+  current[date] = Number(current[date] || 0) + 1;
+  saveDailyCounterMap(type, current);
+  renderQuickCounters();
+  renderDashboard();
+  renderStatsPanel();
+  flashCounterFeedback(type, current[date]);
+}
+
+function getDailyCounterTotal(type, date = todayIso()) {
+  return Number(getDailyCounterMap(type)[date] || 0);
+}
+
+function summarizeCounterByMonth(type) {
+  return Object.entries(getDailyCounterMap(type)).reduce((acc, [date, count]) => {
+    const month = getMonthKey(date);
+    acc[month] = Number(acc[month] || 0) + Number(count || 0);
+    return acc;
+  }, {});
+}
+
+function getIllTransactions(type) {
+  const key = type === "incoming" ? "incomingIllTransactions" : "outgoingIllTransactions";
+  return Array.isArray(state.settings[key]) ? state.settings[key] : [];
+}
+
+function saveIllTransactions(type, transactions) {
+  const key = type === "incoming" ? "incomingIllTransactions" : "outgoingIllTransactions";
+  state.settings[key] = transactions;
+  saveSettings(state.settings);
+}
+
+function getRegisterTransactions() {
+  return Array.isArray(state.settings.registerTransactions) ? state.settings.registerTransactions : [];
+}
+
+function saveRegisterTransactions(transactions) {
+  state.settings.registerTransactions = transactions;
+  saveSettings(state.settings);
+}
+
+function setHeaderFeedback(message, type = "success") {
+  if (!els.headerCounterFeedback) return;
+  els.headerCounterFeedback.textContent = message;
+  els.headerCounterFeedback.className = `quick-counter-feedback is-visible ${type === "error" ? "is-error" : ""}`.trim();
+  window.clearTimeout(setHeaderFeedback.timeoutId);
+  setHeaderFeedback.timeoutId = window.setTimeout(() => {
+    if (!els.headerCounterFeedback) return;
+    els.headerCounterFeedback.textContent = "";
+    els.headerCounterFeedback.className = "quick-counter-feedback";
+  }, 1200);
+}
+
+function flashCounterFeedback(type, total) {
+  const btn = type === "visitor" ? els.visitorCounterBtn : els.referenceCounterBtn;
+  if (btn) {
+    btn.classList.remove("is-pulsing");
+    void btn.offsetWidth;
+    btn.classList.add("is-pulsing");
+    window.setTimeout(() => btn.classList.remove("is-pulsing"), 350);
+  }
+  setHeaderFeedback(`Recorded ${type === "visitor" ? "visitor" : "reference question"}. Today's total: ${total}.`);
+}
+
+function renderQuickCounters() {
+  if (els.visitorCounterTotal) els.visitorCounterTotal.textContent = `Today: ${getDailyCounterTotal("visitor")}`;
+  if (els.referenceCounterTotal) els.referenceCounterTotal.textContent = `Today: ${getDailyCounterTotal("reference")}`;
+}
+
+function setIllMessage(type, message, isError = false) {
+  const target = type === "incoming" ? els.illIncomingMessage : els.illOutgoingMessage;
+  if (!target) return;
+  target.textContent = message;
+  target.classList.toggle("warning", isError);
+}
+
+function populateStaticSelects() {
+  if (els.illOutgoingStatus) els.illOutgoingStatus.innerHTML = ILL_OUTGOING_STATUSES.map((status) => `<option value="${status}">${status}</option>`).join("");
+  if (els.illIncomingStatus) els.illIncomingStatus.innerHTML = ILL_INCOMING_STATUSES.map((status) => `<option value="${status}">${status}</option>`).join("");
+  if (els.registerCategory) els.registerCategory.innerHTML = REGISTER_CATEGORIES.map((category) => `<option value="${category}">${category}</option>`).join("");
+  if (els.registerDonationPurpose) els.registerDonationPurpose.innerHTML = DONATION_PURPOSES.map((purpose) => `<option value="${purpose}">${purpose}</option>`).join("");
+  if (els.registerDate && !els.registerDate.value) els.registerDate.value = todayIso();
+  if (els.registerReportDate && !els.registerReportDate.value) els.registerReportDate.value = todayIso();
+  if (els.illOutgoingRequestedDate && !els.illOutgoingRequestedDate.value) els.illOutgoingRequestedDate.value = todayIso();
+  if (els.illIncomingRequestDate && !els.illIncomingRequestDate.value) els.illIncomingRequestDate.value = todayIso();
+}
+
+function normalizeIllTransaction(type, entry = {}) {
+  const incoming = type === "incoming";
+  const status = String(entry.status || (incoming ? "Requested" : "Requested")).trim() || "Requested";
+  const base = {
+    id: entry.id || `ILL-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    type,
+    status,
+    title: String(entry.title || "").trim(),
+    author: String(entry.author || "").trim(),
+    notes: String(entry.notes || "").trim(),
+    createdAt: Number(entry.createdAt) || Date.now(),
+    updatedAt: Date.now(),
+  };
+  if (incoming) {
+    const receivedDate = String(entry.receivedDate || "").trim();
+    return {
+      ...base,
+      patronName: String(entry.patronName || "").trim(),
+      patronCardNumber: String(entry.patronCardNumber || "").trim(),
+      format: String(entry.format || "").trim(),
+      lendingLibrary: String(entry.lendingLibrary || "").trim(),
+      requestDate: String(entry.requestDate || todayIso()).trim(),
+      receivedDate,
+      dueDate: String(entry.dueDate || "").trim(),
+      pickupStatus: String(entry.pickupStatus || "Awaiting processing").trim(),
+      temporaryItem: receivedDate || ["Received", "On Hold for Patron", "Checked Out to Patron", "Returned by Patron", "Returned to Lending Library", "Completed"].includes(status) ? {
+        label: `TEMP-ILL-${String(base.id).slice(-6)}`,
+        status,
+        dueDate: String(entry.dueDate || "").trim(),
+        isTemporary: true,
+      } : null,
+    };
+  }
+  return {
+    ...base,
+    itemRef: String(entry.itemRef || "").trim(),
+    borrowingLibrary: String(entry.borrowingLibrary || "").trim(),
+    contactInfo: String(entry.contactInfo || "").trim(),
+    requestDate: String(entry.requestDate || todayIso()).trim(),
+    sentDate: String(entry.sentDate || "").trim(),
+    dueDate: String(entry.dueDate || "").trim(),
+    returnStatus: String(entry.returnStatus || "").trim(),
+  };
+}
+
+function saveOutgoingIll(event) {
+  event.preventDefault();
+  const entry = normalizeIllTransaction("outgoing", {
+    title: els.illOutgoingTitle?.value,
+    author: els.illOutgoingAuthor?.value,
+    itemRef: els.illOutgoingItemRef?.value,
+    borrowingLibrary: els.illOutgoingLibrary?.value,
+    contactInfo: els.illOutgoingContact?.value,
+    requestDate: els.illOutgoingRequestedDate?.value,
+    sentDate: els.illOutgoingSentDate?.value,
+    dueDate: els.illOutgoingDueDate?.value,
+    status: els.illOutgoingStatus?.value,
+    notes: els.illOutgoingNotes?.value,
+  });
+  saveIllTransactions("outgoing", [entry, ...getIllTransactions("outgoing")]);
+  els.illOutgoingForm?.reset();
+  populateStaticSelects();
+  setIllMessage("outgoing", `Saved outgoing ILL ${entry.id}.`);
+  renderIllWorkspace();
+  renderStatsPanel();
+  renderDashboard();
+  renderQuickCounters();
+  renderIllWorkspace();
+  renderRegisterWorkspace();
+}
+
+function saveIncomingIll(event) {
+  event.preventDefault();
+  const entry = normalizeIllTransaction("incoming", {
+    patronName: els.illIncomingPatronName?.value,
+    patronCardNumber: els.illIncomingPatronCard?.value,
+    title: els.illIncomingTitle?.value,
+    author: els.illIncomingAuthor?.value,
+    format: els.illIncomingFormat?.value,
+    lendingLibrary: els.illIncomingLibrary?.value,
+    requestDate: els.illIncomingRequestDate?.value,
+    receivedDate: els.illIncomingReceivedDate?.value,
+    dueDate: els.illIncomingDueDate?.value,
+    status: els.illIncomingStatus?.value,
+    pickupStatus: els.illIncomingPickupStatus?.value,
+    notes: els.illIncomingNotes?.value,
+  });
+  saveIllTransactions("incoming", [entry, ...getIllTransactions("incoming")]);
+  els.illIncomingForm?.reset();
+  populateStaticSelects();
+  setIllMessage("incoming", `Saved incoming ILL ${entry.id}.`);
+  renderIllWorkspace();
+  renderStatsPanel();
+  renderDashboard();
+}
+
+function updateIllStatus(type, id, status) {
+  const updated = getIllTransactions(type).map((entry) => entry.id === id ? normalizeIllTransaction(type, { ...entry, status, receivedDate: type === "incoming" && (entry.receivedDate || status === "Received" || status === "On Hold for Patron" || status === "Checked Out to Patron") ? (entry.receivedDate || todayIso()) : entry.receivedDate }) : entry);
+  saveIllTransactions(type, updated);
+  renderIllWorkspace();
+  renderStatsPanel();
+  renderDashboard();
+}
+
+function renderIllCards(target, entries, type) {
+  if (!target) return;
+  if (!entries.length) {
+    target.innerHTML = `<div class="empty-state">${type === "incoming" ? "No active ILL requests yet. Incoming requests and temporary items will appear here." : "No active outgoing ILL transactions. Sent items and transit updates will appear here."}</div>`;
+    return;
+  }
+  const statuses = type === "incoming" ? ILL_INCOMING_STATUSES : ILL_OUTGOING_STATUSES;
+  target.innerHTML = entries.map((entry) => {
+    const selectOptions = statuses.map((status) => `<option value="${status}" ${entry.status === status ? "selected" : ""}>${status}</option>`).join("");
+    const meta = type === "incoming"
+      ? `<div class="item-grid"><span><strong>Patron:</strong> ${escapeHtml(entry.patronName || "Unknown")}</span><span><strong>Lending library:</strong> ${escapeHtml(entry.lendingLibrary || "Unknown")}</span><span><strong>Received:</strong> ${escapeHtml(entry.receivedDate || "Not yet received")}</span><span><strong>Due:</strong> ${escapeHtml(entry.dueDate || "Not set")}</span></div>${entry.temporaryItem ? `<p class="muted">Temporary item: <strong>${escapeHtml(entry.temporaryItem.label)}</strong> · ${escapeHtml(entry.temporaryItem.status)} · Not part of permanent holdings.</p>` : `<p class="muted">Temporary item will be created automatically when the request is received.</p>`}`
+      : `<div class="item-grid"><span><strong>Borrowing library:</strong> ${escapeHtml(entry.borrowingLibrary || "Unknown")}</span><span><strong>Sent:</strong> ${escapeHtml(entry.sentDate || "Not yet sent")}</span><span><strong>Due:</strong> ${escapeHtml(entry.dueDate || "Not set")}</span><span><strong>Item ref:</strong> ${escapeHtml(entry.itemRef || "Unlinked")}</span></div>`;
+    return `<article class="stack-card"><div class="panel-header compact"><div><h4>${escapeHtml(entry.title || "Untitled")}</h4><p class="muted">${escapeHtml(entry.id)}${entry.author ? ` · ${escapeHtml(entry.author)}` : ""}</p></div><span class="badge badge-status ill-status-badge" data-status="${escapeHtml(entry.status.toLowerCase().replace(/\s+/g, "-"))}">${escapeHtml(entry.status)}</span></div>${meta}<p class="muted">${escapeHtml(entry.notes || "No notes recorded.")}</p><div class="row-actions"><label class="inline-select">Update status<select data-ill-status="${escapeHtml(entry.id)}">${selectOptions}</select></label></div></article>`;
+  }).join("");
+  [...target.querySelectorAll("[data-ill-status]")].forEach((select) => select.addEventListener("change", () => updateIllStatus(type, select.dataset.illStatus, select.value)));
+}
+
+function renderIllWorkspace() {
+  const outgoing = getIllTransactions("outgoing").sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+  const incoming = getIllTransactions("incoming").sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+  const activeOutgoing = outgoing.filter((entry) => !ILL_COMPLETED_STATUSES.has(entry.status));
+  const activeIncoming = incoming.filter((entry) => !ILL_COMPLETED_STATUSES.has(entry.status));
+  const completed = [...outgoing, ...incoming].filter((entry) => ILL_COMPLETED_STATUSES.has(entry.status)).sort((a, b) => Number(b.updatedAt || b.createdAt || 0) - Number(a.updatedAt || 0));
+  const overdue = [...outgoing, ...incoming].filter((entry) => entry.dueDate && !ILL_COMPLETED_STATUSES.has(entry.status) && new Date(entry.dueDate) < new Date(todayIso()));
+
+  if (els.illOutgoingSummary) els.illOutgoingSummary.textContent = `${activeOutgoing.length} active`;
+  if (els.illIncomingSummary) els.illIncomingSummary.textContent = `${activeIncoming.length} active`;
+  renderIllCards(els.illOutgoingList, activeOutgoing, "outgoing");
+  renderIllCards(els.illIncomingList, activeIncoming, "incoming");
+
+  if (els.illStatusCards) {
+    els.illStatusCards.innerHTML = [
+      { label: "Active outgoing", value: activeOutgoing.length },
+      { label: "Active incoming", value: activeIncoming.length },
+      { label: "Completed", value: completed.length },
+      { label: "Past due", value: overdue.length },
+    ].map((card) => `<article class="summary-card"><span class="summary-card-label">${card.label}</span><strong class="summary-card-value">${card.value}</strong></article>`).join("");
+  }
+
+  if (els.illCompletedList) {
+    if (!completed.length && !overdue.length) {
+      els.illCompletedList.innerHTML = '<div class="empty-state">No completed or past due ILL activity yet.</div>';
+    } else {
+      const rows = [...overdue.map((entry) => ({ ...entry, flag: "Past due" })), ...completed.slice(0, 8).map((entry) => ({ ...entry, flag: "Completed" }))];
+      els.illCompletedList.innerHTML = rows.map((entry) => `<article class="stack-card"><div class="panel-header compact"><div><h4>${escapeHtml(entry.title || "Untitled")}</h4><p class="muted">${escapeHtml(entry.id)} · ${escapeHtml(entry.flag)}</p></div><span class="badge badge-status">${escapeHtml(entry.status)}</span></div><p class="muted">${escapeHtml(entry.type === "incoming" ? `${entry.patronName} · ${entry.lendingLibrary}` : `${entry.borrowingLibrary}`)}</p></article>`).join("");
+    }
+  }
+
+  renderIllReports();
+  renderOperationalReports();
+}
+
+function renderIllReports() {
+  const outgoing = getIllTransactions("outgoing");
+  const incoming = getIllTransactions("incoming");
+  const monthly = new Map();
+  [...outgoing.map((entry) => ({ ...entry, kind: "outgoing" })), ...incoming.map((entry) => ({ ...entry, kind: "incoming" }))].forEach((entry) => {
+    const month = getMonthKey(entry.requestDate || todayIso());
+    const current = monthly.get(month) || { outgoing: 0, incoming: 0, completedOutgoing: 0, completedIncoming: 0 };
+    current[entry.kind] += 1;
+    if (entry.status === "Completed") current[entry.kind === "outgoing" ? "completedOutgoing" : "completedIncoming"] += 1;
+    monthly.set(month, current);
+  });
+  const rows = [...monthly.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  const currentMonth = monthly.get(getMonthKey(todayIso())) || { outgoing: 0, incoming: 0, completedOutgoing: 0, completedIncoming: 0 };
+  if (els.illReportsSummary) {
+    els.illReportsSummary.innerHTML = [
+      { label: "Current month outgoing", value: currentMonth.outgoing },
+      { label: "Current month incoming", value: currentMonth.incoming },
+      { label: "Completed outgoing", value: currentMonth.completedOutgoing },
+      { label: "Completed incoming", value: currentMonth.completedIncoming },
+    ].map((card) => `<article class="summary-card"><span class="summary-card-label">${card.label}</span><strong class="summary-card-value">${card.value}</strong></article>`).join("");
+  }
+  if (els.illReportsTableWrap) {
+    if (!rows.length) {
+      els.illReportsTableWrap.innerHTML = '<div class="empty-state">No monthly ILL data available yet.</div>';
+    } else {
+      els.illReportsTableWrap.innerHTML = `<table class="serials-table"><thead><tr><th>Month</th><th>Outgoing</th><th>Incoming</th><th>Completed outgoing</th><th>Completed incoming</th><th>Combined total</th></tr></thead><tbody>${rows.map(([month, row]) => `<tr><td>${formatMonthLabel(month)}</td><td>${row.outgoing}</td><td>${row.incoming}</td><td>${row.completedOutgoing}</td><td>${row.completedIncoming}</td><td>${row.outgoing + row.incoming}</td></tr>`).join("")}</tbody></table>`;
+    }
+  }
+}
+
+function toggleDonationFields() {
+  const donationSelected = els.registerCategory?.value === "Cash Donations";
+  els.registerDonationPurposeLabel?.classList.toggle("hidden", !donationSelected);
+  els.registerDonationOtherLabel?.classList.toggle("hidden", !donationSelected || els.registerDonationPurpose?.value !== "Other");
+  if (els.registerDonationPurpose) els.registerDonationPurpose.required = donationSelected;
+  if (els.registerDonationOther) els.registerDonationOther.required = donationSelected && els.registerDonationPurpose?.value === "Other";
+}
+
+function saveRegisterEntry(event) {
+  event.preventDefault();
+  const category = els.registerCategory?.value || REGISTER_CATEGORIES[0];
+  const donationPurpose = category === "Cash Donations"
+    ? (els.registerDonationPurpose?.value === "Other" ? els.registerDonationOther?.value : els.registerDonationPurpose?.value)
+    : "";
+  const entry = {
+    id: `REG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    date: els.registerDate?.value || todayIso(),
+    amount: Number.parseFloat(els.registerAmount?.value || "0") || 0,
+    category,
+    paymentType: String(els.registerPaymentType?.value || "").trim(),
+    staffInitials: String(els.registerStaffInitials?.value || "").trim(),
+    donationPurpose: String(donationPurpose || "").trim(),
+    notes: String(els.registerNotes?.value || "").trim(),
+    createdAt: Date.now(),
+  };
+  saveRegisterTransactions([entry, ...getRegisterTransactions()]);
+  els.registerForm?.reset();
+  populateStaticSelects();
+  toggleDonationFields();
+  if (els.registerReportDate && !els.registerReportDate.value) els.registerReportDate.value = entry.date;
+  if (els.registerMessage) els.registerMessage.textContent = `Recorded register transaction ${entry.id}.`;
+  renderRegisterWorkspace();
+  renderStatsPanel();
+  renderDashboard();
+}
+
+function summarizeRegisterDate(date = todayIso()) {
+  const entries = getRegisterTransactions().filter((entry) => entry.date === date);
+  const totalsByCategory = REGISTER_CATEGORIES.reduce((acc, category) => ({ ...acc, [category]: entries.filter((entry) => entry.category === category).reduce((sum, entry) => sum + Number(entry.amount || 0), 0) }), {});
+  return { entries, total: entries.reduce((sum, entry) => sum + Number(entry.amount || 0), 0), totalsByCategory };
+}
+
+function summarizeRegisterByMonth() {
+  return getRegisterTransactions().reduce((acc, entry) => {
+    const month = getMonthKey(entry.date);
+    if (!acc[month]) acc[month] = { total: 0, byCategory: Object.fromEntries(REGISTER_CATEGORIES.map((category) => [category, 0])) };
+    acc[month].total += Number(entry.amount || 0);
+    acc[month].byCategory[entry.category] = Number(acc[month].byCategory[entry.category] || 0) + Number(entry.amount || 0);
+    return acc;
+  }, {});
+}
+
+function renderRegisterWorkspace() {
+  const date = els.registerReportDate?.value || todayIso();
+  const summary = summarizeRegisterDate(date);
+  if (els.registerSummaryCards) {
+    const today = summarizeRegisterDate(todayIso());
+    els.registerSummaryCards.innerHTML = [
+      { label: "Today's total", value: formatCurrency(today.total) },
+      { label: "Selected date", value: date },
+      { label: "Transactions", value: summary.entries.length },
+      { label: "Cash donations today", value: formatCurrency(today.totalsByCategory["Cash Donations"]) },
+    ].map((card) => `<article class="summary-card"><span class="summary-card-label">${card.label}</span><strong class="summary-card-value">${card.value}</strong></article>`).join("");
+  }
+  if (els.registerDailyTableWrap) {
+    const monthly = summarizeRegisterByMonth();
+    const monthlyRows = Object.entries(monthly).sort((a, b) => b[0].localeCompare(a[0]));
+    const dailyTable = summary.entries.length
+      ? `<table class="serials-table"><thead><tr><th>Date</th><th>Category</th><th>Amount</th><th>Donation purpose</th><th>Notes</th></tr></thead><tbody>${summary.entries.map((entry) => `<tr><td>${entry.date}</td><td>${escapeHtml(entry.category)}</td><td>${formatCurrency(entry.amount)}</td><td>${escapeHtml(entry.donationPurpose || "—")}</td><td>${escapeHtml(entry.notes || "—")}</td></tr>`).join("")}</tbody></table>`
+      : '<div class="empty-state">No register transactions recorded for this date.</div>';
+    const categoryList = Object.entries(summary.totalsByCategory).map(([category, total]) => `<li><span>${escapeHtml(category)}</span><strong>${formatCurrency(total)}</strong></li>`).join("");
+    const monthlyTable = monthlyRows.length
+      ? `<table class="serials-table"><thead><tr><th>Month</th>${REGISTER_CATEGORIES.map((category) => `<th>${escapeHtml(category)}</th>`).join("")}<th>Overall total</th></tr></thead><tbody>${monthlyRows.map(([month, row]) => `<tr><td>${formatMonthLabel(month)}</td>${REGISTER_CATEGORIES.map((category) => `<td>${formatCurrency(row.byCategory[category])}</td>`).join("")}<td>${formatCurrency(row.total)}</td></tr>`).join("")}</tbody></table>`
+      : '<div class="empty-state">No monthly register data available yet.</div>';
+    els.registerDailyTableWrap.innerHTML = `<div class="register-breakdown"><h4>Daily category totals</h4><ul class="totals-list">${categoryList}</ul></div><div class="register-table-stack"><h4>Transactions for ${date}</h4>${dailyTable}</div><div class="register-table-stack"><h4>Monthly totals</h4>${monthlyTable}</div>`;
+  }
+  renderOperationalReports();
+}
+
+function renderOperationalReports() {
+  if (!els.operationalReports) return;
+  const counterSections = ["visitor", "reference"].map((type) => {
+    const dailyRows = Object.entries(getDailyCounterMap(type)).sort((a, b) => b[0].localeCompare(a[0]));
+    const monthlyRows = Object.entries(summarizeCounterByMonth(type)).sort((a, b) => b[0].localeCompare(a[0]));
+    return `<section class="report-card"><div class="panel-header compact"><div><h4>${type === "visitor" ? "Building Visits" : "Reference Questions"}</h4><p class="muted">Daily and monthly ${COUNTER_LABELS[type]}.</p></div></div><div class="summary-card-grid"><article class="summary-card"><span class="summary-card-label">Today</span><strong class="summary-card-value">${getDailyCounterTotal(type)}</strong></article><article class="summary-card"><span class="summary-card-label">Current month</span><strong class="summary-card-value">${Number(summarizeCounterByMonth(type)[getMonthKey(todayIso())] || 0)}</strong></article></div><div class="report-split-grid"><div>${dailyRows.length ? `<table class="serials-table"><thead><tr><th>Date</th><th>Count</th></tr></thead><tbody>${dailyRows.map(([date, count]) => `<tr><td>${date}</td><td>${count}</td></tr>`).join("")}</tbody></table>` : `<div class="empty-state">No ${type === "visitor" ? "building visits" : "reference questions"} recorded yet today.</div>`}</div><div>${monthlyRows.length ? `<table class="serials-table"><thead><tr><th>Month</th><th>Total</th></tr></thead><tbody>${monthlyRows.map(([month, total]) => `<tr><td>${formatMonthLabel(month)}</td><td>${total}</td></tr>`).join("")}</tbody></table>` : `<div class="empty-state">No monthly data available yet.</div>`}</div></div></section>`;
+  }).join("");
+  const illMonthly = els.illReportsTableWrap?.innerHTML || '<div class="empty-state">No monthly ILL data available yet.</div>';
+  const registerMonthly = (() => {
+    const monthlyRows = Object.entries(summarizeRegisterByMonth()).sort((a, b) => b[0].localeCompare(a[0]));
+    return monthlyRows.length ? `<table class="serials-table"><thead><tr><th>Month</th>${REGISTER_CATEGORIES.map((category) => `<th>${escapeHtml(category)}</th>`).join("")}<th>Overall total</th></tr></thead><tbody>${monthlyRows.map(([month, row]) => `<tr><td>${formatMonthLabel(month)}</td>${REGISTER_CATEGORIES.map((category) => `<td>${formatCurrency(row.byCategory[category])}</td>`).join("")}<td>${formatCurrency(row.total)}</td></tr>`).join("")}</tbody></table>` : '<div class="empty-state">No monthly register data available yet.</div>';
+  })();
+  els.operationalReports.innerHTML = `${counterSections}<section class="report-card"><div class="panel-header compact"><div><h4>Interlibrary Loan</h4><p class="muted">Monthly outgoing and incoming ILL counts.</p></div></div>${illMonthly}</section><section class="report-card"><div class="panel-header compact"><div><h4>Daily Register</h4><p class="muted">Monthly totals by category and overall cash intake.</p></div></div>${registerMonthly}</section>`;
 }
 
 function switchCirculationTab(tab) {
@@ -625,10 +1099,16 @@ function renderDashboard() {
   const dashboardUpdatedLabel = `Updated ${formatRelativeTime(Date.now())}`;
   if (els.dashboardDate) els.dashboardDate.textContent = dashboardUpdatedLabel;
 
+  const activeIllCount = getIllTransactions("outgoing").filter((entry) => !ILL_COMPLETED_STATUSES.has(entry.status)).length + getIllTransactions("incoming").filter((entry) => !ILL_COMPLETED_STATUSES.has(entry.status)).length;
+  const todayRegisterTotal = summarizeRegisterDate(todayIso()).total;
   const stats = [
     { label: "Items Out", value: currentLoans.length, copy: "Currently on loan", target: "circulation" },
     { label: "Overdues", value: overdueLoans.length, copy: "Past due circulation items", target: "circulation" },
     { label: "Holds / Reserves", value: holds.length, copy: "Pending patron requests", target: "circulation", circulationTab: "holds" },
+    { label: "Visitors Today", value: getDailyCounterTotal("visitor"), copy: "Building visits counted today", target: "stats" },
+    { label: "Reference Today", value: getDailyCounterTotal("reference"), copy: "Reference questions counted today", target: "stats" },
+    { label: "Active ILL", value: activeIllCount, copy: "Outgoing + incoming ILL in progress", target: "ill-outgoing" },
+    { label: "Register Today", value: formatCurrency(todayRegisterTotal), copy: "Daily register intake", target: "register" },
     { label: "Pending Materials", value: pendingMaterials.length, copy: "Awaiting activation/cataloging", target: "acquisitions" },
     { label: "Open Orders", value: openOrders.length, copy: "Active vendor orders", target: "acquisitions" },
     { label: "Donations Awaiting Review", value: donationWorkflow.awaitingReviewCount, copy: "Donation items needing staff decision", target: "acquisitions" },
@@ -665,6 +1145,8 @@ function renderDashboard() {
     { label: "Start Donation Intake", target: "acquisitions" },
     { label: "Add Magazine Issue", target: "serials" },
     { label: "Run Reports", target: "stats" },
+    { label: "New ILL Request", target: "ill-incoming" },
+    { label: "Record Payment", target: "register" },
   ];
 
   const overduePreview = overdueLoans.slice().sort((a, b) => b.overdueDays - a.overdueDays).slice(0, 5);
@@ -2974,6 +3456,7 @@ function renderStatsPanel() {
   els.ilsStatsPage.innerHTML = `<p>Total items: <strong>${stats.total}</strong></p><p>Formats: ${formats}</p><p>Most owned authors: ${topCreators}</p><p>Publication year distribution: ${years}</p><p>Newest additions: ${newest}</p><p>Collection value (price paid): <strong>$${paidTotal.toFixed(2)}</strong></p><p>Collection value (retail): <strong>$${retailTotal.toFixed(2)}</strong></p>`;
   renderMissingBiblioReport();
   renderOverdueReport();
+  renderOperationalReports();
 }
 
 function renderOverdueReport() {
@@ -3067,6 +3550,14 @@ function bindEvents() {
   if (els.patronForm) els.patronForm.addEventListener("submit", addPatron);
   if (els.serialIssueForm) els.serialIssueForm.addEventListener("submit", addSerialIssue);
   if (els.serialSubscriptionForm) els.serialSubscriptionForm.addEventListener("submit", saveSubscription);
+  if (els.illOutgoingForm) els.illOutgoingForm.addEventListener("submit", saveOutgoingIll);
+  if (els.illIncomingForm) els.illIncomingForm.addEventListener("submit", saveIncomingIll);
+  if (els.registerForm) els.registerForm.addEventListener("submit", saveRegisterEntry);
+  if (els.registerCategory) els.registerCategory.addEventListener("change", toggleDonationFields);
+  if (els.registerDonationPurpose) els.registerDonationPurpose.addEventListener("change", toggleDonationFields);
+  if (els.registerReportDate) els.registerReportDate.addEventListener("change", renderRegisterWorkspace);
+  if (els.visitorCounterBtn) els.visitorCounterBtn.addEventListener("click", () => incrementDailyCounter("visitor"));
+  if (els.referenceCounterBtn) els.referenceCounterBtn.addEventListener("click", () => incrementDailyCounter("reference"));
   if (els.checkOutForm) els.checkOutForm.addEventListener("submit", checkOutRecord);
   if (els.checkOutCardNumber) els.checkOutCardNumber.addEventListener("input", () => renderCheckoutPatronPreview());
   if (els.runMissingReportBtn) els.runMissingReportBtn.addEventListener("click", renderMissingBiblioReport);
@@ -3115,9 +3606,14 @@ function render() {
   renderHoldsTable();
   renderStatsPanel();
   renderDashboard();
+  renderQuickCounters();
+  renderIllWorkspace();
+  renderRegisterWorkspace();
 }
 
 function init() {
+  populateStaticSelects();
+  toggleDonationFields();
   bindEvents();
   state.draftHoldings = [sanitizeHolding()];
 
