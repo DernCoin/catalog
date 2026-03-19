@@ -19,7 +19,6 @@ const state = {
   editingPatronId: "",
   selectedPatronId: "",
   draftHoldings: [],
-  recordTab: "basic",
   formDirty: false,
   acquisitionsStage: "orders",
   activeDonationBatchId: "",
@@ -55,6 +54,9 @@ const els = {
   cancelEditBtn: $("#cancelEditBtn"),
   duplicateWarning: $("#duplicateWarning"),
   fetchMetadataBtn: $("#fetchMetadataBtn"),
+  createBlankRecordBtn: $("#createBlankRecordBtn"),
+  saveAndNewBtn: $("#saveAndNewBtn"),
+  copyRecordBtn: $("#copyRecordBtn"),
   coverUpload: $("#coverUpload"),
   coverUploadStatus: $("#coverUploadStatus"),
   searchInput: $("#searchInput"),
@@ -67,6 +69,7 @@ const els = {
   formatSelect: $("#format"),
   bindingSelect: $("#binding"),
   locationSelect: $("#location"),
+  workspaceLookupMode: $("#workspaceLookupMode"),
   curatedShelfSelect: $("#curatedShelf"),
   ilsSectionButtons: $$(".ils-section-btn[data-ils-section]"),
   ilsTabButtons: $$(".admin-tab-btn[data-ils-tab]"),
@@ -231,8 +234,6 @@ const els = {
   exportActiveMarcBtn: $("#exportActiveMarcBtn"),
   workspaceStatus: $("#workspaceStatus"),
   recordSaveMessage: $("#recordSaveMessage"),
-  recordTabButtons: $$(".record-tab-btn"),
-  recordTabPanels: $$(".record-tab-panel"),
   missingFieldSelect: $("#missingFieldSelect"),
   runMissingReportBtn: $("#runMissingReportBtn"),
   missingReportSummary: $("#missingReportSummary"),
@@ -384,7 +385,7 @@ const MISSING_REPORT_FIELDS = {
 };
 
 const FORM_FIELDS = [
-  "recordId:id", "title", "subtitle", "creator", "statementOfResponsibility", "contributors", "format", "edition", "year", "publicationPlace", "publisher", "languageCode", "lccn", "oclcNumber", "deweyNumber", "lcClassNumber", "identifier", "genre", "subjects", "description", "dateAdded", "notes", "coverUrl", "circulationHistory", "binding", "seriesName", "seriesNumber", "curatedShelf", "pageCount", "physicalDetails", "summaryNote", "targetAudience", "bibliographyNote", "marcLeader", "marc008", "materialType",
+  "recordId:id", "title", "subtitle", "creator", "statementOfResponsibility", "contributors", "format", "materialType", "edition", "publisher", "publicationPlace", "year", "languageCode", "identifier", "isbn", "upc", "lccn", "oclcNumber", "localRecordId", "pageCount", "physicalDetails", "binding", "dimensions", "seriesName", "seriesNumber", "subjects", "genre", "audience", "curatedShelf", "summaryNote", "targetAudience", "bibliographyNote", "notes", "deweyNumber", "lcClassNumber", "callNumber", "location", "primaryMaterialNumber:materialNumbers", "copyNumber", "recordStatus:status", "dateAdded", "coverUrl", "circulationHistory", "marcLeader", "marc008", "marcText",
 ];
 
 function renderIlsSubnav(section = state.ilsSection) {
@@ -722,7 +723,7 @@ function getRecordBarcode(record) {
 }
 
 function getRecordAudience(record) {
-  return record.targetAudience || record.curatedShelf || "General";
+  return record.audience || record.targetAudience || record.curatedShelf || "General";
 }
 
 function getRecordStatus(record) {
@@ -1451,16 +1452,112 @@ function renderHoldingsEditor(holdings = state.draftHoldings) {
       if (state.draftHoldings.length <= 1) return;
       state.draftHoldings = collectDraftHoldings().filter((entry) => entry.id !== holding.id);
       renderHoldingsEditor(state.draftHoldings);
+      syncPrimaryHoldingFields();
     });
     const locationSelect = article.querySelector('[data-holding-field="location"]');
     locationSelect.value = holding.location || "";
     [...article.querySelectorAll("input, textarea, select")].forEach((field) => {
       field.addEventListener("input", () => {
         state.draftHoldings = collectDraftHoldings();
+        syncPrimaryHoldingFields();
       });
     });
     els.holdingRows.appendChild(article);
   });
+  syncPrimaryHoldingFields();
+}
+
+function syncPrimaryHoldingFields() {
+  const primaryHolding = collectDraftHoldings()[0] || state.draftHoldings[0] || sanitizeHolding();
+  const statusField = $("#recordStatus");
+  if ($("#primaryMaterialNumber")) $("#primaryMaterialNumber").value = (primaryHolding.materialNumbers || []).join("\n");
+  if ($("#callNumber") && !$("#callNumber").matches(":focus")) $("#callNumber").value = primaryHolding.callNumber || $("#callNumber").value || "";
+  if ($("#location") && !$("#location").matches(":focus")) $("#location").value = primaryHolding.location || $("#location").value || "";
+  if (statusField && !statusField.matches(":focus")) statusField.value = primaryHolding.status || "Available";
+  fillWorkspace({ status: statusField?.value || primaryHolding.status || "Available" });
+}
+
+function syncHoldingDraftFromPrimary(renderEditor = true) {
+  const holdings = collectDraftHoldings();
+  const primary = sanitizeHolding({
+    ...(holdings[0] || {}),
+    status: $("#recordStatus").value,
+    location: $("#location").value,
+    callNumber: $("#callNumber").value,
+    materialNumbers: $("#primaryMaterialNumber").value,
+  });
+  state.draftHoldings = [primary, ...holdings.slice(1)];
+  if (renderEditor) renderHoldingsEditor(state.draftHoldings);
+}
+
+function buildCurrentFormRecord() {
+  const selectedGenres = [...$("#genres").selectedOptions].map((option) => option.value);
+  const custom = $("#genre").value.trim();
+  const genres = [...new Set([...selectedGenres, ...(custom ? [custom] : [])])];
+  syncHoldingDraftFromPrimary(false);
+  const holdings = state.draftHoldings.map((holding) => sanitizeHolding(holding));
+  const primaryHolding = holdings[0] || sanitizeHolding();
+  return normalizeRecord({
+    id: $("#recordId").value.trim() || crypto.randomUUID(),
+    title: $("#title").value.trim(),
+    subtitle: $("#subtitle").value.trim(),
+    creator: $("#creator").value.trim(),
+    statementOfResponsibility: $("#statementOfResponsibility").value.trim(),
+    contributors: $("#contributors").value.trim(),
+    format: $("#format").value || "Other",
+    materialType: $("#materialType").value.trim(),
+    edition: $("#edition").value.trim(),
+    publisher: $("#publisher").value.trim(),
+    publicationPlace: $("#publicationPlace").value.trim(),
+    year: $("#year").value.trim(),
+    languageCode: $("#languageCode").value.trim(),
+    identifier: $("#identifier").value.trim() || $("#isbn").value.trim() || $("#upc").value.trim() || $("#oclcNumber").value.trim() || $("#lccn").value.trim(),
+    isbn: $("#isbn").value.trim(),
+    upc: $("#upc").value.trim(),
+    lccn: $("#lccn").value.trim(),
+    oclcNumber: $("#oclcNumber").value.trim(),
+    localRecordId: $("#localRecordId").value.trim(),
+    pageCount: $("#pageCount").value.trim(),
+    physicalDetails: $("#physicalDetails").value.trim(),
+    binding: $("#binding").value.trim(),
+    dimensions: $("#dimensions").value.trim(),
+    seriesName: $("#seriesName").value.trim(),
+    seriesNumber: $("#seriesNumber").value.trim(),
+    subjects: $("#subjects").value.trim(),
+    genre: genres.join(", "),
+    genres,
+    audience: $("#audience").value.trim(),
+    curatedShelf: $("#curatedShelf").value.trim(),
+    summaryNote: $("#summaryNote").value.trim(),
+    targetAudience: $("#targetAudience").value.trim(),
+    bibliographyNote: $("#bibliographyNote").value.trim(),
+    notes: $("#notes").value.trim(),
+    deweyNumber: $("#deweyNumber").value.trim(),
+    lcClassNumber: $("#lcClassNumber").value.trim(),
+    callNumber: $("#callNumber").value.trim() || primaryHolding.callNumber,
+    location: $("#location").value.trim() || primaryHolding.location,
+    status: $("#recordStatus").value || primaryHolding.status || "Available",
+    materialNumbers: holdings.flatMap((holding) => holding.materialNumbers || []),
+    dateAdded: $("#dateAdded").value || new Date().toISOString().slice(0, 10),
+    coverUrl: $("#coverUrl").value.trim(),
+    circulationHistory: $("#circulationHistory").value.trim(),
+    marcLeader: $("#marcLeader").value.trim(),
+    marc008: $("#marc008").value.trim(),
+    marcText: $("#marcText").value.trim(),
+    description: $("#summaryNote").value.trim(),
+    holdings,
+  });
+}
+
+function updateMarcPreview() {
+  const marcTextField = $("#marcText");
+  if (!marcTextField || marcTextField.dataset.edited === "true") return;
+  const draftRecord = buildCurrentFormRecord();
+  marcTextField.value = toMarcMrk({
+    ...draftRecord,
+    title: draftRecord.title || "Untitled",
+    creator: draftRecord.creator || "Unknown creator",
+  }).join("\n");
 }
 
 function findPatronByCardNumber(cardNumber) {
@@ -1480,15 +1577,7 @@ function setRecordSaveMessage(message = "", type = "") {
   if (type) els.recordSaveMessage.classList.add(`is-${type}`);
 }
 
-function switchRecordTab(tab) {
-  state.recordTab = tab;
-  els.recordTabButtons.forEach((button) => {
-    const active = button.dataset.recordTab === tab;
-    button.classList.toggle("is-active", active);
-    button.setAttribute("aria-selected", String(active));
-  });
-  els.recordTabPanels.forEach((panel) => panel.classList.toggle("hidden", panel.dataset.recordPanel !== tab));
-}
+function switchRecordTab() {}
 
 function getHoldsReadyForPickupCount() {
   return getHolds().filter((entry) => String(entry.readyForPickup || "").toLowerCase() === "true" || String(entry.status || "").toLowerCase() === "ready for pickup").length;
@@ -3826,11 +3915,18 @@ function resetForm() {
   $("#recordId").value = "";
   $("#format").value = "Book";
   $("#binding").value = "";
+  $("#identifier").value = "";
+  $("#recordStatus").value = "Available";
+  $("#primaryMaterialNumber").value = "";
+  $("#callNumber").value = "";
+  $("#location").value = "";
   $("#curatedShelf").value = "";
+  $("#marcText").dataset.edited = "false";
   state.draftHoldings = [sanitizeHolding()];
   renderHoldingsEditor(state.draftHoldings);
   els.duplicateWarning.textContent = "";
-  switchRecordTab("basic");
+  syncPrimaryHoldingFields();
+  updateMarcPreview();
   setFormDirty(false);
   setRecordSaveMessage("");
 }
@@ -3883,9 +3979,34 @@ function fillWorkspace(record) {
   els.workspaceStatus.textContent = record?.status || "Available";
 }
 
+function copyActiveRecord() {
+  const current = buildCurrentFormRecord();
+  const copy = normalizeRecord({
+    ...current,
+    id: crypto.randomUUID(),
+    localRecordId: "",
+    title: current.title ? `${current.title} (Copy)` : "Untitled record (Copy)",
+    materialNumbers: [],
+    holdings: (current.holdings || []).map((holding) => ({ ...holding, id: crypto.randomUUID(), materialNumbers: [] })),
+  });
+  populateForm(copy);
+  $("#recordId").value = "";
+  $("#localRecordId").value = "";
+  $("#primaryMaterialNumber").value = "";
+  setActiveWorkspaceRecord("");
+  setFormDirty(true);
+  setRecordSaveMessage("Copy created in the editor. Review it and save when ready.", "success");
+}
+
+function saveAndNewRecord() {
+  const saved = saveFormRecord(null, { resetAfterSave: true });
+  if (!saved) return;
+  $("#identifier").focus();
+  setRecordSaveMessage(`Record saved for ${saved.title || "Untitled record"}. Ready for the next import.`, "success");
+}
+
 function lookupWorkspaceRecord() {
-  const modeSelect = document.querySelector('.workspace-toolbar-row select');
-  const mode = modeSelect?.value || "Material Number";
+  const mode = els.workspaceLookupMode?.value || "Material Number";
   const query = String(els.workspaceLookupInput?.value || "").trim().toLowerCase();
   if (!query) {
     setCirculationMessage("Enter a lookup value first.", true);
@@ -3954,35 +4075,40 @@ function renderTable() {
 
 function populateForm(record) {
   setRecordSaveMessage("");
+  const normalizedRecord = normalizeRecord(record);
   FORM_FIELDS.forEach((pair) => {
     const [elId, prop] = pair.includes(":") ? pair.split(":") : [pair, pair];
-    const value = prop === "materialNumbers" ? (record.materialNumbers || []).join("\n") : (record[prop] || "");
-    $(`#${elId}`).value = value;
+    const value = prop === "materialNumbers" ? (normalizedRecord.materialNumbers || []).join("\n") : (normalizedRecord[prop] || "");
+    const field = $(`#${elId}`);
+    if (field) field.value = value;
   });
 
-  const selected = [...new Set(asArray(record.genres?.length ? record.genres : record.genre))];
+  const selected = [...new Set(asArray(normalizedRecord.genres?.length ? normalizedRecord.genres : normalizedRecord.genre))];
   [...$("#genres").options].forEach((option) => {
     option.selected = selected.includes(option.value);
   });
+  $("#marcText").dataset.edited = normalizedRecord.marcText ? "true" : "false";
 
   window.scrollTo({ top: 0, behavior: "smooth" });
-  state.draftHoldings = (record.holdings || []).map((holding) => sanitizeHolding(holding));
+  state.draftHoldings = (normalizedRecord.holdings || []).map((holding) => sanitizeHolding(holding));
   renderHoldingsEditor(state.draftHoldings);
   checkDuplicateDraft();
-  setActiveWorkspaceRecord(record.id);
+  syncPrimaryHoldingFields();
+  updateMarcPreview();
+  setActiveWorkspaceRecord(normalizedRecord.id);
   switchIlsTab("records");
-  switchRecordTab("basic");
   setFormDirty(false);
 }
 
-function saveFormRecord(event) {
-  event.preventDefault();
+function saveFormRecord(event, options = {}) {
+  event?.preventDefault?.();
   const id = $("#recordId").value || crypto.randomUUID();
   const dateAdded = $("#dateAdded").value || new Date().toISOString().slice(0, 10);
   const selectedGenres = [...$("#genres").selectedOptions].map((option) => option.value);
   const custom = $("#genre").value.trim();
   const genres = [...new Set([...selectedGenres, ...(custom ? [custom] : [])])];
-  const holdings = collectDraftHoldings();
+  syncHoldingDraftFromPrimary(false);
+  const holdings = state.draftHoldings.map((holding) => sanitizeHolding(holding));
   const primaryHolding = holdings[0] || sanitizeHolding();
 
   const record = normalizeRecord({
@@ -3999,24 +4125,28 @@ function saveFormRecord(event) {
     publicationPlace: $("#publicationPlace").value.trim(),
     publisher: $("#publisher").value.trim(),
     languageCode: $("#languageCode").value.trim(),
+    isbn: $("#isbn").value.trim(),
+    upc: $("#upc").value.trim(),
     lccn: $("#lccn").value.trim(),
     oclcNumber: $("#oclcNumber").value.trim(),
+    localRecordId: $("#localRecordId").value.trim(),
     deweyNumber: $("#deweyNumber").value.trim(),
     lcClassNumber: $("#lcClassNumber").value.trim(),
-    identifier: $("#identifier").value.trim(),
+    identifier: $("#identifier").value.trim() || $("#isbn").value.trim() || $("#upc").value.trim() || $("#oclcNumber").value.trim() || $("#lccn").value.trim(),
     genre: genres.join(", "),
     genres,
     materialType: $("#materialType").value.trim(),
     subjects: $("#subjects").value.trim(),
+    audience: $("#audience").value.trim(),
     summaryNote: $("#summaryNote").value.trim(),
     targetAudience: $("#targetAudience").value.trim(),
     bibliographyNote: $("#bibliographyNote").value.trim(),
-    description: $("#description").value.trim(),
+    description: $("#summaryNote").value.trim(),
     location: primaryHolding.location,
-    callNumber: primaryHolding.callNumber,
+    callNumber: $("#callNumber").value.trim() || primaryHolding.callNumber,
     accessionNumber: primaryHolding.accessionNumber,
     materialNumbers: holdings.flatMap((holding) => holding.materialNumbers || []),
-    status: primaryHolding.status || "Available",
+    status: $("#recordStatus").value || primaryHolding.status || "Available",
     dateAcquired: primaryHolding.dateAcquired,
     dateAdded,
     source: primaryHolding.source,
@@ -4026,6 +4156,7 @@ function saveFormRecord(event) {
     circulationHistory: $("#circulationHistory").value.trim(),
     coverUrl: $("#coverUrl").value.trim(),
     binding: $("#binding").value.trim(),
+    dimensions: $("#dimensions").value.trim(),
     seriesName: $("#seriesName").value.trim(),
     seriesNumber: $("#seriesNumber").value.trim(),
     curatedShelf: $("#curatedShelf").value.trim(),
@@ -4033,6 +4164,7 @@ function saveFormRecord(event) {
     physicalDetails: $("#physicalDetails").value.trim(),
     marcLeader: $("#marcLeader").value.trim(),
     marc008: $("#marc008").value.trim(),
+    marcText: $("#marcText").value.trim(),
     addedAt: new Date(dateAdded).getTime() || Date.now(),
     updatedAt: Date.now(),
     holdings,
@@ -4050,9 +4182,11 @@ function saveFormRecord(event) {
 
   saveRecords(state.records);
   setFormDirty(false);
-  resetForm();
+  if (options.resetAfterSave) resetForm();
+  else populateForm(record);
   setRecordSaveMessage(`Record saved for ${record.title || "Untitled record"}.`, "success");
   render();
+  return record;
 }
 
 function checkDuplicateDraft() {
@@ -4149,9 +4283,10 @@ function exportSelectedMarc() {
 
 
 function exportActiveMarc() {
-  const record = state.records.find((entry) => entry.id === state.activeWorkspaceRecordId);
-  if (!record) {
-    setCirculationMessage("Load a record first to export MARC.", true);
+  const activeId = $("#recordId").value || state.activeWorkspaceRecordId;
+  const record = activeId ? (state.records.find((entry) => entry.id === activeId) || buildCurrentFormRecord()) : buildCurrentFormRecord();
+  if (!record?.title && !record?.creator && !record?.identifier) {
+    setCirculationMessage("Enter or load a record first to export MARC.", true);
     return;
   }
 
@@ -4171,25 +4306,63 @@ function exportActiveMarc() {
   setCirculationMessage(`Exported MARC for ${record.title || "record"}.`);
 }
 
+async function fetchMetadataByIdentifier(type, value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) return null;
+  const endpointMap = {
+    isbn: `https://openlibrary.org/isbn/${encodeURIComponent(normalized)}.json`,
+    oclc: `https://openlibrary.org/search.json?oclc=${encodeURIComponent(normalized)}`,
+    lccn: `https://openlibrary.org/search.json?lccn=${encodeURIComponent(normalized)}`,
+  };
+
+  if (endpointMap[type]) {
+    const response = await fetch(endpointMap[type]);
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data.docs ? data.docs[0] || null : data;
+  }
+
+  const response = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(normalized)}`);
+  if (!response.ok) return null;
+  const data = await response.json();
+  return data.docs?.[0] || null;
+}
+
 async function fetchMetadata() {
-  const isbn = $("#identifier").value.trim().replace(/[^0-9Xx]/g, "");
-  if (!isbn) return;
+  const rawIdentifier = $("#identifier").value.trim();
+  if (!rawIdentifier) {
+    els.duplicateWarning.textContent = "Enter an ISBN, UPC, OCLC number, or LCCN first.";
+    return;
+  }
 
   try {
-    const response = await fetch(`https://openlibrary.org/isbn/${isbn}.json`);
-    if (!response.ok) throw new Error("No metadata found");
+    const normalizedIsbn = rawIdentifier.replace(/[^0-9Xx]/g, "");
+    const searchType = rawIdentifier.toLowerCase().startsWith("oclc") ? "oclc"
+      : rawIdentifier.toLowerCase().startsWith("lccn") ? "lccn"
+      : /^[0-9Xx-]{8,}$/.test(rawIdentifier) ? "isbn"
+      : "upc";
+    const identifierValue = searchType === "isbn"
+      ? normalizedIsbn
+      : rawIdentifier.replace(/^oclc[:\s-]*/i, "").replace(/^lccn[:\s-]*/i, "").trim();
+    const data = await fetchMetadataByIdentifier(searchType, identifierValue);
+    if (!data) throw new Error("No metadata found for that identifier");
 
-    const data = await response.json();
-    const map = { title: "#title", publishers: "#publisher", publish_date: "#year", notes: "#description" };
-    Object.entries(map).forEach(([key, id]) => {
-      if (!$(id).value && data[key]) {
-        $(id).value = Array.isArray(data[key]) ? data[key][0] : String(data[key]).slice(0, 300);
-      }
-    });
+    const title = data.title || data.title_suggest || "";
+    const subtitle = data.subtitle || "";
+    const publisher = Array.isArray(data.publishers) ? data.publishers[0] : Array.isArray(data.publisher) ? data.publisher[0] : data.publishers || data.publisher || "";
+    const publishDate = data.publish_date || data.first_publish_year || "";
+    const authorNames = Array.isArray(data.author_name) ? data.author_name : [];
+    const authors = Array.isArray(data.authors) ? data.authors : [];
 
-    if (!$("#creator").value && Array.isArray(data.authors) && data.authors.length) {
-      const names = await Promise.all(data.authors.map(async (authorRef) => {
+    if (!$("#title").value && title) $("#title").value = String(title).slice(0, 300);
+    if (!$("#subtitle").value && subtitle) $("#subtitle").value = String(subtitle).slice(0, 300);
+    if (!$("#publisher").value && publisher) $("#publisher").value = String(publisher).slice(0, 300);
+    if (!$("#year").value && publishDate) $("#year").value = String(publishDate).match(/\d{4}/)?.[0] || "";
+    if (!$("#creator").value && authorNames.length) $("#creator").value = authorNames.join(", ");
+    if (!$("#creator").value && authors.length) {
+      const names = await Promise.all(authors.map(async (authorRef) => {
         try {
+          if (!authorRef?.key) return "";
           const authorRes = await fetch(`https://openlibrary.org${authorRef.key}.json`);
           if (!authorRes.ok) return "";
           const authorData = await authorRes.json();
@@ -4198,12 +4371,22 @@ async function fetchMetadata() {
           return "";
         }
       }));
-
       const normalized = names.filter(Boolean);
       if (normalized.length) $("#creator").value = normalized.join(", ");
     }
 
-    if (!$("#coverUrl").value) $("#coverUrl").value = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
+    if (!$("#summaryNote").value && data.notes) $("#summaryNote").value = String(Array.isArray(data.notes) ? data.notes[0] : data.notes).slice(0, 500);
+    if (!$("#physicalDetails").value && data.physical_format) $("#physicalDetails").value = String(data.physical_format);
+    if (!$("#pageCount").value && data.number_of_pages) $("#pageCount").value = String(data.number_of_pages);
+    if (!$("#languageCode").value && Array.isArray(data.language) && data.language[0]?.key) $("#languageCode").value = String(data.language[0].key).split("/").pop().slice(0, 3);
+    if (!$("#isbn").value && normalizedIsbn) $("#isbn").value = normalizedIsbn;
+    if (!$("#upc").value && searchType === "upc") $("#upc").value = identifierValue;
+    if (!$("#oclcNumber").value && (data.oclc?.[0] || searchType === "oclc")) $("#oclcNumber").value = String(data.oclc?.[0] || identifierValue);
+    if (!$("#lccn").value && (data.lccn?.[0] || searchType === "lccn")) $("#lccn").value = String(data.lccn?.[0] || identifierValue);
+    if (!$("#coverUrl").value && normalizedIsbn) $("#coverUrl").value = `https://covers.openlibrary.org/b/isbn/${normalizedIsbn}-L.jpg`;
+    updateMarcPreview();
+    setRecordSaveMessage(`Imported metadata for ${title || rawIdentifier}. Review and complete the form before saving.`, "success");
+    els.duplicateWarning.textContent = "";
   } catch (error) {
     els.duplicateWarning.textContent = `Metadata fetch failed: ${error.message}`;
   }
@@ -4658,6 +4841,9 @@ function bindEvents() {
   els.recordForm.addEventListener("input", () => {
     setFormDirty(true);
     setRecordSaveMessage("");
+    if (document.activeElement?.id === "marcText") $("#marcText").dataset.edited = "true";
+    if (["callNumber", "location", "recordStatus", "primaryMaterialNumber"].includes(document.activeElement?.id || "")) syncHoldingDraftFromPrimary();
+    updateMarcPreview();
     checkDuplicateDraft();
   });
   els.cancelEditBtn.addEventListener("click", () => {
@@ -4667,6 +4853,14 @@ function bindEvents() {
     setRecordSaveMessage("");
   });
   els.fetchMetadataBtn.addEventListener("click", fetchMetadata);
+  if (els.createBlankRecordBtn) els.createBlankRecordBtn.addEventListener("click", () => {
+    resetForm();
+    $("#identifier").focus();
+    setActiveWorkspaceRecord("");
+    setRecordSaveMessage("Blank record ready. Complete the form and save when finished.", "success");
+  });
+  if (els.saveAndNewBtn) els.saveAndNewBtn.addEventListener("click", saveAndNewRecord);
+  if (els.copyRecordBtn) els.copyRecordBtn.addEventListener("click", copyActiveRecord);
   els.coverUpload.addEventListener("change", handleCoverUpload);
   if (els.serialCoverUpload) els.serialCoverUpload.addEventListener("change", handleSerialCoverUpload);
   if (els.acqCoverUpload) els.acqCoverUpload.addEventListener("change", handleAcquisitionCoverUpload);
@@ -4766,7 +4960,6 @@ function bindEvents() {
   if (els.holdForm) els.holdForm.addEventListener("submit", placeHold);
   els.circulationTabButtons.forEach((button) => button.addEventListener("click", () => switchCirculationTab(button.dataset.circulationTab)));
   els.ilsSectionButtons.forEach((btn) => btn.addEventListener("click", () => switchIlsSection(btn.dataset.ilsSection)));
-  els.recordTabButtons.forEach((button) => button.addEventListener("click", () => switchRecordTab(button.dataset.recordTab)));
   window.addEventListener("beforeunload", (event) => {
     if (!state.formDirty) return;
     event.preventDefault();
@@ -4833,7 +5026,6 @@ function init() {
 
   switchIlsSection("dashboard");
   switchCirculationTab("checkout");
-  switchRecordTab("basic");
   renderCheckoutReceipt(null);
   updateCheckoutStatus('Awaiting patron load.', 'Items will display updated status here.');
   renderCheckoutGateState();
