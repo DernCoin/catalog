@@ -673,138 +673,220 @@
         </section>
 
         <section class="admin-tab-panel hidden" data-ils-panel="records">
-        <section class="admin-table-wrap">
-          <h2>Edit Records</h2>
-        <div class="admin-tools top-space isbn-import-row">
-          <button id="fetchMetadataBtn" class="button button-secondary" type="button">Attempt importing record by ISBN</button>
-        </div>
-        <section class="record-workspace" aria-label="Record workspace">
-          <div class="workspace-toolbar-row">
-            <label>Lookup by
-              <select>
-                <option>Material Number</option>
-                <option>Title</option>
-                <option>Creator</option>
-              </select>
-            </label>
-            <input id="workspaceLookupInput" type="search" placeholder="Enter lookup value" />
-            <button id="workspaceLookupBtn" class="button button-secondary" type="button">Lookup</button>
-            <button id="exportActiveMarcBtn" class="button button-secondary" type="button">Export Active Record as MARC</button>
+        <section class="admin-table-wrap cataloging-panel">
+          <div class="panel-header cataloging-header">
+            <div>
+              <h2>Edit Records</h2>
+              <p class="muted">Import first, then review and complete one continuous cataloging form.</p>
+            </div>
+            <div class="cataloging-status-cluster">
+              <span class="cataloging-status-label">Active record status</span>
+              <strong id="workspaceStatus">Available</strong>
+            </div>
           </div>
 
-          <div class="workspace-meta-grid">
-            <div><strong>Actions:</strong> Save Record • Copy Record</div>
-            <div><strong>View:</strong> MARC View • Patron View</div>
-            <div><strong>Status:</strong> <span id="workspaceStatus">Available</span></div>
-          </div>
+          <section class="record-import-bar card-like" aria-label="Record import tools">
+            <div class="record-import-bar-copy">
+              <p class="eyebrow">Cataloging workflow</p>
+              <h3>Start with an identifier import</h3>
+              <p class="muted">Enter an ISBN, UPC, OCLC number, or LCCN to bring bibliographic data into this editor before saving.</p>
+            </div>
+            <div class="record-import-bar-controls">
+              <label class="record-import-field form-grid-span"><span>ISBN / UPC / OCLC / LCCN</span><input id="identifier" placeholder="Scan or enter identifier" autocomplete="off" /></label>
+              <button id="fetchMetadataBtn" class="button button-primary" type="button">Import Record</button>
+              <button id="createBlankRecordBtn" class="button button-secondary" type="button">Create Blank Record</button>
+            </div>
+          </section>
 
-        <form id="recordForm" class="catalog-form">
-          <input id="recordId" type="hidden" />
-          <div class="record-editor-shell card-like">
-            <div class="record-editor-header">
-              <div>
-                <h3>Record editor</h3>
-                <p class="muted">Required fields are marked with <span class="required-indicator">*</span>. Changes stay local until you save.</p>
+          <section class="record-workspace" aria-label="Record workspace">
+            <div class="workspace-toolbar-row workspace-toolbar-row-secondary card-like">
+              <div class="workspace-toolbar-copy">
+                <strong>Find existing record</strong>
+                <span class="muted">Lookup an existing bibliographic record without interrupting the import-first workflow.</span>
               </div>
-              <div id="recordSaveMessage" class="status-message" aria-live="polite"></div>
-            </div>
-            <div class="record-editor-tabs" role="tablist" aria-label="Record editor sections">
-              <button class="button button-secondary record-tab-btn is-active" type="button" data-record-tab="basic" role="tab" aria-selected="true">Basic Info</button>
-              <button class="button button-secondary record-tab-btn" type="button" data-record-tab="marc" role="tab" aria-selected="false">MARC Data</button>
-              <button class="button button-secondary record-tab-btn" type="button" data-record-tab="holdings" role="tab" aria-selected="false">Holdings / Item Info</button>
-              <button class="button button-secondary record-tab-btn" type="button" data-record-tab="subjects" role="tab" aria-selected="false">Subjects / Genres</button>
+              <label><span>Lookup by</span>
+                <select id="workspaceLookupMode">
+                  <option>Material Number</option>
+                  <option>Title</option>
+                  <option>Creator</option>
+                </select>
+              </label>
+              <label class="workspace-lookup-field"><span>Search existing records</span><input id="workspaceLookupInput" type="search" placeholder="Enter lookup value" /></label>
+              <button id="workspaceLookupBtn" class="button button-secondary" type="button">Load Record</button>
             </div>
 
-            <section class="record-tab-panel" data-record-panel="basic" role="tabpanel">
-              <div class="editor-section-grid">
-                <section class="editor-panel">
-                  <h4>Basic bibliographic details</h4>
+            <form id="recordForm" class="catalog-form cataloging-workspace-form">
+              <input id="recordId" type="hidden" />
+              <div class="record-editor-shell card-like">
+                <div class="record-editor-header">
+                  <div>
+                    <p class="eyebrow">Cataloging workspace</p>
+                    <h3>Single record editor</h3>
+                    <p class="muted">Review imported metadata, complete local cataloging details, and save from one continuous screen.</p>
+                  </div>
+                  <div id="recordSaveMessage" class="status-message" aria-live="polite"></div>
+                </div>
+
+                <div id="duplicateWarning" class="warning"></div>
+
+                <section class="editor-panel cataloging-section">
+                  <div class="cataloging-section-header">
+                    <h4>1. Core Bibliographic Info</h4>
+                    <p class="muted">Primary descriptive access points for the bibliographic record.</p>
+                  </div>
                   <div class="form-grid">
                     <label><span>Title <span class="required-indicator">*</span></span><input id="title" required /></label>
                     <label><span>Subtitle</span><input id="subtitle" /></label>
-                    <label><span>Creator / Author / Artist <span class="required-indicator">*</span></span><input id="creator" required /></label>
-                    <label><span>Statement of Responsibility</span><input id="statementOfResponsibility" placeholder="e.g., by Jane Doe" /></label>
-                    <label><span>Additional Contributors</span><input id="contributors" placeholder="Editor, narrator, illustrator..." /></label>
+                    <label><span>Main author / creator <span class="required-indicator">*</span></span><input id="creator" required /></label>
+                    <label><span>Statement of responsibility</span><input id="statementOfResponsibility" placeholder="by, edited by, narrated by..." /></label>
+                    <label class="form-grid-span"><span>Additional contributors</span><input id="contributors" placeholder="Illustrator, editor, translator, narrator..." /></label>
                     <label><span>Format <span class="required-indicator">*</span></span><select id="format" required></select></label>
+                    <label><span>Material type</span><select id="materialType"></select></label>
+                  </div>
+                </section>
+
+                <section class="editor-panel cataloging-section">
+                  <div class="cataloging-section-header">
+                    <h4>2. Publication Info</h4>
+                  </div>
+                  <div class="form-grid">
                     <label><span>Edition</span><input id="edition" /></label>
-                    <label><span>Publication Year</span><input id="year" type="number" min="0" /></label>
-                    <label><span>Publication Place</span><input id="publicationPlace" placeholder="City, State/Country" /></label>
-                    <label><span>Publisher / Label</span><input id="publisher" /></label>
-                    <label><span>Language Code</span><input id="languageCode" placeholder="eng" maxlength="3" /></label>
-                    <label><span>Identifier (ISBN / UPC / Catalog #)</span><input id="identifier" /></label>
-                    <label><span>Material Type</span><select id="materialType"></select></label>
-                    <label><span>Binding</span><select id="binding"></select></label>
-                    <label><span>Series Name</span><input id="seriesName" /></label>
-                    <label><span>Series Number</span><input id="seriesNumber" type="number" min="0" /></label>
-                    <label><span>Curated Shelf</span><select id="curatedShelf"></select></label>
+                    <label><span>Publisher / label</span><input id="publisher" /></label>
+                    <label><span>Publication place</span><input id="publicationPlace" placeholder="City, State/Country" /></label>
+                    <label><span>Publication year</span><input id="year" type="number" min="0" /></label>
+                    <label><span>Language code</span><input id="languageCode" placeholder="eng" maxlength="3" /></label>
+                  </div>
+                </section>
+
+                <section class="editor-panel cataloging-section">
+                  <div class="cataloging-section-header">
+                    <h4>3. Standard Numbers / Control</h4>
+                  </div>
+                  <div class="form-grid">
+                    <label><span>ISBN</span><input id="isbn" /></label>
+                    <label><span>UPC</span><input id="upc" /></label>
+                    <label><span>LCCN</span><input id="lccn" /></label>
+                    <label><span>OCLC number</span><input id="oclcNumber" /></label>
+                    <label><span>Local record ID</span><input id="localRecordId" placeholder="Optional local control number" /></label>
+                  </div>
+                </section>
+
+                <section class="editor-panel cataloging-section">
+                  <div class="cataloging-section-header">
+                    <h4>4. Physical Description</h4>
+                  </div>
+                  <div class="form-grid">
                     <label><span>Page count</span><input id="pageCount" type="number" min="1" step="1" /></label>
-                    <label><span>Physical Details</span><input id="physicalDetails" placeholder="illustrations ; 24 cm" /></label>
-                    <label class="form-grid-span"><span>Description / Summary</span><textarea id="description" rows="3"></textarea></label>
-                    <label class="form-grid-span"><span>Personal Notes</span><textarea id="notes" rows="2"></textarea></label>
+                    <label><span>Physical details</span><input id="physicalDetails" placeholder="illustrations ; 24 cm" /></label>
+                    <label><span>Binding</span><select id="binding"></select></label>
+                    <label><span>Dimensions</span><input id="dimensions" placeholder="24 cm" /></label>
+                  </div>
+                </section>
+
+                <section class="editor-panel cataloging-section">
+                  <div class="cataloging-section-header">
+                    <h4>5. Series</h4>
+                  </div>
+                  <div class="form-grid">
+                    <label><span>Series name</span><input id="seriesName" /></label>
+                    <label><span>Series number</span><input id="seriesNumber" /></label>
+                  </div>
+                </section>
+
+                <section class="editor-panel cataloging-section">
+                  <div class="cataloging-section-header">
+                    <h4>6. Subjects / Access</h4>
+                  </div>
+                  <div class="form-grid">
+                    <label class="form-grid-span"><span>Subjects</span><input id="subjects" placeholder="Comma-separated authorized or local headings" /></label>
+                    <label><span>Genres</span><select id="genres" multiple size="6"></select></label>
+                    <label><span>Custom genre</span><input id="genre" placeholder="Optional local genre term" /></label>
+                    <label><span>Audience</span><input id="audience" placeholder="Juvenile, Adult, Teen..." /></label>
+                    <label><span>Curated shelf</span><select id="curatedShelf"></select></label>
+                  </div>
+                </section>
+
+                <section class="editor-panel cataloging-section">
+                  <div class="cataloging-section-header">
+                    <h4>7. Notes</h4>
+                  </div>
+                  <div class="form-grid">
+                    <label class="form-grid-span"><span>Summary / 520</span><textarea id="summaryNote" rows="3"></textarea></label>
+                    <label class="form-grid-span"><span>Audience note / 521</span><textarea id="targetAudience" rows="2"></textarea></label>
+                    <label class="form-grid-span"><span>Bibliography note / 504</span><textarea id="bibliographyNote" rows="2"></textarea></label>
+                    <label class="form-grid-span"><span>Local notes</span><textarea id="notes" rows="3"></textarea></label>
+                  </div>
+                </section>
+
+                <section class="editor-panel cataloging-section">
+                  <div class="cataloging-section-header">
+                    <h4>8. Classification / Shelving</h4>
+                  </div>
+                  <div class="form-grid">
+                    <label><span>Dewey class</span><input id="deweyNumber" /></label>
+                    <label><span>LC class</span><input id="lcClassNumber" /></label>
+                    <label><span>Call number</span><input id="callNumber" /></label>
+                    <label><span>Shelf location</span><select id="location"></select></label>
+                  </div>
+                </section>
+
+                <section class="editor-panel cataloging-section">
+                  <div class="cataloging-section-header">
+                    <h4>9. Item / Holdings</h4>
+                    <p class="muted">Record the primary item and any additional copy-specific holdings.</p>
+                  </div>
+                  <div class="workspace-holdings-toolbar">
+                    <label><span>Barcode / material number</span><textarea id="primaryMaterialNumber" rows="2" placeholder="One material number per line"></textarea></label>
+                    <label><span>Copy number</span><input id="copyNumber" placeholder="1" /></label>
+                    <label><span>Status</span>
+                      <select id="recordStatus">
+                        <option>Available</option>
+                        <option>Checked In</option>
+                        <option>On Loan</option>
+                        <option>Pending Material</option>
+                        <option>On Order</option>
+                        <option>Reference Only</option>
+                        <option>Missing</option>
+                      </select>
+                    </label>
+                    <label><span>Date added</span><input id="dateAdded" type="date" /></label>
+                    <label><span>Cover image URL</span><input id="coverUrl" type="url" placeholder="https://..." /></label>
+                    <label><span>Cover upload</span><input id="coverUpload" type="file" accept="image/*" /></label>
+                  </div>
+                  <div class="workspace-holdings-actions">
+                    <button id="addHoldingBtn" class="button button-secondary" type="button">Add Additional Holding</button>
+                  </div>
+                  <div id="holdingRows" class="holdings-editor"></div>
+                  <p id="coverUploadStatus" class="status-message"></p>
+                  <label class="form-grid-span"><span>Circulation / checkout history</span><textarea id="circulationHistory" rows="4" readonly></textarea></label>
+                </section>
+
+                <section class="editor-panel cataloging-section">
+                  <div class="cataloging-section-header">
+                    <h4>10. MARC Coding</h4>
+                    <p class="muted">Keep staff-friendly fields and MARC coding in the same workspace.</p>
+                  </div>
+                  <div class="form-grid">
+                    <label><span>MARC leader</span><input id="marcLeader" placeholder="00000nam a2200000 i 4500" /></label>
+                    <label class="form-grid-span"><span>MARC 008</span><input id="marc008" placeholder="YYMMDDsYYYY..." /></label>
+                    <label class="form-grid-span"><span>MARC preview / editable text</span><textarea id="marcText" rows="10" placeholder="Generated MARC preview will appear here and may be edited locally."></textarea></label>
                   </div>
                 </section>
               </div>
-            </section>
 
-            <section class="record-tab-panel hidden" data-record-panel="marc" role="tabpanel">
-              <section class="editor-panel">
-                <h4>MARC fields and coding</h4>
-                <div class="form-grid">
-                  <label><span>LCCN</span><input id="lccn" /></label>
-                  <label><span>OCLC Number</span><input id="oclcNumber" /></label>
-                  <label><span>Dewey Class</span><input id="deweyNumber" /></label>
-                  <label><span>LC Class</span><input id="lcClassNumber" /></label>
-                  <label><span>Summary Note (520)</span><textarea id="summaryNote" rows="2"></textarea></label>
-                  <label><span>Target Audience (521)</span><input id="targetAudience" /></label>
-                  <label><span>Bibliography Note (504)</span><input id="bibliographyNote" /></label>
-                  <label><span>MARC Leader</span><input id="marcLeader" placeholder="00000nam a2200000 i 4500" /></label>
-                  <label class="form-grid-span"><span>MARC 008</span><input id="marc008" placeholder="YYMMDDsYYYY..." /></label>
+              <div class="record-sticky-actions card-like">
+                <div class="record-sticky-actions-main">
+                  <button class="button button-primary" type="submit">Save Record</button>
+                  <button id="saveAndNewBtn" class="button button-secondary" type="button">Save &amp; New</button>
+                  <button id="copyRecordBtn" class="button button-secondary" type="button">Copy Record</button>
+                  <button id="cancelEditBtn" class="button button-secondary" type="button">Cancel</button>
+                  <button id="exportActiveMarcBtn" class="button button-secondary" type="button">Export MARC</button>
                 </div>
-              </section>
-            </section>
+                <p class="muted record-sticky-actions-note">Imported data is editable before saving. Create Blank Record opens the same form with empty defaults.</p>
+              </div>
+            </form>
+          </section>
 
-            <section class="record-tab-panel hidden" data-record-panel="holdings" role="tabpanel">
-              <section class="editor-panel">
-                <div class="panel-header compact">
-                  <div>
-                    <h4>Holdings and local item data</h4>
-                    <p class="muted">Manage barcodes, locations, and copy-level status without leaving the editor.</p>
-                  </div>
-                  <button id="addHoldingBtn" class="button button-secondary" type="button">Add Holding</button>
-                </div>
-                <div class="workspace-holdings-toolbar">
-                  <label><span>Date Added</span><input id="dateAdded" type="date" /></label>
-                  <label><span>Cover Image URL</span><input id="coverUrl" type="url" placeholder="https://..." /></label>
-                  <label><span>Cover Upload</span><input id="coverUpload" type="file" accept="image/*" /></label>
-                </div>
-                <div id="holdingRows" class="holdings-editor"></div>
-                <p id="coverUploadStatus" class="status-message"></p>
-                <label><span>Circulation / Checkout History</span>
-                  <textarea id="circulationHistory" rows="4" readonly></textarea>
-                </label>
-              </section>
-            </section>
-
-            <section class="record-tab-panel hidden" data-record-panel="subjects" role="tabpanel">
-              <section class="editor-panel">
-                <h4>Subjects, genres, and access points</h4>
-                <div class="form-grid">
-                  <label><span>Genres</span><select id="genres" multiple size="6"></select></label>
-                  <label><span>Custom Genre / Category</span><input id="genre" placeholder="Optional custom" /></label>
-                  <label class="form-grid-span"><span>Subjects / Tags</span><input id="subjects" placeholder="Comma-separated" /></label>
-                </div>
-              </section>
-            </section>
-          </div>
-
-          <div id="duplicateWarning" class="warning"></div>
-
-          <div class="actions">
-            <button class="button button-primary" type="submit">Save Record</button>
-            <button id="cancelEditBtn" class="button button-secondary" type="button">Cancel Edit</button>
-          </div>
-        </form>
-        </section>
           <div class="admin-tools">
             <label><input id="selectAllRows" type="checkbox" /> Select all</label>
             <select id="bulkStatusSelect">
