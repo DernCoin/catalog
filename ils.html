@@ -83,11 +83,7 @@
             </div>
 
         <section class="admin-tab-panel hidden" data-ils-panel="dashboard">
-          <div class="panel-header">
-            <div>
-              <h2>Dashboard</h2>
-              <p class="muted">Overview of circulation, cataloging, acquisitions, and patron activity.</p>
-            </div>
+          <div class="dashboard-date-row">
             <div class="dashboard-date" id="dashboardDate"></div>
           </div>
           <div id="dashboardTileGrid" class="dashboard-tile-grid" aria-label="ILS dashboard shortcuts and summaries"></div>
@@ -99,7 +95,6 @@
               <div class="panel-header acquisitions-hero-header">
                 <div>
                   <p class="eyebrow acquisitions-eyebrow">Staff workflow</p>
-                  <h2>Acquisitions</h2>
                   <p class="muted acquisitions-subheading">Manage orders, receive incoming materials, review donations, and move collection items into the catalog.</p>
                   <p id="acquisitionsStatusLine" class="muted acquisitions-status-line">Track each acquisition path from intake through activation.</p>
                 </div>
@@ -124,7 +119,6 @@
                 <section class="admin-tab-panel hidden" data-ils-panel="circulation">
           <div class="panel-header circulation-header-block">
             <div>
-              <h2>Circulation</h2>
               <p class="muted">Use one circulation mode at a time for safer, clearer service-desk workflows.</p>
             </div>
             <div class="admin-tab-nav circulation-subtabs" aria-label="Circulation actions">
@@ -331,12 +325,6 @@
 
 
         <section class="admin-tab-panel hidden" data-ils-panel="ill-outgoing">
-          <div class="panel-header">
-            <div>
-              <h2>Interlibrary Loan</h2>
-              <p class="muted">Track outgoing loans to partner libraries and incoming patron requests without creating permanent catalog items.</p>
-            </div>
-          </div>
           <div class="ill-workspace-grid">
             <section class="admin-block card-like">
               <h3>Create outgoing ILL</h3>
@@ -430,12 +418,6 @@
         </section>
 
         <section class="admin-tab-panel hidden" data-ils-panel="register">
-          <div class="panel-header">
-            <div>
-              <h2>Daily Register</h2>
-              <p class="muted">Record service-desk cash intake and daily money transactions by category.</p>
-            </div>
-          </div>
           <div class="register-workspace-grid">
             <section class="admin-block card-like">
               <h3>Add register transaction</h3>
@@ -468,12 +450,6 @@
           </div>
         </section>
         <section class="admin-tab-panel hidden" data-ils-panel="patrons">
-          <div class="panel-header">
-            <div>
-              <h2>Patrons</h2>
-              <p class="muted">Open full patron accounts, review circulation context, and update account alerts without leaving the patron module.</p>
-            </div>
-          </div>
           <div class="patrons-workspace">
             <section class="admin-block patron-list-block">
               <div class="panel-header compact">
@@ -603,9 +579,6 @@
         </section>
 
         <section class="admin-tab-panel hidden" data-ils-panel="serials">
-          <h2>Serials</h2>
-          <p class="muted">Track active magazine subscriptions and quickly add newly arrived issues to the catalog.</p>
-
           <section class="admin-block">
             <h3>Add magazine issue to catalog</h3>
             <form id="serialIssueForm" class="simple-form serials-form-grid">
@@ -676,7 +649,6 @@
         <section class="admin-table-wrap cataloging-panel">
           <div class="panel-header cataloging-header">
             <div>
-              <h2>Edit Records</h2>
               <p class="muted">Import first, then review and complete one continuous cataloging form.</p>
             </div>
             <div class="cataloging-status-cluster">
@@ -917,7 +889,6 @@
               <div class="panel-header reports-panel-header">
                 <div>
                   <p class="eyebrow">Staff reporting</p>
-                  <h2>Reports</h2>
                   <p class="muted">Browse reports by category, then open a single focused workspace to review filters and results without the clutter of one long page.</p>
                 </div>
               </div>

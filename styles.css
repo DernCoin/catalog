@@ -808,7 +808,8 @@ label > span, .status-label { display:block; font-size:.83rem; font-weight:700; 
 }
 
 
-.dashboard-home { display:grid; gap:1rem; }
+.dashboard-date-row { display:flex; justify-content:flex-end; }
+.dashboard-home { display:grid; gap:1rem; grid-column:1 / -1; }
 .dashboard-hero { display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; padding:1.1rem; border-radius:20px; background:linear-gradient(135deg, #fff 0%, #f8f2ff 55%, #f3fbff 100%); border:1px solid var(--border); }
 .dashboard-hero h3 { margin:.2rem 0; font-size:clamp(1.6rem, 3vw, 2.3rem); }
 .dashboard-subheading, .dashboard-welcome { margin:.2rem 0; }
