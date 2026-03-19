@@ -32,6 +32,9 @@ const state = {
   authorityStatusFilter: "all",
   authoritySort: "alpha",
   authorityEditingId: "",
+  reportsView: "landing",
+  reportsCategory: "collection",
+  activeReportId: "monthly-circulation",
 };
 
 
@@ -107,6 +110,26 @@ const els = {
   authorityModalMessage: $("#authorityModalMessage"),
   authorityRetireBtn: $("#authorityRetireBtn"),
   authorityDeleteBtn: $("#authorityDeleteBtn"),
+  reportsLandingView: $("#reportsLandingView"),
+  reportsCategoryView: $("#reportsCategoryView"),
+  reportsWorkspaceView: $("#reportsWorkspaceView"),
+  reportsCategoryGrid: $("#reportsCategoryGrid"),
+  reportsCategoryList: $("#reportsCategoryList"),
+  reportsCategoryTitle: $("#reportsCategoryTitle"),
+  reportsCategoryDescription: $("#reportsCategoryDescription"),
+  reportsWorkspaceEyebrow: $("#reportsWorkspaceEyebrow"),
+  reportsWorkspaceTitle: $("#reportsWorkspaceTitle"),
+  reportsWorkspaceDescription: $("#reportsWorkspaceDescription"),
+  reportsBackToLandingBtn: $("#reportsBackToLandingBtn"),
+  reportsBackToCategoryBtn: $("#reportsBackToCategoryBtn"),
+  reportsBackToLandingFromWorkspaceBtn: $("#reportsBackToLandingFromWorkspaceBtn"),
+  reportWorkspacePanels: $$(".report-workspace-panel"),
+  monthlyCirculationMonth: $("#monthlyCirculationMonth"),
+  monthlyCirculationStartDate: $("#monthlyCirculationStartDate"),
+  monthlyCirculationEndDate: $("#monthlyCirculationEndDate"),
+  monthlyCirculationSummary: $("#monthlyCirculationSummary"),
+  monthlyCirculationReport: $("#monthlyCirculationReport"),
+  monthlyCirculationExportBtn: $("#monthlyCirculationExportBtn"),
   ilsStatsPage: $("#ilsStatsPage"),
   dashboardTileGrid: $("#dashboardTileGrid"),
   dashboardDate: $("#dashboardDate"),
@@ -308,7 +331,27 @@ const ILS_SECTIONS = {
   ill: { label: "Interlibrary Loan", description: "Manage outgoing loans, incoming patron requests, temporary ILL items, and monthly ILL activity.", tabs: [{ id: "ill-outgoing", label: "Outgoing ILL" }, { id: "ill-incoming", label: "Incoming Requests" }, { id: "ill-reports", label: "ILL Reports" }] },
   register: { label: "Daily Register", description: "Log staff-side cash intake, service transactions, and daily drawer totals.", tabs: [{ id: "register", label: "Register" }] },
   administration: { label: "Administration", description: "System settings, circulation rules, and authority control for staff administration.", tabs: [{ id: "circulation-rules", label: "Circulation Rules" }, { id: "utilities", label: "Authority Control" }] },
-  reports: { label: "Reports", description: "Run statistics, operational activity, missing bibliography, and overdue reports from one reporting area.", tabs: [{ id: "stats", label: "Statistics" }] },
+  reports: { label: "Reports", description: "Browse report categories and open one focused reporting workspace at a time.", tabs: [{ id: "stats", label: "Reports Home" }] },
+};
+
+const REPORT_CATEGORIES = {
+  collection: { label: "Collection Reports", description: "Collection health, metadata quality, and circulation-driven collection insights.", reports: ["collection-stats", "weeding", "authors", "sections", "missing-biblio"] },
+  circulation: { label: "Circulation Reports", description: "Checkout trends and overdue lending activity.", reports: ["monthly-circulation", "overdue"] },
+  service: { label: "Service Desk / Usage Reports", description: "Desk activity, traffic, and operational service reporting.", reports: ["busiest-hours", "operational"] },
+  financial: { label: "Financial Reports", description: "Fine and fee balances, assessments, and payment trends.", reports: ["fines-fees"] },
+};
+
+const REPORT_DEFINITIONS = {
+  "collection-stats": { title: "Collection Stats", description: "High-level collection counts, format mix, and value snapshots.", category: "collection", panelId: "report-collection-stats" },
+  weeding: { title: "Weeding Report", description: "Identify inactive and never-circulated items for review.", category: "collection", panelId: "report-weeding" },
+  authors: { title: "Most Borrowed Authors", description: "See top-circulating authors within the selected filters.", category: "collection", panelId: "report-authors" },
+  sections: { title: "Least Used Sections", description: "Compare section size against circulation to spot underused areas.", category: "collection", panelId: "report-sections" },
+  "missing-biblio": { title: "Missing Biblio Report", description: "Find records missing required bibliographic details.", category: "collection", panelId: "report-missing-biblio" },
+  "monthly-circulation": { title: "Monthly Circulation Report", description: "View monthly checkout totals and material type breakdowns.", category: "circulation", panelId: "report-monthly-circulation" },
+  overdue: { title: "60+ Days Past Due Report", description: "Review items that have been overdue for at least 60 days.", category: "circulation", panelId: "report-overdue" },
+  "busiest-hours": { title: "Busiest Hours Report", description: "Use visitor timestamps to spot high-traffic service windows.", category: "service", panelId: "report-busiest-hours" },
+  operational: { title: "Operational Reports", description: "Review building use, reference, ILL, and register activity together.", category: "service", panelId: "report-operational" },
+  "fines-fees": { title: "Fines and Fees", description: "Track balances, fee detail, and monthly assessed versus paid totals.", category: "financial", panelId: "report-fines-fees" },
 };
 
 const TAB_TO_SECTION = Object.fromEntries(
@@ -1030,6 +1073,7 @@ function populateStaticSelects() {
   if (els.feeDateAssessed && !els.feeDateAssessed.value) els.feeDateAssessed.value = todayIso();
   if (els.trafficStartDate && !els.trafficStartDate.value) els.trafficStartDate.value = todayIso();
   if (els.trafficEndDate && !els.trafficEndDate.value) els.trafficEndDate.value = todayIso();
+  if (els.monthlyCirculationMonth && !els.monthlyCirculationMonth.value) els.monthlyCirculationMonth.value = getMonthKey(todayIso());
 }
 
 function normalizeIllTransaction(type, entry = {}) {
@@ -4397,12 +4441,157 @@ function renderFinesFeesReport() {
     <section class="report-split-grid"><div class="report-card"><h4>Fines / fees by category</h4>${summary.byCategory.length ? `<ul class="totals-list">${summary.byCategory.map(([category, amount]) => `<li><span>${escapeHtml(category)}</span><strong>${formatCurrency(amount)}</strong></li>`).join('')}</ul>` : '<div class="empty-state">No category totals available yet.</div>'}</div><div class="report-card"><h4>Monthly assessed / paid</h4>${summary.monthly.length ? `<div class="report-table-wrap"><table class="serials-table"><thead><tr><th>Month</th><th>Assessed</th><th>Paid</th></tr></thead><tbody>${summary.monthly.map(([month, row]) => `<tr><td>${formatMonthLabel(month)}</td><td>${formatCurrency(row.assessed)}</td><td>${formatCurrency(row.paid)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty-state">No monthly fines or fees data is available yet.</div>'}</div></section>`;
 }
 
+function getMonthlyCirculationFilters() {
+  const monthValue = els.monthlyCirculationMonth?.value || "";
+  const startValue = els.monthlyCirculationStartDate?.value || "";
+  const endValue = els.monthlyCirculationEndDate?.value || "";
+  if (monthValue) {
+    const [year, month] = monthValue.split("-").map((part) => Number.parseInt(part, 10));
+    const start = new Date(year, (month || 1) - 1, 1, 0, 0, 0, 0);
+    const end = new Date(year, month || 1, 0, 23, 59, 59, 999);
+    return { start, end, label: formatMonthLabel(monthValue), monthValue, mode: 'month' };
+  }
+  const start = startValue ? new Date(`${startValue}T00:00:00`) : null;
+  const end = endValue ? new Date(`${endValue}T23:59:59`) : null;
+  return { start, end, label: start && end ? `${start.toLocaleDateString()} – ${end.toLocaleDateString()}` : start ? `From ${start.toLocaleDateString()}` : end ? `Through ${end.toLocaleDateString()}` : 'All recorded circulation', monthValue: '', mode: 'range' };
+}
+
+function summarizeMonthlyCirculation() {
+  const filters = getMonthlyCirculationFilters();
+  const monthly = new Map();
+  const material = new Map();
+  let total = 0;
+  state.records.forEach((record) => {
+    const materialType = record.materialType || record.format || 'Other';
+    parseCirculationLines(record).filter((line) => line.isCheckout && Number.isFinite(line.timestamp)).forEach((line) => {
+      const date = new Date(line.timestamp);
+      if (filters.start && date < filters.start) return;
+      if (filters.end && date > filters.end) return;
+      const monthKey = getMonthKey(date.toISOString());
+      monthly.set(monthKey, Number(monthly.get(monthKey) || 0) + 1);
+      material.set(materialType, Number(material.get(materialType) || 0) + 1);
+      total += 1;
+    });
+  });
+  const monthlyRows = [...monthly.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([month, count]) => ({ month, count }));
+  const materialRows = [...material.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([type, count]) => ({ type, count, percent: total ? (count / total) * 100 : 0 }));
+  return { ...filters, total, monthlyRows, materialRows };
+}
+
+function renderMonthlyCirculationReport() {
+  if (!els.monthlyCirculationReport || !els.monthlyCirculationSummary) return;
+  const summary = summarizeMonthlyCirculation();
+  els.monthlyCirculationSummary.textContent = summary.total
+    ? `${summary.total} checkout${summary.total === 1 ? '' : 's'} found for ${summary.label}.`
+    : `No checkout activity was found for ${summary.label}.`;
+  if (!summary.total) {
+    els.monthlyCirculationReport.innerHTML = '<div class="empty-state">No circulation activity matches the selected period yet.</div>';
+    return;
+  }
+  const peakMonth = summary.monthlyRows.reduce((best, row) => (!best || row.count > best.count ? row : best), null);
+  const topMaterial = summary.materialRows[0] || null;
+  const monthlyMax = Math.max(...summary.monthlyRows.map((row) => row.count), 1);
+  const materialMax = Math.max(...summary.materialRows.map((row) => row.count), 1);
+  els.monthlyCirculationReport.innerHTML = `
+    <div class="summary-card-grid">
+      <article class="summary-card"><span class="summary-card-label">Selected period</span><strong class="summary-card-value">${escapeHtml(summary.label)}</strong><span>${summary.monthValue ? 'Specific month filter applied' : 'Range or open-ended filter'}</span></article>
+      <article class="summary-card"><span class="summary-card-label">Total circulation</span><strong class="summary-card-value">${summary.total}</strong><span>checkouts in period</span></article>
+      <article class="summary-card"><span class="summary-card-label">Peak month</span><strong class="summary-card-value">${escapeHtml(peakMonth ? formatMonthLabel(peakMonth.month) : '—')}</strong><span>${peakMonth ? `${peakMonth.count} checkout${peakMonth.count === 1 ? '' : 's'}` : 'No monthly totals'}</span></article>
+      <article class="summary-card"><span class="summary-card-label">Top material type</span><strong class="summary-card-value">${escapeHtml(topMaterial?.type || '—')}</strong><span>${topMaterial ? `${topMaterial.count} checkouts · ${topMaterial.percent.toFixed(1)}%` : 'No type data'}</span></article>
+    </div>
+    <section class="report-split-grid">
+      <article class="report-card"><div class="panel-header compact"><div><h4>Monthly totals</h4><p class="muted">Monthly checkout trend for the selected data.</p></div></div><ul class="bar-list">${summary.monthlyRows.map((row) => `<li><span>${escapeHtml(formatMonthLabel(row.month))}</span><div class="bar-track"><div class="bar-fill" style="width:${(row.count / monthlyMax) * 100}%"></div></div><strong>${row.count}</strong></li>`).join('')}</ul></article>
+      <article class="report-card"><div class="panel-header compact"><div><h4>Material type distribution</h4><p class="muted">Checkout share by item material type.</p></div></div><ul class="bar-list">${summary.materialRows.map((row) => `<li><span>${escapeHtml(row.type)}</span><div class="bar-track"><div class="bar-fill material-bar-fill" style="width:${(row.count / materialMax) * 100}%"></div></div><strong>${row.percent.toFixed(1)}%</strong></li>`).join('')}</ul></article>
+    </section>
+    <section class="report-split-grid">
+      <article class="report-card"><h4>Monthly totals table</h4><div class="report-table-wrap"><table class="serials-table"><thead><tr><th>Month</th><th>Total checkouts</th></tr></thead><tbody>${summary.monthlyRows.map((row) => `<tr><td>${escapeHtml(formatMonthLabel(row.month))}</td><td>${row.count}</td></tr>`).join('')}</tbody></table></div></article>
+      <article class="report-card"><h4>Material type breakdown</h4><div class="report-table-wrap"><table class="serials-table"><thead><tr><th>Material type</th><th>Total checkouts</th><th>% of circulation</th></tr></thead><tbody>${summary.materialRows.map((row) => `<tr><td>${escapeHtml(row.type)}</td><td>${row.count}</td><td>${row.percent.toFixed(1)}%</td></tr>`).join('')}</tbody></table></div></article>
+    </section>`;
+}
+
+function exportMonthlyCirculationCsv() {
+  const summary = summarizeMonthlyCirculation();
+  if (!summary.total) {
+    els.monthlyCirculationSummary.textContent = 'No circulation data is available to export for the selected period.';
+    return;
+  }
+  const rows = [
+    ['Monthly Circulation Report'],
+    ['Selected period', summary.label],
+    ['Total circulation', String(summary.total)],
+    [],
+    ['Monthly totals'],
+    ['Month', 'Total checkouts'],
+    ...summary.monthlyRows.map((row) => [formatMonthLabel(row.month), String(row.count)]),
+    [],
+    ['Material type breakdown'],
+    ['Material type', 'Total checkouts', 'Percent of total'],
+    ...summary.materialRows.map((row) => [row.type, String(row.count), row.percent.toFixed(1) + '%']),
+  ];
+  const csv = rows.map((row) => row.map((cell) => `"${String(cell || '').replace(/"/g, '""')}"`).join(',')).join('
+');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `monthly-circulation-${(summary.monthValue || todayIso()).replace(/[^0-9-]/g, '')}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function renderReportsModule() {
+  const category = REPORT_CATEGORIES[state.reportsCategory] || REPORT_CATEGORIES.collection;
+  const activeReport = REPORT_DEFINITIONS[state.activeReportId] || REPORT_DEFINITIONS['monthly-circulation'];
+  if (els.reportsCategoryGrid) {
+    els.reportsCategoryGrid.innerHTML = Object.entries(REPORT_CATEGORIES).map(([key, config]) => `<article class="report-nav-card"><div><p class="eyebrow">${config.reports.length} report${config.reports.length === 1 ? '' : 's'}</p><h3>${escapeHtml(config.label)}</h3><p class="muted">${escapeHtml(config.description)}</p></div><div class="report-nav-card-footer"><span class="report-count-pill">${config.reports.length} total</span><button class="button button-secondary" type="button" data-report-category="${key}">View Reports</button></div></article>`).join('');
+  }
+  if (els.reportsCategoryTitle) els.reportsCategoryTitle.textContent = category.label;
+  if (els.reportsCategoryDescription) els.reportsCategoryDescription.textContent = category.description;
+  if (els.reportsCategoryList) {
+    els.reportsCategoryList.innerHTML = category.reports.map((reportId) => {
+      const report = REPORT_DEFINITIONS[reportId];
+      return `<article class="report-nav-card compact"><div><h3>${escapeHtml(report.title)}</h3><p class="muted">${escapeHtml(report.description)}</p></div><div class="report-nav-card-footer"><button class="button button-secondary" type="button" data-open-report="${reportId}">Open Report</button></div></article>`;
+    }).join('');
+  }
+  if (els.reportsWorkspaceEyebrow) els.reportsWorkspaceEyebrow.textContent = category.label;
+  if (els.reportsWorkspaceTitle) els.reportsWorkspaceTitle.textContent = activeReport.title;
+  if (els.reportsWorkspaceDescription) els.reportsWorkspaceDescription.textContent = activeReport.description;
+  els.reportsLandingView?.classList.toggle('hidden', state.reportsView !== 'landing');
+  els.reportsCategoryView?.classList.toggle('hidden', state.reportsView !== 'category');
+  els.reportsWorkspaceView?.classList.toggle('hidden', state.reportsView !== 'workspace');
+  els.reportWorkspacePanels.forEach((panel) => panel.classList.add('hidden'));
+  const activePanel = document.querySelector(`#${activeReport.panelId}`);
+  if (activePanel) activePanel.classList.remove('hidden');
+}
+
 function renderEnhancedReports() {
+  renderMonthlyCirculationReport();
   renderWeedingReport();
   renderBusiestHoursReport();
   renderMostBorrowedAuthorsReport();
   renderSectionUsageReport();
   renderFinesFeesReport();
+}
+
+function openReportsLanding() {
+  state.reportsView = 'landing';
+  renderReportsModule();
+}
+
+function openReportCategory(categoryId) {
+  state.reportsCategory = REPORT_CATEGORIES[categoryId] ? categoryId : 'collection';
+  state.reportsView = 'category';
+  renderReportsModule();
+}
+
+function openReportWorkspace(reportId) {
+  const report = REPORT_DEFINITIONS[reportId] || REPORT_DEFINITIONS['monthly-circulation'];
+  state.activeReportId = reportId in REPORT_DEFINITIONS ? reportId : 'monthly-circulation';
+  state.reportsCategory = report.category;
+  state.reportsView = 'workspace';
+  renderReportsModule();
 }
 
 function renderMissingBiblioReport() {
@@ -4441,6 +4630,7 @@ function renderStatsPanel() {
   const retailTotal = state.records.reduce((sum, record) => sum + (Number.parseFloat(record.retailPrice) || 0), 0);
 
   els.ilsStatsPage.innerHTML = `<p>Total items: <strong>${stats.total}</strong></p><p>Formats: ${formats}</p><p>Most owned authors: ${topCreators}</p><p>Publication year distribution: ${years}</p><p>Newest additions: ${newest}</p><p>Collection value (price paid): <strong>$${paidTotal.toFixed(2)}</strong></p><p>Collection value (retail): <strong>$${retailTotal.toFixed(2)}</strong></p>`;
+  renderReportsModule();
   renderEnhancedReports();
   renderMissingBiblioReport();
   renderOverdueReport();
@@ -4550,8 +4740,18 @@ function bindEvents() {
   if (els.checkOutForm) els.checkOutForm.addEventListener("submit", checkOutRecord);
   if (els.checkOutCardNumber) els.checkOutCardNumber.addEventListener("input", () => renderCheckoutPatronPreview());
   if (els.runMissingReportBtn) els.runMissingReportBtn.addEventListener("click", renderMissingBiblioReport);
-  [els.weedingPreset, els.weedingCustomValue, els.weedingCustomUnit, els.weedingLocationFilter, els.weedingMaterialTypeFilter, els.weedingStatusFilter, els.weedingAudienceFilter, els.weedingSort, els.trafficRangePreset, els.trafficStartDate, els.trafficEndDate, els.authorStartDate, els.authorEndDate, els.authorLocationFilter, els.authorMaterialTypeFilter, els.authorAudienceFilter, els.authorSort, els.sectionSort, els.feeReportStatusFilter, els.feeReportCategoryFilter, els.feeReportPatronFilter, els.feeReportStartDate, els.feeReportEndDate].filter(Boolean).forEach((el) => el.addEventListener('input', renderStatsPanel));
-  [els.weedingPreset, els.weedingLocationFilter, els.weedingMaterialTypeFilter, els.weedingStatusFilter, els.weedingAudienceFilter, els.weedingSort, els.trafficRangePreset, els.authorLocationFilter, els.authorMaterialTypeFilter, els.authorAudienceFilter, els.authorSort, els.sectionSort, els.feeReportStatusFilter, els.feeReportCategoryFilter, els.feeReportPatronFilter].filter(Boolean).forEach((el) => el.addEventListener('change', renderStatsPanel));
+  if (els.reportsBackToLandingBtn) els.reportsBackToLandingBtn.addEventListener('click', openReportsLanding);
+  if (els.reportsBackToCategoryBtn) els.reportsBackToCategoryBtn.addEventListener('click', () => openReportCategory(state.reportsCategory));
+  if (els.reportsBackToLandingFromWorkspaceBtn) els.reportsBackToLandingFromWorkspaceBtn.addEventListener('click', openReportsLanding);
+  document.addEventListener('click', (event) => {
+    const categoryBtn = event.target.closest('[data-report-category]');
+    if (categoryBtn) openReportCategory(categoryBtn.dataset.reportCategory);
+    const reportBtn = event.target.closest('[data-open-report]');
+    if (reportBtn) openReportWorkspace(reportBtn.dataset.openReport);
+  });
+  [els.monthlyCirculationMonth, els.monthlyCirculationStartDate, els.monthlyCirculationEndDate, els.weedingPreset, els.weedingCustomValue, els.weedingCustomUnit, els.weedingLocationFilter, els.weedingMaterialTypeFilter, els.weedingStatusFilter, els.weedingAudienceFilter, els.weedingSort, els.trafficRangePreset, els.trafficStartDate, els.trafficEndDate, els.authorStartDate, els.authorEndDate, els.authorLocationFilter, els.authorMaterialTypeFilter, els.authorAudienceFilter, els.authorSort, els.sectionSort, els.feeReportStatusFilter, els.feeReportCategoryFilter, els.feeReportPatronFilter, els.feeReportStartDate, els.feeReportEndDate].filter(Boolean).forEach((el) => el.addEventListener('input', renderStatsPanel));
+  [els.monthlyCirculationMonth, els.weedingPreset, els.weedingLocationFilter, els.weedingMaterialTypeFilter, els.weedingStatusFilter, els.weedingAudienceFilter, els.weedingSort, els.trafficRangePreset, els.authorLocationFilter, els.authorMaterialTypeFilter, els.authorAudienceFilter, els.authorSort, els.sectionSort, els.feeReportStatusFilter, els.feeReportCategoryFilter, els.feeReportPatronFilter].filter(Boolean).forEach((el) => el.addEventListener('change', renderStatsPanel));
+  if (els.monthlyCirculationExportBtn) els.monthlyCirculationExportBtn.addEventListener('click', exportMonthlyCirculationCsv);
   if (els.queueCheckoutItemBtn) els.queueCheckoutItemBtn.addEventListener("click", queueCheckoutItem);
   if (els.loadCheckoutPatronBtn) els.loadCheckoutPatronBtn.addEventListener("click", () => loadCheckoutPatron());
   if (els.clearCheckoutPatronBtn) els.clearCheckoutPatronBtn.addEventListener("click", () => clearCheckoutSession());
