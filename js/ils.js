@@ -4518,8 +4518,7 @@ function exportMonthlyCirculationCsv() {
     ['Material type', 'Total checkouts', 'Percent of total'],
     ...summary.materialRows.map((row) => [row.type, String(row.count), row.percent.toFixed(1) + '%']),
   ];
-  const csv = rows.map((row) => row.map((cell) => `"${String(cell || '').replace(/"/g, '""')}"`).join(',')).join('
-');
+  const csv = rows.map((row) => row.map((cell) => `"${String(cell || "").replace(/"/g, '""')}"`).join(",")).join("\n");
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
