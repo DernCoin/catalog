@@ -20,6 +20,8 @@ const state = {
   recordTab: "basic",
   formDirty: false,
   acquisitionsStage: "orders",
+  activeDonationBatchId: "",
+  donationFilter: "incoming",
 };
 
 
@@ -486,6 +488,15 @@ function getOpenOrders() {
   return getAcquisitionWorkflowData().openOrders;
 }
 
+function getDonationBatches() {
+  return Array.isArray(state.settings.donationBatches) ? state.settings.donationBatches : [];
+}
+
+function saveDonationBatches(batches) {
+  state.settings.donationBatches = batches;
+  saveSettings(state.settings);
+}
+
 function getPatronAlertsList() {
   return getPatrons().filter((patron) => String(patron.blocks || "").trim() || String(patron.alerts || "").trim() || String(patron.status || "").toLowerCase() === "blocked");
 }
@@ -574,6 +585,14 @@ function getRecentActivityItems(limit = 10) {
     activities.push({ type: "pending", icon: material.activatedAt ? "✅" : "📦", text: material.activatedAt ? `Pending material activated: ${material.title}` : `Pending material added: ${material.title}`, timestamp: Number(material.activatedAt ? Date.parse(material.activatedAt) : material.createdAt || 0), target: "acquisitions" });
   });
 
+  getDonationBatches().forEach((batch) => {
+    activities.push({ type: "donation-batch", icon: "🎁", text: `Donation batch received: ${batch.name || batch.batchId || 'Untitled batch'}`, timestamp: Number(batch.createdAt || Date.parse(batch.dateReceived || '') || 0), target: "acquisitions" });
+    (batch.items || []).forEach((item) => {
+      if (item.sentToPendingAt) activities.push({ type: "donation-item", icon: "📥", text: `Donation sent to Pending Materials: ${item.title || 'Untitled item'}`, timestamp: Number(Date.parse(item.sentToPendingAt) || 0), target: "acquisitions" });
+      if (item.activatedAt) activities.push({ type: "donation-item", icon: "✅", text: `Donation activated into catalog: ${item.title || 'Untitled item'}`, timestamp: Number(Date.parse(item.activatedAt) || 0), target: "acquisitions" });
+    });
+  });
+
   getSubscriptions().forEach((entry) => {
     activities.push({ type: "subscription", icon: "🗓️", text: `Subscription saved: ${entry.title || 'Untitled subscription'}`, timestamp: Number(entry.updatedAt || 0), target: "serials" });
   });
@@ -597,6 +616,7 @@ function renderDashboard() {
   const holds = getHolds();
   const pendingMaterials = getPendingActivationMaterials();
   const openOrders = getOpenOrders();
+  const donationWorkflow = getDonationWorkflowData();
   const problemItems = getProblemItems();
   const missingFieldRecords = getMissingFieldRecords();
   const serialPreview = getSerialsRenewalPreview();
@@ -611,6 +631,7 @@ function renderDashboard() {
     { label: "Holds / Reserves", value: holds.length, copy: "Pending patron requests", target: "circulation", circulationTab: "holds" },
     { label: "Pending Materials", value: pendingMaterials.length, copy: "Awaiting activation/cataloging", target: "acquisitions" },
     { label: "Open Orders", value: openOrders.length, copy: "Active vendor orders", target: "acquisitions" },
+    { label: "Donations Awaiting Review", value: donationWorkflow.awaitingReviewCount, copy: "Donation items needing staff decision", target: "acquisitions" },
     { label: "Missing / Problem Items", value: problemItems.length, copy: "Needs review", target: "circulation" },
   ];
 
@@ -619,6 +640,8 @@ function renderDashboard() {
     { label: `${overdueLoans.length} overdue items need follow-up`, empty: "No overdue items right now.", count: overdueLoans.length, target: "circulation", urgent: overdueLoans.length > 0 },
     { label: `${pendingMaterials.length} pending materials need activation`, empty: "No pending materials awaiting action.", count: pendingMaterials.length, target: "acquisitions", urgent: pendingMaterials.length > 0 },
     { label: `${openOrders.length} open orders still in progress`, empty: "No open acquisition orders right now.", count: openOrders.length, target: "acquisitions" },
+    { label: `${donationWorkflow.awaitingReviewCount} donation items await review`, empty: "No donation items are awaiting review.", count: donationWorkflow.awaitingReviewCount, target: "acquisitions", urgent: donationWorkflow.awaitingReviewCount > 0 },
+    { label: `${donationWorkflow.awaitingProcessingCount} accepted donations await processing`, empty: "No accepted donation items are waiting for processing.", count: donationWorkflow.awaitingProcessingCount, target: "acquisitions" },
     { label: `${missingFieldRecords.length} missing-field records need cleanup`, empty: "No missing-field records need cleanup.", count: missingFieldRecords.length, target: "records" },
     { label: `${serialPreview.length} serial items need review`, empty: "No serial renewals or recent issues need attention.", count: serialPreview.length, target: "serials" },
   ];
@@ -629,6 +652,7 @@ function renderDashboard() {
     { label: "Check In", target: "circulation", circulationTab: "checkin" },
     { label: "Add Patron", target: "patrons" },
     { label: "Create Order", target: "acquisitions" },
+    { label: "New Donation Batch", target: "acquisitions" },
   ];
 
   const actionPanel = [
@@ -638,6 +662,7 @@ function renderDashboard() {
     { label: "Start Check-In", target: "circulation", circulationTab: "checkin" },
     { label: "Place Hold / Reserve", target: "circulation", circulationTab: "holds" },
     { label: "Create Acquisition Order", target: "acquisitions" },
+    { label: "Start Donation Intake", target: "acquisitions" },
     { label: "Add Magazine Issue", target: "serials" },
     { label: "Run Reports", target: "stats" },
   ];
@@ -1357,33 +1382,29 @@ function renderSerialIssuesTable() {
 }
 
 function normalizeAcquisitionMaterial(material = {}) {
-  const hasLinkedRecord = Boolean(material.linkedRecordId);
-  const activatedAt = material.activatedAt || material.completedAt || "";
-  const receivedQuantity = Number(material.receivedQuantity ?? (material.receivedAt ? material.quantityOrdered || 1 : 0)) || 0;
   const quantityOrdered = Math.max(1, Number(material.quantityOrdered || 1) || 1);
-  let workflowStage = material.workflowStage || "";
-  let status = material.status || "";
-
-  if (!workflowStage) {
-    if (hasLinkedRecord || activatedAt) workflowStage = "completed";
-    else if (material.receivedAt || status === "Pending" || status === "Pending Material") workflowStage = "pending";
-    else workflowStage = "orders";
-  }
-
-  if (!status) {
-    if (hasLinkedRecord || activatedAt) status = "Activated";
-    else if (workflowStage === "pending") status = "Pending";
-    else if (receivedQuantity > 0) status = receivedQuantity >= quantityOrdered ? "Received" : "Partially Received";
-    else status = "Awaiting Receipt";
-  }
-
+  const receivedQuantity = Math.max(0, Number(material.receivedQuantity || 0) || 0);
+  const workflowStage = ["orders", "receiving", "pending", "completed"].includes(material.workflowStage) ? material.workflowStage : "orders";
+  const sourceType = material.sourceType === "donation" ? "donation" : "order";
+  const sourceName = sourceType === "donation"
+    ? (material.sourceName || material.donationBatchName || "Donation")
+    : (material.sourceName || material.orderName || "Untitled order");
+  const status = material.status || (workflowStage === "pending" ? "Pending Materials" : workflowStage === "completed" ? "Activated" : "Awaiting Receipt");
   return {
     id: material.id || crypto.randomUUID(),
     orderId: material.orderId || "",
-    orderName: material.orderName || "Untitled order",
+    orderName: material.orderName || "",
+    sourceType,
+    sourceName,
+    sourceLabel: material.sourceLabel || (sourceType === "donation" ? "Donation" : "Order"),
+    donationBatchId: material.donationBatchId || "",
+    donationBatchName: material.donationBatchName || "",
+    donationItemId: material.donationItemId || "",
+    donorName: material.donorName || "",
     title: material.title || "Untitled material",
     creator: material.creator || "",
     format: material.format || "Book",
+    condition: material.condition || "",
     materialNumber: material.materialNumber || "",
     callNumber: material.callNumber || "",
     location: material.location || "",
@@ -1394,10 +1415,58 @@ function normalizeAcquisitionMaterial(material = {}) {
     receivedAt: material.receivedAt || "",
     sentToPendingAt: material.sentToPendingAt || (workflowStage === "pending" ? material.createdAt || Date.now() : ""),
     createdAt: Number(material.createdAt || Date.now()),
-    activatedAt,
+    activatedAt: material.activatedAt || "",
     linkedRecordId: material.linkedRecordId || "",
     workflowStage,
     status,
+  };
+}
+
+function normalizeDonationItem(item = {}, batch = {}) {
+  const reviewStatus = item.reviewStatus || "New";
+  const statusToDisposition = {
+    Rejected: "Rejected",
+    "Sent to Sale": "Book Sale",
+    Disposed: "Disposed",
+    Returned: "Returned to Donor",
+  };
+  return {
+    id: item.id || crypto.randomUUID(),
+    batchId: item.batchId || batch.id || "",
+    title: item.title || "",
+    author: item.author || "",
+    format: item.format || "Book",
+    condition: item.condition || "",
+    notes: item.notes || "",
+    reviewStatus,
+    disposition: item.disposition || statusToDisposition[reviewStatus] || "",
+    linkedPendingMaterialId: item.linkedPendingMaterialId || "",
+    linkedCatalogRecordId: item.linkedCatalogRecordId || "",
+    createdAt: Number(item.createdAt || Date.now()),
+    updatedAt: Number(item.updatedAt || item.createdAt || Date.now()),
+    sentToPendingAt: item.sentToPendingAt || "",
+    activatedAt: item.activatedAt || "",
+  };
+}
+
+function normalizeDonationBatch(batch = {}) {
+  const normalizedItems = Array.isArray(batch.items) ? batch.items.map((item) => normalizeDonationItem(item, batch)) : [];
+  return {
+    id: batch.id || crypto.randomUUID(),
+    batchId: batch.batchId || batch.id || `DON-${new Date().toISOString().slice(0, 10)}`,
+    name: batch.name || batch.batchLabel || "",
+    donorName: batch.donorName || "",
+    donorContact: batch.donorContact || "",
+    dateReceived: batch.dateReceived || new Date().toISOString().slice(0, 10),
+    notes: batch.notes || "",
+    acknowledgmentSent: Boolean(batch.acknowledgmentSent),
+    taxReceiptRequested: Boolean(batch.taxReceiptRequested),
+    estimatedValue: batch.estimatedValue || "",
+    overallStatus: batch.overallStatus || "New / Received",
+    archivedAt: batch.archivedAt || "",
+    createdAt: Number(batch.createdAt || Date.now()),
+    updatedAt: Number(batch.updatedAt || batch.createdAt || Date.now()),
+    items: normalizedItems,
   };
 }
 
@@ -1409,12 +1478,21 @@ function saveAcquisitionMaterials(materials) {
   savePendingMaterials(materials.map(normalizeAcquisitionMaterial));
 }
 
+function getNormalizedDonationBatches() {
+  return getDonationBatches().map(normalizeDonationBatch);
+}
+
+function saveNormalizedDonationBatches(batches) {
+  saveDonationBatches(batches.map(normalizeDonationBatch));
+}
+
 function getAcquisitionStageMeta() {
   return {
     orders: { label: "Orders", copy: "Track what has been ordered and what is still outstanding." },
     receiving: { label: "Receiving", copy: "Acknowledge arrivals and move received materials into processing." },
+    donations: { label: "Donations", copy: "Intake, review, disposition, and send accepted gifts into processing." },
     pending: { label: "Pending Materials", copy: "Finish setup work before items are activated in the catalog." },
-    completed: { label: "Completed", copy: "Review recently activated materials and finished orders." },
+    completed: { label: "Completed", copy: "Review recently activated materials and finished orders or donations." },
   };
 }
 
@@ -1429,6 +1507,60 @@ function deriveOrderStatus(order, materials) {
   return "Open";
 }
 
+function getDonationCounts(items = []) {
+  return items.reduce((counts, item) => {
+    if (["New", "Received", "New / Received"].includes(item.reviewStatus)) counts.newCount += 1;
+    if (item.reviewStatus === "Under Review") counts.reviewCount += 1;
+    if (item.reviewStatus === "Accepted for Collection") counts.acceptedCount += 1;
+    if (["Rejected", "Sent to Sale", "Disposed", "Returned"].includes(item.reviewStatus)) counts.dispositionCount += 1;
+    if (item.reviewStatus === "Sent to Pending Materials") counts.awaitingProcessingCount += 1;
+    if (item.reviewStatus === "Activated") counts.activatedCount += 1;
+    return counts;
+  }, { newCount: 0, reviewCount: 0, acceptedCount: 0, dispositionCount: 0, awaitingProcessingCount: 0, activatedCount: 0 });
+}
+
+function deriveDonationBatchStatus(batch) {
+  const counts = getDonationCounts(batch.items || []);
+  if ((batch.items || []).length && counts.activatedCount === batch.items.length) return "Activated / Added to Catalog";
+  if (counts.awaitingProcessingCount > 0) return "Sent to Pending Materials";
+  if (counts.acceptedCount > 0) return "Accepted for Collection";
+  if (counts.reviewCount > 0) return "Under Review";
+  if (counts.dispositionCount && counts.dispositionCount === (batch.items || []).length) return "Dispositioned";
+  return batch.overallStatus || "New / Received";
+}
+
+function getDonationItemSourceLabel(batch, item) {
+  return `${batch.name || batch.batchId || "Donation Batch"}${item?.title ? ` · ${item.title}` : ""}`;
+}
+
+function getDonationWorkflowData() {
+  const batches = getNormalizedDonationBatches()
+    .map((batch) => {
+      const counts = getDonationCounts(batch.items || []);
+      return { ...batch, counts, overallStatus: deriveDonationBatchStatus(batch) };
+    })
+    .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+  const items = batches.flatMap((batch) => batch.items.map((item) => ({ ...item, batch })));
+  const filterGroups = {
+    incoming: items.filter(({ reviewStatus }) => ["New", "Received", "New / Received"].includes(reviewStatus)),
+    review: items.filter(({ reviewStatus }) => reviewStatus === "Under Review"),
+    accepted: items.filter(({ reviewStatus }) => ["Accepted for Collection", "Sent to Pending Materials", "Activated"].includes(reviewStatus)),
+    dispositioned: items.filter(({ reviewStatus }) => ["Rejected", "Sent to Sale", "Disposed", "Returned"].includes(reviewStatus)),
+  };
+  return {
+    batches,
+    items,
+    filterGroups,
+    newCount: filterGroups.incoming.length,
+    underReviewCount: filterGroups.review.length,
+    acceptedCount: items.filter(({ reviewStatus }) => reviewStatus === "Accepted for Collection").length,
+    dispositionCount: filterGroups.dispositioned.length,
+    awaitingProcessingCount: items.filter(({ reviewStatus }) => reviewStatus === "Sent to Pending Materials").length,
+    awaitingReviewCount: filterGroups.incoming.length + filterGroups.review.length,
+    activatedCount: items.filter(({ reviewStatus }) => reviewStatus === "Activated").length,
+  };
+}
+
 function getAcquisitionWorkflowData() {
   const materials = getAcquisitionMaterials().slice().sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
   const orders = getAcquisitionOrders().map((order) => {
@@ -1438,28 +1570,20 @@ function getAcquisitionWorkflowData() {
     const pendingItems = orderMaterials.filter((material) => material.workflowStage === "pending").length;
     const completedItems = orderMaterials.filter((material) => material.workflowStage === "completed").length;
     const status = deriveOrderStatus(order, orderMaterials);
-    return {
-      ...order,
-      totalItems,
-      receivedItems,
-      pendingItems,
-      completedItems,
-      status,
-      progressPercent: totalItems ? Math.round((receivedItems / totalItems) * 100) : 0,
-      materials: orderMaterials,
-    };
+    return { ...order, totalItems, receivedItems, pendingItems, completedItems, status, progressPercent: totalItems ? Math.round((receivedItems / totalItems) * 100) : 0, materials: orderMaterials };
   }).sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
 
+  const donationWorkflow = getDonationWorkflowData();
   const openOrders = orders.filter((order) => order.status !== "Closed");
-  const awaitingReceipt = materials.filter((material) => material.workflowStage !== "completed" && material.workflowStage !== "pending");
+  const awaitingReceipt = materials.filter((material) => material.sourceType !== "donation" && material.workflowStage !== "completed" && material.workflowStage !== "pending");
   const pending = materials.filter((material) => material.workflowStage === "pending");
   const completedMaterials = materials.filter((material) => material.workflowStage === "completed");
   const completedOrders = orders.filter((order) => order.status === "Closed" || (order.totalItems > 0 && order.receivedItems === order.totalItems));
-  return { materials, orders, openOrders, awaitingReceipt, pending, completedMaterials, completedOrders };
+  return { materials, orders, openOrders, awaitingReceipt, pending, completedMaterials, completedOrders, donationWorkflow };
 }
 
 function getAcquisitionStatusBadge(status) {
-  const slug = String(status || "").toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  const slug = String(status || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   return `<span class="badge acquisition-badge" data-acq-status="${slug}">${status}</span>`;
 }
 
@@ -1489,6 +1613,14 @@ function setAcquisitionStage(stage) {
   renderAcquisitionsWorkspace();
 }
 
+function ensureUniquePendingMaterialNumber(materialNumber) {
+  const value = String(materialNumber || "").trim();
+  if (!value) return { ok: true };
+  const duplicatePending = getAcquisitionMaterials().some((entry) => String(entry.materialNumber || "").toLowerCase() === value.toLowerCase());
+  const duplicateCatalog = state.records.some((entry) => (entry.materialNumbers || []).some((existing) => String(existing).toLowerCase() === value.toLowerCase()));
+  return duplicatePending || duplicateCatalog ? { ok: false, message: `Material number ${value} is already in use.` } : { ok: true };
+}
+
 function addAcquisitionItem(event) {
   event.preventDefault();
   const form = event.currentTarget;
@@ -1510,11 +1642,9 @@ function addAcquisitionItem(event) {
     setAcquisitionMessage("Order name, title, and material number are required.", true);
     return;
   }
-
-  const duplicatePending = getAcquisitionMaterials().some((entry) => String(entry.materialNumber || "").toLowerCase() === materialNumber.toLowerCase());
-  const duplicateCatalog = state.records.some((entry) => (entry.materialNumbers || []).some((value) => String(value).toLowerCase() === materialNumber.toLowerCase()));
-  if (duplicatePending || duplicateCatalog) {
-    setAcquisitionMessage(`Material number ${materialNumber} is already in use.`, true);
+  const materialNumberStatus = ensureUniquePendingMaterialNumber(materialNumber);
+  if (!materialNumberStatus.ok) {
+    setAcquisitionMessage(materialNumberStatus.message, true);
     return;
   }
 
@@ -1535,6 +1665,8 @@ function addAcquisitionItem(event) {
     id: crypto.randomUUID(),
     orderId: order.id,
     orderName: order.name,
+    sourceType: "order",
+    sourceName: order.name,
     title,
     creator,
     format,
@@ -1548,8 +1680,6 @@ function addAcquisitionItem(event) {
     status: "Awaiting Receipt",
     workflowStage: "orders",
     createdAt: Date.now(),
-    activatedAt: "",
-    linkedRecordId: "",
   }));
   saveAcquisitionMaterials(materials);
 
@@ -1561,22 +1691,28 @@ function addAcquisitionItem(event) {
 }
 
 function updateAcquisitionMaterial(materialId, updater) {
-  const materials = getAcquisitionMaterials();
-  const updatedMaterials = materials.map((material) => (material.id === materialId ? normalizeAcquisitionMaterial(updater(material)) : material));
-  saveAcquisitionMaterials(updatedMaterials);
+  saveAcquisitionMaterials(getAcquisitionMaterials().map((material) => (material.id === materialId ? normalizeAcquisitionMaterial(updater(material)) : material)));
+}
+
+function updateDonationBatch(batchId, updater) {
+  const updatedBatches = getNormalizedDonationBatches().map((batch) => (batch.id === batchId ? normalizeDonationBatch(updater(batch)) : batch));
+  saveNormalizedDonationBatches(updatedBatches);
+}
+
+function updateDonationItem(itemId, updater) {
+  const updatedBatches = getNormalizedDonationBatches().map((batch) => normalizeDonationBatch({
+    ...batch,
+    items: (batch.items || []).map((item) => (item.id === itemId ? normalizeDonationItem(updater(item, batch), batch) : item)),
+    updatedAt: Date.now(),
+  }));
+  saveNormalizedDonationBatches(updatedBatches);
 }
 
 function markMaterialReceived(materialId, receiveAll = false) {
   const nowIso = new Date().toISOString();
   updateAcquisitionMaterial(materialId, (material) => {
     const nextReceived = receiveAll ? material.quantityOrdered : Math.min(material.quantityOrdered, material.receivedQuantity + 1);
-    return {
-      ...material,
-      receivedQuantity: nextReceived,
-      receivedAt: nowIso,
-      status: nextReceived >= material.quantityOrdered ? "Received" : "Partially Received",
-      workflowStage: "receiving",
-    };
+    return { ...material, receivedQuantity: nextReceived, receivedAt: nowIso, status: nextReceived >= material.quantityOrdered ? "Received" : "Partially Received", workflowStage: "receiving" };
   });
   setAcquisitionMessage(receiveAll ? "All copies marked as received." : "Receipt recorded.");
   state.acquisitionsStage = "receiving";
@@ -1584,27 +1720,162 @@ function markMaterialReceived(materialId, receiveAll = false) {
 }
 
 function undoReceipt(materialId) {
-  updateAcquisitionMaterial(materialId, (material) => ({
-    ...material,
-    receivedQuantity: 0,
-    receivedAt: "",
-    sentToPendingAt: "",
-    status: "Awaiting Receipt",
-    workflowStage: "orders",
-  }));
+  updateAcquisitionMaterial(materialId, (material) => ({ ...material, receivedQuantity: 0, receivedAt: "", sentToPendingAt: "", status: "Awaiting Receipt", workflowStage: "orders" }));
   setAcquisitionMessage("Receipt was undone and the item moved back to Orders.");
   renderAcquisitionsWorkspace();
 }
 
 function sendMaterialToPending(materialId) {
-  updateAcquisitionMaterial(materialId, (material) => ({
-    ...material,
-    workflowStage: "pending",
-    status: "Pending",
-    sentToPendingAt: Date.now(),
-  }));
+  updateAcquisitionMaterial(materialId, (material) => ({ ...material, workflowStage: "pending", status: "Pending Materials", sentToPendingAt: Date.now() }));
   setAcquisitionMessage("Received material moved into Pending Materials.");
   state.acquisitionsStage = "pending";
+  renderAcquisitionsWorkspace();
+}
+
+function addDonationBatch(event) {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  const donorName = String(formData.get("donorName") || "").trim();
+  const donorContact = String(formData.get("donorContact") || "").trim();
+  const name = String(formData.get("batchName") || "").trim();
+  const dateReceived = String(formData.get("dateReceived") || "").trim() || new Date().toISOString().slice(0, 10);
+  const notes = String(formData.get("batchNotes") || "").trim();
+  const estimatedValue = String(formData.get("estimatedValue") || "").trim();
+  const overallStatus = String(formData.get("initialStatus") || "New / Received").trim();
+  if (!donorName || !name) {
+    setAcquisitionMessage("Donation batch name and donor name are required.", true);
+    return;
+  }
+  const batch = normalizeDonationBatch({
+    id: crypto.randomUUID(),
+    batchId: `DON-${new Date().getFullYear()}-${Math.floor(Math.random() * 9000 + 1000)}`,
+    name,
+    donorName,
+    donorContact,
+    dateReceived,
+    notes,
+    acknowledgmentSent: formData.get("ackStatus") === "sent",
+    taxReceiptRequested: formData.get("taxReceiptRequested") === "on",
+    estimatedValue,
+    overallStatus,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    items: [],
+  });
+  const batches = [batch, ...getNormalizedDonationBatches()];
+  saveNormalizedDonationBatches(batches);
+  state.activeDonationBatchId = batch.id;
+  event.currentTarget.reset();
+  setAcquisitionMessage(`Donation batch ${batch.name} created.`);
+  renderAcquisitionsWorkspace();
+}
+
+function addDonationItem(event) {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  const batchId = String(formData.get("batchIdSelect") || formData.get("batchId") || state.activeDonationBatchId || "").trim();
+  const title = String(formData.get("itemTitle") || "").trim();
+  const author = String(formData.get("itemAuthor") || "").trim();
+  const format = String(formData.get("itemFormat") || "Book").trim() || "Book";
+  const condition = String(formData.get("itemCondition") || "").trim();
+  const notes = String(formData.get("itemNotes") || "").trim();
+  if (!batchId || !title) {
+    setAcquisitionMessage("Select a donation batch and enter at least a title.", true);
+    return;
+  }
+  updateDonationBatch(batchId, (batch) => ({
+    ...batch,
+    updatedAt: Date.now(),
+    items: [...(batch.items || []), normalizeDonationItem({ id: crypto.randomUUID(), batchId, title, author, format, condition, notes, reviewStatus: "New", disposition: "", createdAt: Date.now(), updatedAt: Date.now() }, batch)],
+  }));
+  event.currentTarget.reset();
+  setAcquisitionMessage(`Donation item ${title} added to the batch.`);
+  renderAcquisitionsWorkspace();
+}
+
+function setDonationItemStatus(itemId, reviewStatus, disposition = "") {
+  updateDonationItem(itemId, (item) => ({ ...item, reviewStatus, disposition, updatedAt: Date.now() }));
+  setAcquisitionMessage(`Donation item updated to ${reviewStatus}.`);
+  renderAcquisitionsWorkspace();
+}
+
+function sendDonationItemToPending(itemId) {
+  const batches = getNormalizedDonationBatches();
+  const match = batches.flatMap((batch) => (batch.items || []).map((item) => ({ batch, item }))).find(({ item }) => item.id === itemId);
+  if (!match) return;
+  if (match.item.reviewStatus !== "Accepted for Collection") {
+    setAcquisitionMessage("Only accepted donation items can be sent to Pending Materials.", true);
+    return;
+  }
+  const material = normalizeAcquisitionMaterial({
+    id: crypto.randomUUID(),
+    sourceType: "donation",
+    sourceLabel: "Donation",
+    sourceName: getDonationItemSourceLabel(match.batch, match.item),
+    donationBatchId: match.batch.id,
+    donationBatchName: match.batch.name || match.batch.batchId,
+    donationItemId: match.item.id,
+    donorName: match.batch.donorName,
+    title: match.item.title || "Untitled donation item",
+    creator: match.item.author || "",
+    format: match.item.format || "Book",
+    condition: match.item.condition || "",
+    notes: match.item.notes || "",
+    materialNumber: `DON-${Math.floor(Math.random() * 900000 + 100000)}`,
+    quantityOrdered: 1,
+    receivedQuantity: 1,
+    receivedAt: new Date().toISOString(),
+    sentToPendingAt: Date.now(),
+    createdAt: Date.now(),
+    workflowStage: "pending",
+    status: "Pending Materials",
+  });
+  saveAcquisitionMaterials([...getAcquisitionMaterials(), material]);
+  updateDonationItem(itemId, (item) => ({ ...item, reviewStatus: "Sent to Pending Materials", linkedPendingMaterialId: material.id, sentToPendingAt: new Date().toISOString(), updatedAt: Date.now() }));
+  setAcquisitionMessage("Accepted donation item moved into Pending Materials.");
+  state.acquisitionsStage = "pending";
+  renderAcquisitionsWorkspace();
+}
+
+function editDonationBatch(batchId) {
+  const batch = getNormalizedDonationBatches().find((entry) => entry.id === batchId);
+  if (!batch) return;
+  const donorName = window.prompt("Donor name", batch.donorName || "");
+  if (donorName === null) return;
+  const donorContact = window.prompt("Donor contact info", batch.donorContact || "");
+  if (donorContact === null) return;
+  const notes = window.prompt("Batch notes", batch.notes || "");
+  if (notes === null) return;
+  updateDonationBatch(batchId, (current) => ({ ...current, donorName: donorName.trim(), donorContact: donorContact.trim(), notes: notes.trim(), updatedAt: Date.now() }));
+  setAcquisitionMessage("Donation batch updated.");
+  renderAcquisitionsWorkspace();
+}
+
+function editDonationItem(itemId) {
+  const match = getDonationWorkflowData().items.find((entry) => entry.id === itemId);
+  if (!match) return;
+  const title = window.prompt("Title", match.title || "");
+  if (title === null) return;
+  const author = window.prompt("Author / creator", match.author || "");
+  if (author === null) return;
+  const condition = window.prompt("Condition", match.condition || "");
+  if (condition === null) return;
+  const notes = window.prompt("Notes", match.notes || "");
+  if (notes === null) return;
+  updateDonationItem(itemId, (item) => ({ ...item, title: title.trim(), author: author.trim(), condition: condition.trim(), notes: notes.trim(), updatedAt: Date.now() }));
+  setAcquisitionMessage("Donation item updated.");
+  renderAcquisitionsWorkspace();
+}
+
+function markDonationAcknowledgmentSent(batchId) {
+  updateDonationBatch(batchId, (batch) => ({ ...batch, acknowledgmentSent: true, updatedAt: Date.now() }));
+  setAcquisitionMessage("Acknowledgment marked as sent.");
+  renderAcquisitionsWorkspace();
+}
+
+function archiveDonationBatch(batchId) {
+  updateDonationBatch(batchId, (batch) => ({ ...batch, archivedAt: new Date().toISOString(), updatedAt: Date.now() }));
+  setAcquisitionMessage("Donation batch archived.");
   renderAcquisitionsWorkspace();
 }
 
@@ -1616,35 +1887,30 @@ function activatePendingMaterial(materialId) {
     setAcquisitionMessage("This pending material has already been activated.", true);
     return;
   }
-
   const now = new Date();
   const dateAdded = now.toISOString().slice(0, 10);
+  const sourceNote = material.sourceType === "donation" ? `Donation · ${material.donationBatchName || material.sourceName}` : `Acquisitions · ${material.orderName}`;
   const newRecord = normalizeRecord({
     id: crypto.randomUUID(),
     title: material.title,
     creator: material.creator || "Unknown creator",
     format: material.format || "Book",
     status: "Available",
-    source: `Acquisitions · ${material.orderName}`,
+    source: sourceNote,
     materialNumbers: [material.materialNumber],
     callNumber: material.callNumber || "",
     location: material.location || "",
     coverUrl: material.coverUrl || "",
-    notes: material.notes || `Activated from order ${material.orderName}`,
+    notes: material.notes || `Activated from ${material.sourceType === "donation" ? "donation intake" : `order ${material.orderName}`}`,
     dateAdded,
     addedAt: now.getTime(),
   });
-
   state.records.unshift(newRecord);
   saveRecords(state.records);
-
-  const updatedMaterials = materials.map((entry) => (
-    entry.id === materialId
-      ? normalizeAcquisitionMaterial({ ...entry, status: "Activated", workflowStage: "completed", activatedAt: now.toISOString(), linkedRecordId: newRecord.id })
-      : entry
-  ));
-  saveAcquisitionMaterials(updatedMaterials);
-
+  saveAcquisitionMaterials(materials.map((entry) => (entry.id === materialId ? normalizeAcquisitionMaterial({ ...entry, status: "Activated", workflowStage: "completed", activatedAt: now.toISOString(), linkedRecordId: newRecord.id }) : entry)));
+  if (material.sourceType === "donation" && material.donationItemId) {
+    updateDonationItem(material.donationItemId, (item) => ({ ...item, reviewStatus: "Activated", linkedCatalogRecordId: newRecord.id, activatedAt: now.toISOString(), updatedAt: Date.now() }));
+  }
   setAcquisitionMessage(`${material.title} was activated and added to the catalog.`);
   state.acquisitionsStage = "completed";
   render();
@@ -1653,6 +1919,9 @@ function activatePendingMaterial(materialId) {
 function removePendingMaterial(materialId) {
   const material = getAcquisitionMaterials().find((entry) => entry.id === materialId);
   saveAcquisitionMaterials(getAcquisitionMaterials().filter((entry) => entry.id !== materialId));
+  if (material?.sourceType === "donation" && material.donationItemId) {
+    updateDonationItem(material.donationItemId, (item) => ({ ...item, reviewStatus: "Accepted for Collection", linkedPendingMaterialId: "", sentToPendingAt: "", updatedAt: Date.now() }));
+  }
   setAcquisitionMessage(material?.workflowStage === "pending" ? "Pending material removed from the queue." : "Acquisition item removed.");
   renderAcquisitionsWorkspace();
 }
@@ -1664,13 +1933,13 @@ function closeOrder(orderId) {
     setAcquisitionMessage("Receive outstanding items before closing this order.", true);
     return;
   }
-  saveAcquisitionOrders(orders.map((order) => order.id === orderId ? { ...order, closedAt: new Date().toISOString() } : order));
+  saveAcquisitionOrders(orders.map((order) => (order.id === orderId ? { ...order, closedAt: new Date().toISOString() } : order)));
   setAcquisitionMessage("Order closed.");
   renderAcquisitionsWorkspace();
 }
 
 function reopenOrder(orderId) {
-  saveAcquisitionOrders(getAcquisitionOrders().map((order) => order.id === orderId ? { ...order, closedAt: "" } : order));
+  saveAcquisitionOrders(getAcquisitionOrders().map((order) => (order.id === orderId ? { ...order, closedAt: "" } : order)));
   setAcquisitionMessage("Order reopened.");
   state.acquisitionsStage = "orders";
   renderAcquisitionsWorkspace();
@@ -1679,41 +1948,27 @@ function reopenOrder(orderId) {
 function renderAcquisitionSummaryCards() {
   if (!els.acquisitionSummaryCards) return;
   const workflow = getAcquisitionWorkflowData();
+  const donationWorkflow = workflow.donationWorkflow;
   const cards = [
     { label: "Open Orders", value: workflow.openOrders.length, copy: "Orders still moving through acquisitions.", stage: "orders" },
     { label: "Awaiting Receipt", value: workflow.awaitingReceipt.length, copy: "Ordered materials not yet acknowledged as arrived.", stage: "receiving" },
-    { label: "Pending Materials", value: workflow.pending.length, copy: "Received materials still needing catalog prep.", stage: "pending" },
-    { label: "Recently Activated", value: workflow.completedMaterials.filter((material) => material.activatedAt).slice(0, 7).length, copy: "Items activated into the catalog in the last week.", stage: "completed" },
+    { label: "New Donations", value: donationWorkflow.newCount + donationWorkflow.underReviewCount, copy: "Donation items still in intake or review.", stage: "donations" },
+    { label: "Accepted for Collection", value: donationWorkflow.acceptedCount, copy: "Accepted donations not yet handed off to processing.", stage: "donations" },
+    { label: "Rejected / Sale / Disposition", value: donationWorkflow.dispositionCount, copy: "Donation items resolved outside the collection.", stage: "donations" },
+    { label: "Awaiting Processing", value: donationWorkflow.awaitingProcessingCount, copy: "Donation items already sent into Pending Materials.", stage: "pending" },
   ];
-  els.acquisitionSummaryCards.innerHTML = cards.map((card) => `
-    <button class="acquisition-summary-card" type="button" data-acq-nav-stage="${card.stage}">
-      <span class="acquisition-summary-label">${card.label}</span>
-      <strong class="acquisition-summary-value">${card.value}</strong>
-      <span class="acquisition-summary-copy">${card.copy}</span>
-    </button>
-  `).join("");
+  els.acquisitionSummaryCards.innerHTML = cards.map((card) => `<button class="acquisition-summary-card" type="button" data-acq-nav-stage="${card.stage}"><span class="acquisition-summary-label">${card.label}</span><strong class="acquisition-summary-value">${card.value}</strong><span class="acquisition-summary-copy">${card.copy}</span></button>`).join("");
 }
 
 function renderAcquisitionStageNav() {
   if (!els.acquisitionsStageNav) return;
   const meta = getAcquisitionStageMeta();
-  els.acquisitionsStageNav.innerHTML = Object.entries(meta).map(([id, config]) => `
-    <button class="button button-secondary acquisition-stage-btn ${state.acquisitionsStage === id ? "is-active" : ""}" type="button" data-acq-nav-stage="${id}">
-      <span>${config.label}</span>
-      <small>${config.copy}</small>
-    </button>
-  `).join("");
+  els.acquisitionsStageNav.innerHTML = Object.entries(meta).map(([id, config]) => `<button class="button button-secondary acquisition-stage-btn ${state.acquisitionsStage === id ? "is-active" : ""}" type="button" data-acq-nav-stage="${id}"><span>${config.label}</span><small>${config.copy}</small></button>`).join("");
 }
 
 function renderOrdersStage(workflow) {
   const rows = workflow.orders.filter((order) => order.status !== "Closed");
-  const empty = `
-    <div class="acquisition-empty-state">
-      <h4>No open orders right now</h4>
-      <p class="muted">Start a new order to begin the acquisitions pipeline.</p>
-      <button class="button" type="button" data-acq-focus-form="true">Create Order</button>
-    </div>
-  `;
+  const empty = `<div class="acquisition-empty-state"><h4>No open orders right now</h4><p class="muted">Start a new order to begin the acquisitions pipeline.</p><button class="button" type="button" data-acq-focus-form="true">Create Order</button></div>`;
   return `
     <div class="panel-header compact acquisitions-stage-header">
       <div><h3>Orders</h3><p class="muted">Materials selected and ordered, but not fully received yet.</p></div>
@@ -1743,120 +1998,129 @@ function renderOrdersStage(workflow) {
         <div class="acquisition-data-table-wrap">
           <table class="serials-table acquisition-stage-table">
             <thead><tr><th>Order</th><th>Status</th><th>Vendor</th><th>Created</th><th>Progress</th><th>Actions</th></tr></thead>
-            <tbody>${rows.length ? rows.map((order) => `
-              <tr>
-                <td><strong>${order.name || "Untitled order"}</strong><div class="muted">${order.totalItems} item${order.totalItems === 1 ? "" : "s"}</div></td>
-                <td>${getAcquisitionStatusBadge(order.status)}</td>
-                <td>${order.vendor || "—"}</td>
-                <td>${formatShortDate(order.orderDate || order.createdAt)}</td>
-                <td>
-                  <div class="acquisition-progress-meta"><strong>${order.receivedItems} of ${order.totalItems || 0} items received</strong></div>
-                  <div class="acquisition-progress-bar"><span style="width:${order.progressPercent}%"></span></div>
-                </td>
-                <td><div class="row-actions"><button class="button button-secondary" type="button" data-acq-nav-stage="receiving">View order details</button><button class="button button-secondary" type="button" data-acq-nav-stage="receiving">Mark items as received</button>${order.receivedItems === order.totalItems && order.totalItems ? `<button class="button" type="button" data-acq-close-order="${order.id}">Close order</button>` : ``}</div></td>
-              </tr>`).join("") : `<tr><td colspan="6">${empty}</td></tr>`}</tbody>
+            <tbody>${rows.length ? rows.map((order) => `<tr><td><strong>${order.name || "Untitled order"}</strong><div class="muted">${order.totalItems} item${order.totalItems === 1 ? "" : "s"}</div></td><td>${getAcquisitionStatusBadge(order.status)}</td><td>${order.vendor || "—"}</td><td>${formatShortDate(order.orderDate || order.createdAt)}</td><td><div class="acquisition-progress-meta"><strong>${order.receivedItems} of ${order.totalItems || 0} items received</strong></div><div class="acquisition-progress-bar"><span style="width:${order.progressPercent}%"></span></div></td><td><div class="row-actions"><button class="button button-secondary" type="button" data-acq-nav-stage="receiving">View order details</button><button class="button button-secondary" type="button" data-acq-nav-stage="receiving">Mark items as received</button>${order.receivedItems === order.totalItems && order.totalItems ? `<button class="button" type="button" data-acq-close-order="${order.id}">Close order</button>` : ``}</div></td></tr>`).join("") : `<tr><td colspan="6">${empty}</td></tr>`}</tbody>
           </table>
         </div>
       </section>
-    </div>
-  `;
+    </div>`;
 }
 
 function renderReceivingStage(workflow) {
-  const rows = workflow.materials.filter((material) => material.workflowStage === "orders" || material.workflowStage === "receiving");
+  const rows = workflow.materials.filter((material) => material.sourceType !== "donation" && (material.workflowStage === "orders" || material.workflowStage === "receiving"));
   if (!rows.length) return `<div class="panel-header compact acquisitions-stage-header"><div><h3>Receiving</h3><p class="muted">Acknowledge incoming materials and hand them off to processing.</p></div></div><div class="acquisition-empty-state"><h4>No materials are awaiting receipt</h4><p class="muted">When ordered materials arrive, they will appear here for receiving.</p></div>`;
+  return `<div class="panel-header compact acquisitions-stage-header"><div><h3>Receiving</h3><p class="muted">What just came in, what order it belongs to, and what still needs acknowledgment.</p></div></div><div class="acquisition-card-grid">${rows.map((material) => `<article class="acquisition-stage-card"><div class="acquisition-stage-card-top"><div><h4>${material.title}</h4><p class="muted">${material.orderName || "No order"} · ${material.materialNumber || "No material #"}</p></div>${getAcquisitionStatusBadge(material.status)}</div><div class="acquisition-detail-grid"><div><span class="status-label">Quantity ordered</span><strong>${material.quantityOrdered}</strong></div><div><span class="status-label">Quantity received</span><strong>${material.receivedQuantity}</strong></div><div><span class="status-label">Received date</span><strong>${formatShortDate(material.receivedAt)}</strong></div><div><span class="status-label">Format</span><strong>${material.format || "—"}</strong></div></div><div class="row-actions"><button class="button button-secondary" type="button" data-acq-receive="${material.id}">Mark as received</button><button class="button button-secondary" type="button" data-acq-receive-all="${material.id}">Receive all copies</button>${material.receivedQuantity > 0 ? `<button class="button button-secondary" type="button" data-acq-undo-receipt="${material.id}">Undo receipt</button>` : ``}${material.receivedQuantity > 0 ? `<button class="button" type="button" data-acq-send-pending="${material.id}">Send to Pending Materials</button>` : ``}</div></article>`).join("")}</div>`;
+}
+
+function renderDonationBatchOptions(batches) {
+  return batches.map((batch) => `<option value="${batch.id}" ${state.activeDonationBatchId === batch.id ? "selected" : ""}>${batch.name || batch.batchId}</option>`).join("");
+}
+
+function renderDonationFilterButton(id, label, count) {
+  return `<button class="button button-secondary ${state.donationFilter === id ? "is-active" : ""}" type="button" data-donation-filter="${id}">${label} <span class="donation-filter-count">${count}</span></button>`;
+}
+
+function renderDonationItemActions(item) {
+  const actions = [["under-review", "Mark Under Review"], ["accepted", "Accept for Collection"], ["rejected", "Reject"], ["sale", "Mark for Sale"], ["disposed", "Mark Disposed"], ["returned", "Return to Donor"]];
+  return actions.map(([action, label]) => `<button class="button button-secondary" type="button" data-donation-item-action="${action}" data-donation-item-id="${item.id}">${label}</button>`).join("") + (item.reviewStatus === "Accepted for Collection" ? `<button class="button" type="button" data-donation-send-pending="${item.id}">Send to Pending Materials</button>` : "") + `<button class="button button-secondary" type="button" data-donation-edit-item="${item.id}">Edit item details</button>`;
+}
+
+function renderDonationItemsTable(items, emptyTitle, emptyCopy) {
+  if (!items.length) return `<div class="acquisition-empty-state"><h4>${emptyTitle}</h4><p class="muted">${emptyCopy}</p></div>`;
+  return `<div class="acquisition-data-table-wrap"><table class="serials-table acquisition-stage-table"><thead><tr><th>Donation Item</th><th>Batch</th><th>Status</th><th>Disposition</th><th>Notes</th><th>Actions</th></tr></thead><tbody>${items.map(({ batch, ...item }) => `<tr><td><strong>${item.title || "Untitled item"}</strong><div class="muted">${item.author || "Unknown creator"} · ${item.format || "Other"}${item.condition ? ` · ${item.condition}` : ""}</div></td><td>${batch.name || batch.batchId}<div class="muted">${batch.donorName || "Unknown donor"}</div></td><td>${getAcquisitionStatusBadge(item.reviewStatus)}</td><td>${item.disposition || "—"}</td><td>${item.notes || "—"}</td><td><div class="row-actions">${renderDonationItemActions(item)}</div></td></tr>`).join("")}</tbody></table></div>`;
+}
+
+function renderDonationsStage(workflow) {
+  const donationWorkflow = workflow.donationWorkflow;
+  const activeBatch = donationWorkflow.batches.find((batch) => batch.id === state.activeDonationBatchId) || donationWorkflow.batches[0] || null;
+  if (activeBatch && !state.activeDonationBatchId) state.activeDonationBatchId = activeBatch.id;
+  const filterItems = donationWorkflow.filterGroups[state.donationFilter] || donationWorkflow.filterGroups.incoming;
   return `
     <div class="panel-header compact acquisitions-stage-header">
-      <div><h3>Receiving</h3><p class="muted">What just came in, what order it belongs to, and what still needs acknowledgment.</p></div>
+      <div><h3>Donations</h3><p class="muted">Track donated materials from intake through review and final disposition.</p></div>
+      <div class="row-actions">
+        <button class="button" type="button" data-acq-focus-donation-batch="true">New Donation Batch</button>
+        <button class="button button-secondary" type="button" data-acq-focus-donation-item="true">Add Donation Item</button>
+        <button class="button button-secondary" type="button" data-donation-filter="review">Review Donations</button>
+        <button class="button button-secondary" type="button" data-donation-filter="accepted">View Accepted Items</button>
+        <button class="button button-secondary" type="button" data-donation-filter="dispositioned">View Rejected / Dispositioned</button>
+      </div>
     </div>
-    <div class="acquisition-card-grid">
-      ${rows.map((material) => `
-        <article class="acquisition-stage-card">
-          <div class="acquisition-stage-card-top">
-            <div>
-              <h4>${material.title}</h4>
-              <p class="muted">${material.orderName || "No order"} · ${material.materialNumber || "No material #"}</p>
-            </div>
-            ${getAcquisitionStatusBadge(material.status)}
-          </div>
-          <div class="acquisition-detail-grid">
-            <div><span class="status-label">Quantity ordered</span><strong>${material.quantityOrdered}</strong></div>
-            <div><span class="status-label">Quantity received</span><strong>${material.receivedQuantity}</strong></div>
-            <div><span class="status-label">Received date</span><strong>${formatShortDate(material.receivedAt)}</strong></div>
-            <div><span class="status-label">Format</span><strong>${material.format || "—"}</strong></div>
-          </div>
-          <div class="row-actions">
-            <button class="button button-secondary" type="button" data-acq-receive="${material.id}">Mark as received</button>
-            <button class="button button-secondary" type="button" data-acq-receive-all="${material.id}">Receive all copies</button>
-            ${material.receivedQuantity > 0 ? `<button class="button button-secondary" type="button" data-acq-undo-receipt="${material.id}">Undo receipt</button>` : ``}
-            ${material.receivedQuantity > 0 ? `<button class="button" type="button" data-acq-send-pending="${material.id}">Send to Pending Materials</button>` : ``}
-          </div>
-        </article>
-      `).join("")}
+    <div class="acquisition-summary-grid donations-summary-grid">
+      <article class="acquisition-summary-card donation-summary-card-static"><span class="acquisition-summary-label">New Donations</span><strong class="acquisition-summary-value">${donationWorkflow.newCount}</strong><span class="acquisition-summary-copy">Recently received or not yet reviewed.</span></article>
+      <article class="acquisition-summary-card donation-summary-card-static"><span class="acquisition-summary-label">Under Review</span><strong class="acquisition-summary-value">${donationWorkflow.underReviewCount}</strong><span class="acquisition-summary-copy">Waiting on collection decision.</span></article>
+      <article class="acquisition-summary-card donation-summary-card-static"><span class="acquisition-summary-label">Accepted for Collection</span><strong class="acquisition-summary-value">${donationWorkflow.acceptedCount}</strong><span class="acquisition-summary-copy">Approved but not yet sent to processing.</span></article>
+      <article class="acquisition-summary-card donation-summary-card-static"><span class="acquisition-summary-label">Rejected / Sale / Disposition</span><strong class="acquisition-summary-value">${donationWorkflow.dispositionCount}</strong><span class="acquisition-summary-copy">Finalized outside the collection.</span></article>
+      <article class="acquisition-summary-card donation-summary-card-static"><span class="acquisition-summary-label">Awaiting Processing</span><strong class="acquisition-summary-value">${donationWorkflow.awaitingProcessingCount}</strong><span class="acquisition-summary-copy">Accepted items already sent to Pending Materials.</span></article>
     </div>
-  `;
+    <div class="donations-workspace-grid">
+      <section class="acquisition-form-panel">
+        <div class="panel-header compact"><div><h4>New Donation Batch</h4><p class="muted">Create a batch for one donation event or dropoff.</p></div></div>
+        <form id="donationBatchForm" class="simple-form serials-form-grid">
+          <label><span>Batch name / label<span class="required-indicator">*</span></span><input name="batchName" id="donationBatchName" required placeholder="Smith Donation – March 2026" /></label>
+          <label><span>Donor name<span class="required-indicator">*</span></span><input name="donorName" id="donationDonorName" required placeholder="Jane Smith" /></label>
+          <label><span>Donor contact info</span><input name="donorContact" placeholder="Email, phone, or address" /></label>
+          <label><span>Date received</span><input name="dateReceived" type="date" value="${new Date().toISOString().slice(0, 10)}" /></label>
+          <label><span>Acknowledgment</span><select name="ackStatus"><option value="pending">Required / pending</option><option value="sent">Sent</option></select></label>
+          <label><span>Tax receipt requested</span><input name="taxReceiptRequested" type="checkbox" /></label>
+          <label><span>Estimated value</span><input name="estimatedValue" placeholder="Manual only" /></label>
+          <label><span>Initial status</span><select name="initialStatus"><option>New / Received</option><option>Under Review</option></select></label>
+          <label class="form-grid-span"><span>Staff notes</span><textarea name="batchNotes" rows="3" placeholder="Intake notes, donor request, appraisal notes, etc."></textarea></label>
+          <div class="row-actions form-grid-span"><button class="button" type="submit">New Donation Batch</button></div>
+        </form>
+      </section>
+      <section class="acquisition-list-panel">
+        <div class="panel-header compact"><div><h4>Donation Batches</h4><p class="muted">Open a batch to review its items, acknowledgment status, and outcomes.</p></div></div>
+        ${donationWorkflow.batches.length ? `<div class="acquisition-data-table-wrap"><table class="serials-table acquisition-stage-table"><thead><tr><th>Batch</th><th>Donor</th><th>Date received</th><th>Items</th><th>Summary status</th><th>Acknowledgment</th><th>Actions</th></tr></thead><tbody>${donationWorkflow.batches.map((batch) => `<tr class="${state.activeDonationBatchId === batch.id ? "donation-batch-row-active" : ""}"><td><strong>${batch.name || batch.batchId}</strong><div class="muted">${batch.batchId}</div></td><td>${batch.donorName || "—"}<div class="muted">${batch.donorContact || "No contact info"}</div></td><td>${formatShortDate(batch.dateReceived)}</td><td>${(batch.items || []).length}<div class="muted">${batch.counts.acceptedCount} accepted · ${batch.counts.dispositionCount} dispositioned</div></td><td>${getAcquisitionStatusBadge(batch.overallStatus)}</td><td>${batch.acknowledgmentSent ? getAcquisitionStatusBadge("Acknowledgment Sent") : getAcquisitionStatusBadge("Acknowledgment Needed")}</td><td><div class="row-actions"><button class="button button-secondary" type="button" data-donation-open-batch="${batch.id}">Open batch</button><button class="button button-secondary" type="button" data-donation-edit-batch="${batch.id}">Edit batch</button><button class="button button-secondary" type="button" data-donation-open-batch="${batch.id}" data-acq-focus-donation-item="true">Add item to batch</button>${!batch.acknowledgmentSent ? `<button class="button button-secondary" type="button" data-donation-ack="${batch.id}">Mark acknowledgment sent</button>` : ``}<button class="button" type="button" data-donation-archive-batch="${batch.id}">Archive batch</button></div></td></tr>`).join("")}</tbody></table></div>` : `<div class="acquisition-empty-state"><h4>No donation batches yet</h4><p class="muted">Start a donation batch to track intake, review, and disposition decisions.</p></div>`}
+      </section>
+    </div>
+    <section class="acquisition-stage-card">
+      <div class="panel-header compact"><div><h4>Donation review workspace</h4><p class="muted">Use the filters to move quickly between incoming, under-review, accepted, and rejected or dispositioned donation items.</p></div></div>
+      <div class="row-actions donation-filter-row">
+        ${renderDonationFilterButton("incoming", "Incoming / New", donationWorkflow.filterGroups.incoming.length)}
+        ${renderDonationFilterButton("review", "Under Review", donationWorkflow.filterGroups.review.length)}
+        ${renderDonationFilterButton("accepted", "Accepted", donationWorkflow.filterGroups.accepted.length)}
+        ${renderDonationFilterButton("dispositioned", "Rejected / Dispositioned", donationWorkflow.filterGroups.dispositioned.length)}
+      </div>
+      ${renderDonationItemsTable(filterItems, state.donationFilter === "review" ? "No donation items are awaiting review" : state.donationFilter === "accepted" ? "No accepted donation items are waiting to be processed" : state.donationFilter === "dispositioned" ? "No donation items have been dispositioned" : "No incoming donation items right now", state.donationFilter === "incoming" ? "New donation items will appear here as soon as they are added to a batch." : "Try another filter or create a new donation batch.")}
+    </section>
+    <section class="acquisition-stage-card">
+      <div class="panel-header compact"><div><h4>${activeBatch ? `${activeBatch.name || activeBatch.batchId}` : "Batch detail"}</h4><p class="muted">${activeBatch ? `Review donation items for ${activeBatch.donorName || "this donor"} and move accepted items into Pending Materials.` : "Open a donation batch to review and manage its items."}</p></div></div>
+      ${activeBatch ? `
+        <div class="acquisition-detail-grid">
+          <div><span class="status-label">Donor</span><strong>${activeBatch.donorName || "—"}</strong></div>
+          <div><span class="status-label">Date received</span><strong>${formatShortDate(activeBatch.dateReceived)}</strong></div>
+          <div><span class="status-label">Acknowledgment</span><strong>${activeBatch.acknowledgmentSent ? "Sent" : "Pending"}</strong></div>
+          <div><span class="status-label">Tax receipt</span><strong>${activeBatch.taxReceiptRequested ? "Requested" : "Not requested"}</strong></div>
+          <div><span class="status-label">Estimated value</span><strong>${activeBatch.estimatedValue || "—"}</strong></div>
+          <div><span class="status-label">Status</span><strong>${activeBatch.overallStatus}</strong></div>
+        </div>
+        <p class="muted">${activeBatch.notes || "No staff notes for this batch yet."}</p>
+        <form id="donationItemForm" class="simple-form serials-form-grid">
+          <input type="hidden" name="batchId" value="${activeBatch.id}" />
+          <label><span>Donation Batch</span><select name="batchIdSelect">${renderDonationBatchOptions(donationWorkflow.batches)}</select></label>
+          <label><span>Title<span class="required-indicator">*</span></span><input name="itemTitle" required placeholder="Lightweight title entry" /></label>
+          <label><span>Author / creator</span><input name="itemAuthor" placeholder="Optional at intake" /></label>
+          <label><span>Format / material type</span><select name="itemFormat"><option>Book</option><option>DVD</option><option>CD</option><option>Vinyl</option><option>Board Game</option><option>Magazine</option><option>Other</option></select></label>
+          <label><span>Condition</span><input name="itemCondition" placeholder="Good, worn, etc." /></label>
+          <label class="form-grid-span"><span>Notes</span><textarea name="itemNotes" rows="2" placeholder="Brief intake notes; full metadata can wait until later."></textarea></label>
+          <div class="row-actions form-grid-span"><button class="button" type="submit">Add Donation Item</button></div>
+        </form>
+        ${renderDonationItemsTable((activeBatch.items || []).map((item) => ({ ...item, batch: activeBatch })), "This batch has no donation items yet", "Add a donation item to start review and disposition work for this batch.")}
+      ` : `<div class="acquisition-empty-state"><h4>No batch selected</h4><p class="muted">Choose a batch from the list above to manage its items.</p></div>`}
+    </section>`;
 }
 
 function renderPendingStage(workflow) {
   const rows = workflow.pending;
-  if (!rows.length) return `<div class="panel-header compact acquisitions-stage-header"><div><h3>Pending Materials</h3><p class="muted">Received materials waiting for item setup, metadata review, and activation.</p></div></div><div class="acquisition-empty-state"><h4>No pending materials awaiting activation</h4><p class="muted">Received items move here once staff has acknowledged receipt.</p></div>`;
-  return `
-    <div class="panel-header compact acquisitions-stage-header">
-      <div><h3>Pending Materials</h3><p class="muted">Here are the materials that need finishing work before they become active catalog items.</p></div>
-    </div>
-    <div class="acquisition-data-table-wrap">
-      <table class="serials-table acquisition-stage-table">
-        <thead><tr><th>Title</th><th>Linked order</th><th>Material #</th><th>Format</th><th>Status</th><th>Date added</th><th>Location</th><th>Actions</th></tr></thead>
-        <tbody>${rows.map((material) => `
-          <tr>
-            <td><strong>${material.title}</strong>${getOldPendingFlag(material) ? `<div class="acquisition-inline-flag">${getOldPendingFlag(material)}</div>` : ``}</td>
-            <td>${material.orderName || "—"}</td>
-            <td>${material.materialNumber || "—"}</td>
-            <td>${material.format || "—"}</td>
-            <td>${getAcquisitionStatusBadge(material.status)}</td>
-            <td>${formatShortDate(material.sentToPendingAt || material.createdAt)}</td>
-            <td>${material.location || "Unassigned"}</td>
-            <td><div class="row-actions"><button class="button button-secondary" type="button" data-acq-activate="${material.id}">Activate item</button><button class="button button-secondary" type="button" data-acq-focus-form="true">Edit metadata</button><button class="button button-secondary" type="button" data-acq-focus-form="true">Assign location</button><button class="button" type="button" data-acq-remove="${material.id}">Remove / cancel</button></div></td>
-          </tr>`).join("")}</tbody>
-      </table>
-    </div>
-  `;
+  if (!rows.length) return `<div class="panel-header compact acquisitions-stage-header"><div><h3>Pending Materials</h3><p class="muted">Received and accepted materials waiting for item setup, metadata review, and activation.</p></div></div><div class="acquisition-empty-state"><h4>No pending materials awaiting activation</h4><p class="muted">Received orders and accepted donation items move here once staff has acknowledged and routed them.</p></div>`;
+  return `<div class="panel-header compact acquisitions-stage-header"><div><h3>Pending Materials</h3><p class="muted">Here are the materials that need finishing work before they become active catalog items.</p></div></div><div class="acquisition-data-table-wrap"><table class="serials-table acquisition-stage-table"><thead><tr><th>Title</th><th>Source</th><th>Material #</th><th>Format</th><th>Status</th><th>Date added</th><th>Location</th><th>Actions</th></tr></thead><tbody>${rows.map((material) => `<tr><td><strong>${material.title}</strong>${getOldPendingFlag(material) ? `<div class="acquisition-inline-flag">${getOldPendingFlag(material)}</div>` : ``}</td><td><strong>${material.sourceLabel || (material.sourceType === "donation" ? "Donation" : "Order")}</strong><div class="muted">${material.sourceType === "donation" ? `Batch: ${material.donationBatchName || "Donation"}${material.donorName ? ` · Donor: ${material.donorName}` : ""}` : material.orderName || "—"}</div></td><td>${material.materialNumber || "—"}</td><td>${material.format || "—"}</td><td>${getAcquisitionStatusBadge(material.status)}</td><td>${formatShortDate(material.sentToPendingAt || material.createdAt)}</td><td>${material.location || "Unassigned"}</td><td><div class="row-actions"><button class="button button-secondary" type="button" data-acq-activate="${material.id}">Activate item</button><button class="button button-secondary" type="button" data-acq-focus-form="true">Edit metadata</button><button class="button button-secondary" type="button" data-acq-focus-form="true">Assign location</button><button class="button" type="button" data-acq-remove="${material.id}">Remove / cancel</button></div></td></tr>`).join("")}</tbody></table></div>`;
 }
 
 function renderCompletedStage(workflow) {
-  const completedRows = [
-    ...workflow.completedMaterials.map((material) => ({
-      label: material.title,
-      type: "Item activated into catalog",
-      date: material.activatedAt,
-      context: material.orderName || "No order",
-    })),
-    ...workflow.completedOrders.map((order) => ({
-      label: order.name || "Untitled order",
-      type: order.closedAt ? "Order fully received and closed" : "Order fully received",
-      date: order.closedAt || order.orderDate || order.createdAt,
-      context: `${order.receivedItems}/${order.totalItems || 0} items received`,
-      orderId: order.id,
-      closed: Boolean(order.closedAt),
-    })),
-  ].sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).slice(0, 12);
-
-  if (!completedRows.length) return `<div class="panel-header compact acquisitions-stage-header"><div><h3>Completed</h3><p class="muted">Recently activated materials and recently closed orders.</p></div></div><div class="acquisition-empty-state"><h4>No recently completed acquisitions activity</h4><p class="muted">Completed receiving and activation work will appear here.</p></div>`;
-
-  return `
-    <div class="panel-header compact acquisitions-stage-header">
-      <div><h3>Completed</h3><p class="muted">Closure for the workflow: activated items, finished receiving, and closed orders.</p></div>
-    </div>
-    <div class="acquisition-card-grid acquisition-card-grid-compact">
-      ${completedRows.map((entry) => `
-        <article class="acquisition-stage-card">
-          <div class="acquisition-stage-card-top"><div><h4>${entry.label}</h4><p class="muted">${entry.context}</p></div>${getAcquisitionStatusBadge(entry.type.includes("Order") ? "Closed" : "Activated")}</div>
-          <div class="acquisition-detail-grid"><div><span class="status-label">Completed action</span><strong>${entry.type}</strong></div><div><span class="status-label">Date completed</span><strong>${formatShortDate(entry.date)}</strong></div><div><span class="status-label">Relative time</span><strong>${formatRelativeAge(new Date(entry.date || 0).getTime())}</strong></div></div>
-          ${entry.orderId && entry.closed ? `<div class="row-actions"><button class="button button-secondary" type="button" data-acq-reopen-order="${entry.orderId}">Reopen order</button></div>` : ``}
-        </article>
-      `).join("")}
-    </div>
-  `;
+  const donationCompleted = workflow.donationWorkflow.items.filter((item) => item.reviewStatus === "Activated").map((item) => ({ label: item.title || "Untitled donation item", type: "Donation activated into catalog", date: item.activatedAt, context: item.batch?.name || item.batch?.batchId || "Donation batch" }));
+  const completedRows = [...workflow.completedMaterials.map((material) => ({ label: material.title, type: material.sourceType === "donation" ? "Donation item activated into catalog" : "Item activated into catalog", date: material.activatedAt, context: material.sourceType === "donation" ? material.donationBatchName || "Donation batch" : material.orderName || "No order" })), ...workflow.completedOrders.map((order) => ({ label: order.name || "Untitled order", type: order.closedAt ? "Order fully received and closed" : "Order fully received", date: order.closedAt || order.orderDate || order.createdAt, context: `${order.receivedItems}/${order.totalItems || 0} items received`, orderId: order.id, closed: Boolean(order.closedAt) })), ...donationCompleted].sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).slice(0, 12);
+  if (!completedRows.length) return `<div class="panel-header compact acquisitions-stage-header"><div><h3>Completed</h3><p class="muted">Recently activated materials and recently closed orders.</p></div></div><div class="acquisition-empty-state"><h4>No recently completed acquisitions activity</h4><p class="muted">Completed receiving, donation review, and activation work will appear here.</p></div>`;
+  return `<div class="panel-header compact acquisitions-stage-header"><div><h3>Completed</h3><p class="muted">Closure for the workflow: activated items, finished receiving, donation outcomes, and closed orders.</p></div></div><div class="acquisition-card-grid acquisition-card-grid-compact">${completedRows.map((entry) => `<article class="acquisition-stage-card"><div class="acquisition-stage-card-top"><div><h4>${entry.label}</h4><p class="muted">${entry.context}</p></div>${getAcquisitionStatusBadge(entry.type.includes("Order") ? "Closed" : "Activated")}</div><div class="acquisition-detail-grid"><div><span class="status-label">Completed action</span><strong>${entry.type}</strong></div><div><span class="status-label">Date completed</span><strong>${formatShortDate(entry.date)}</strong></div><div><span class="status-label">Relative time</span><strong>${formatRelativeAge(new Date(entry.date || 0).getTime())}</strong></div></div>${entry.orderId && entry.closed ? `<div class="row-actions"><button class="button button-secondary" type="button" data-acq-reopen-order="${entry.orderId}">Reopen order</button></div>` : ``}</article>`).join("")}</div>`;
 }
 
 function renderAcquisitionsWorkspace() {
@@ -1866,36 +2130,54 @@ function renderAcquisitionsWorkspace() {
   const workflow = getAcquisitionWorkflowData();
   const meta = getAcquisitionStageMeta()[state.acquisitionsStage] || getAcquisitionStageMeta().orders;
   if (els.acquisitionsStatusLine) {
-    els.acquisitionsStatusLine.textContent = `${workflow.openOrders.length} open orders · ${workflow.awaitingReceipt.length} awaiting receipt · ${workflow.pending.length} pending materials · ${workflow.completedMaterials.length} activated`;
+    els.acquisitionsStatusLine.textContent = `${workflow.openOrders.length} open orders · ${workflow.awaitingReceipt.length} awaiting receipt · ${workflow.donationWorkflow.awaitingReviewCount} donation items awaiting review · ${workflow.pending.length} pending materials · ${workflow.completedMaterials.length + workflow.donationWorkflow.activatedCount} activated`;
   }
-  const stageContent = {
-    orders: renderOrdersStage(workflow),
-    receiving: renderReceivingStage(workflow),
-    pending: renderPendingStage(workflow),
-    completed: renderCompletedStage(workflow),
-  };
+  const stageContent = { orders: renderOrdersStage(workflow), receiving: renderReceivingStage(workflow), donations: renderDonationsStage(workflow), pending: renderPendingStage(workflow), completed: renderCompletedStage(workflow) };
   els.acquisitionsStageContent.innerHTML = `<div class="acquisition-stage-shell" data-stage="${state.acquisitionsStage}"><div class="sr-only">${meta.label}</div>${stageContent[state.acquisitionsStage] || stageContent.orders}</div>`;
   bindAcquisitionStageEvents();
 }
 
 function bindAcquisitionStageEvents() {
-  document.querySelectorAll('[data-acq-nav-stage]').forEach((button) => button.addEventListener('click', () => setAcquisitionStage(button.dataset.acqNavStage)));
-  document.querySelectorAll('[data-acq-focus-form]').forEach((button) => button.addEventListener('click', () => {
-    setAcquisitionStage('orders');
-    window.requestAnimationFrame(() => document.querySelector('#acqOrderName')?.focus());
+  document.querySelectorAll("[data-acq-nav-stage]").forEach((button) => button.addEventListener("click", () => setAcquisitionStage(button.dataset.acqNavStage)));
+  document.querySelectorAll("[data-acq-focus-form]").forEach((button) => button.addEventListener("click", () => {
+    setAcquisitionStage("orders");
+    window.requestAnimationFrame(() => document.querySelector("#acqOrderName")?.focus());
   }));
-  document.querySelector('#acquisitionItemForm')?.addEventListener('submit', addAcquisitionItem);
-  document.querySelectorAll('[data-acq-receive]').forEach((button) => button.addEventListener('click', () => markMaterialReceived(button.dataset.acqReceive)));
-  document.querySelectorAll('[data-acq-receive-all]').forEach((button) => button.addEventListener('click', () => markMaterialReceived(button.dataset.acqReceiveAll, true)));
-  document.querySelectorAll('[data-acq-undo-receipt]').forEach((button) => button.addEventListener('click', () => undoReceipt(button.dataset.acqUndoReceipt)));
-  document.querySelectorAll('[data-acq-send-pending]').forEach((button) => button.addEventListener('click', () => sendMaterialToPending(button.dataset.acqSendPending)));
-  document.querySelectorAll('[data-acq-activate]').forEach((button) => button.addEventListener('click', () => activatePendingMaterial(button.dataset.acqActivate)));
-  document.querySelectorAll('[data-acq-remove]').forEach((button) => button.addEventListener('click', () => removePendingMaterial(button.dataset.acqRemove)));
-  document.querySelectorAll('[data-acq-close-order]').forEach((button) => button.addEventListener('click', () => closeOrder(button.dataset.acqCloseOrder)));
-  document.querySelectorAll('[data-acq-reopen-order]').forEach((button) => button.addEventListener('click', () => reopenOrder(button.dataset.acqReopenOrder)));
-  els.acqCoverUpload = document.querySelector('#acqCoverUpload');
-  els.acqCoverUrl = document.querySelector('#acqCoverUrl');
-  if (els.acqCoverUpload) els.acqCoverUpload.addEventListener('change', handleAcquisitionCoverUpload);
+  document.querySelectorAll("[data-acq-focus-donation-batch]").forEach((button) => button.addEventListener("click", () => {
+    setAcquisitionStage("donations");
+    window.requestAnimationFrame(() => document.querySelector("#donationBatchName")?.focus());
+  }));
+  document.querySelectorAll("[data-acq-focus-donation-item]").forEach((button) => button.addEventListener("click", () => {
+    setAcquisitionStage("donations");
+    window.requestAnimationFrame(() => document.querySelector('#donationItemForm [name="itemTitle"]')?.focus());
+  }));
+  document.querySelector("#acquisitionItemForm")?.addEventListener("submit", addAcquisitionItem);
+  document.querySelector("#donationBatchForm")?.addEventListener("submit", addDonationBatch);
+  document.querySelector("#donationItemForm")?.addEventListener("submit", addDonationItem);
+  document.querySelectorAll("[data-acq-receive]").forEach((button) => button.addEventListener("click", () => markMaterialReceived(button.dataset.acqReceive)));
+  document.querySelectorAll("[data-acq-receive-all]").forEach((button) => button.addEventListener("click", () => markMaterialReceived(button.dataset.acqReceiveAll, true)));
+  document.querySelectorAll("[data-acq-undo-receipt]").forEach((button) => button.addEventListener("click", () => undoReceipt(button.dataset.acqUndoReceipt)));
+  document.querySelectorAll("[data-acq-send-pending]").forEach((button) => button.addEventListener("click", () => sendMaterialToPending(button.dataset.acqSendPending)));
+  document.querySelectorAll("[data-acq-activate]").forEach((button) => button.addEventListener("click", () => activatePendingMaterial(button.dataset.acqActivate)));
+  document.querySelectorAll("[data-acq-remove]").forEach((button) => button.addEventListener("click", () => removePendingMaterial(button.dataset.acqRemove)));
+  document.querySelectorAll("[data-acq-close-order]").forEach((button) => button.addEventListener("click", () => closeOrder(button.dataset.acqCloseOrder)));
+  document.querySelectorAll("[data-acq-reopen-order]").forEach((button) => button.addEventListener("click", () => reopenOrder(button.dataset.acqReopenOrder)));
+  document.querySelectorAll("[data-donation-open-batch]").forEach((button) => button.addEventListener("click", () => { state.activeDonationBatchId = button.dataset.donationOpenBatch; setAcquisitionStage("donations"); }));
+  document.querySelectorAll("[data-donation-edit-batch]").forEach((button) => button.addEventListener("click", () => editDonationBatch(button.dataset.donationEditBatch)));
+  document.querySelectorAll("[data-donation-edit-item]").forEach((button) => button.addEventListener("click", () => editDonationItem(button.dataset.donationEditItem)));
+  document.querySelectorAll("[data-donation-ack]").forEach((button) => button.addEventListener("click", () => markDonationAcknowledgmentSent(button.dataset.donationAck)));
+  document.querySelectorAll("[data-donation-archive-batch]").forEach((button) => button.addEventListener("click", () => archiveDonationBatch(button.dataset.donationArchiveBatch)));
+  document.querySelectorAll("[data-donation-filter]").forEach((button) => button.addEventListener("click", () => { state.donationFilter = button.dataset.donationFilter; state.acquisitionsStage = "donations"; renderAcquisitionsWorkspace(); }));
+  document.querySelectorAll("[data-donation-item-action]").forEach((button) => button.addEventListener("click", () => {
+    const actions = { "under-review": ["Under Review", ""], accepted: ["Accepted for Collection", ""], rejected: ["Rejected", "Rejected"], sale: ["Sent to Sale", "Book Sale"], disposed: ["Disposed", "Disposed"], returned: ["Returned", "Returned to Donor"] };
+    const [reviewStatus, disposition] = actions[button.dataset.donationItemAction] || ["Under Review", ""];
+    setDonationItemStatus(button.dataset.donationItemId, reviewStatus, disposition);
+  }));
+  document.querySelectorAll("[data-donation-send-pending]").forEach((button) => button.addEventListener("click", () => sendDonationItemToPending(button.dataset.donationSendPending)));
+  document.querySelector('select[name="batchIdSelect"]')?.addEventListener("change", (event) => { state.activeDonationBatchId = event.target.value; });
+  els.acqCoverUpload = document.querySelector("#acqCoverUpload");
+  els.acqCoverUrl = document.querySelector("#acqCoverUrl");
+  if (els.acqCoverUpload) els.acqCoverUpload.addEventListener("change", handleAcquisitionCoverUpload);
 }
 
 function getManagedMaterialTypes() {

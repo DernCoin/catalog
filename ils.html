@@ -87,14 +87,15 @@
                 <div>
                   <p class="eyebrow acquisitions-eyebrow">Staff workflow</p>
                   <h2>Acquisitions</h2>
-                  <p class="muted acquisitions-subheading">Manage orders, receive incoming materials, and move items into the catalog.</p>
-                  <p id="acquisitionsStatusLine" class="muted acquisitions-status-line">Track each acquisition from request through activation.</p>
+                  <p class="muted acquisitions-subheading">Manage orders, receive incoming materials, review donations, and move collection items into the catalog.</p>
+                  <p id="acquisitionsStatusLine" class="muted acquisitions-status-line">Track each acquisition path from intake through activation.</p>
                 </div>
                 <div class="acquisitions-quick-actions" id="acquisitionsQuickActions">
                   <button class="button" type="button" data-acq-nav-stage="orders">Create Order</button>
                   <button class="button button-secondary" type="button" data-acq-nav-stage="receiving">Receive Items</button>
+                  <button class="button button-secondary" type="button" data-acq-nav-stage="donations">New Donation Batch</button>
                   <button class="button button-secondary" type="button" data-acq-nav-stage="pending">View Pending</button>
-                  <button class="button button-secondary" type="button" data-acq-nav-stage="orders" data-acq-focus-form="true">Add Pending Material</button>
+                  <button class="button button-secondary" type="button" data-acq-nav-stage="donations" data-acq-focus-donation-batch="true">Add Donation Intake</button>
                 </div>
               </div>
               <div class="acquisition-summary-grid" id="acquisitionSummaryCards" aria-label="Acquisitions summary"></div>

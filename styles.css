@@ -245,6 +245,7 @@ th, td { border-bottom: 1px solid var(--border); padding: .5rem; text-align: lef
 
 @media (max-width: 1024px) {
   .cover-scroller { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .donations-workspace-grid { grid-template-columns:1fr; }
 }
 
 @media (max-width: 900px) {
@@ -772,7 +773,7 @@ label > span, .status-label { display:block; font-size:.83rem; font-weight:700; 
 .acquisition-summary-label { font-size:.82rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }
 .acquisition-summary-value { font-size:2rem; line-height:1; }
 .acquisition-summary-copy { color:var(--muted); font-size:.9rem; }
-.acquisitions-stage-nav { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:.65rem; }
+.acquisitions-stage-nav { display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:.65rem; }
 .acquisition-stage-btn { width:100%; border-radius:16px; padding:.8rem .9rem; display:grid; gap:.2rem; text-align:left; }
 .acquisition-stage-btn small { color:var(--muted); font-size:.8rem; }
 .acquisition-stage-btn.is-active { background:#eadfff; border-color:#cbb1fb; }
@@ -803,6 +804,16 @@ label > span, .status-label { display:block; font-size:.83rem; font-weight:700; 
 .acquisition-badge[data-acq-status="activated"] { background:#e6fbfb; color:#0b6d68; }
 .acquisition-badge[data-acq-status="closed"] { background:#ede7ff; color:#5b30c6; }
 .acquisition-badge[data-acq-status="item-activated-into-catalog"], .acquisition-badge[data-acq-status="order-fully-received-and-closed"] { background:#ede7ff; color:#5b30c6; }
+.acquisition-badge[data-acq-status="new"], .acquisition-badge[data-acq-status="new-received"] { background:#eef2ff; color:#3348a8; }
+.acquisition-badge[data-acq-status="under-review"] { background:#fff2db; color:#8b4d00; }
+.acquisition-badge[data-acq-status="accepted-for-collection"] { background:#e8fbef; color:#176a37; }
+.acquisition-badge[data-acq-status="rejected"], .acquisition-badge[data-acq-status="sent-to-sale"], .acquisition-badge[data-acq-status="disposed"], .acquisition-badge[data-acq-status="returned"] { background:#fff1fa; color:#a32261; }
+.donations-workspace-grid { display:grid; grid-template-columns:minmax(320px,.95fr) minmax(0,1.4fr); gap:1rem; align-items:start; }
+.donation-summary-card-static { cursor:default; }
+.donation-summary-card-static:hover, .donation-summary-card-static:focus-visible { transform:none; box-shadow:none; }
+.donation-filter-row { margin-bottom:.6rem; }
+.donation-filter-count { display:inline-flex; margin-left:.35rem; font-size:.82rem; opacity:.8; }
+.donation-batch-row-active { background:#fcf8ff; }
 
 @media (max-width: 980px) {
   .acquisitions-stage-nav { grid-template-columns:repeat(2, minmax(0,1fr)); }
