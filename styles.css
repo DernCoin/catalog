@@ -902,6 +902,7 @@ label > span, .status-label { display:block; font-size:.83rem; font-weight:700; 
 .acquisitions-stage-nav { display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:.65rem; }
 .acquisition-stage-btn { width:100%; border-radius:16px; padding:.8rem .9rem; display:grid; gap:.2rem; text-align:left; }
 .acquisition-stage-btn small { color:var(--muted); font-size:.8rem; }
+.acquisition-stage-count { font-size:1.45rem; line-height:1; }
 .acquisition-stage-btn.is-active { background:#eadfff; border-color:#cbb1fb; }
 .acquisition-stage-panel { min-width:0; }
 .acquisitions-stage-header { margin-bottom:.35rem; }
@@ -916,12 +917,15 @@ label > span, .status-label { display:block; font-size:.83rem; font-weight:700; 
 .acquisition-card-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:.9rem; }
 .acquisition-card-grid-compact { grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); }
 .acquisition-stage-card { border:1px solid var(--border); border-radius:18px; background:#fff; padding:1rem; display:grid; gap:.85rem; }
+.acquisition-stage-card-damaged { border-color:#efc6c6; background:linear-gradient(180deg, #fff, #fff6f6); }
+.acquisition-order-row-damaged td { background:#fff7f7; }
 .acquisition-stage-card h4 { margin:.1rem 0 .2rem; }
 .acquisition-stage-card-top { display:flex; justify-content:space-between; gap:.8rem; align-items:flex-start; }
 .acquisition-detail-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:.75rem; }
 .acquisition-empty-state { border:1px dashed #d9c7ee; border-radius:16px; padding:1.1rem; background:#fcf8ff; display:grid; gap:.45rem; }
 .acquisition-empty-state h4 { margin:0; }
 .acquisition-inline-flag { margin-top:.35rem; display:inline-flex; align-items:center; gap:.35rem; border-radius:999px; padding:.2rem .55rem; background:#fff0e1; color:#8a4a05; font-size:.78rem; font-weight:700; }
+.acquisition-inline-flag-danger { background:#fff0f0; color:#8f1f1f; }
 .acquisition-badge { background:#f1ecf8; color:#4a3960; }
 .acquisition-badge[data-acq-status="open"], .acquisition-badge[data-acq-status="ordered"], .acquisition-badge[data-acq-status="awaiting-receipt"] { background:#eef2ff; color:#3348a8; }
 .acquisition-badge[data-acq-status="partially-received"] { background:#fff2db; color:#8b4d00; }
@@ -929,6 +933,8 @@ label > span, .status-label { display:block; font-size:.83rem; font-weight:700; 
 .acquisition-badge[data-acq-status="pending"] { background:#fff1fa; color:#a32261; }
 .acquisition-badge[data-acq-status="activated"] { background:#e6fbfb; color:#0b6d68; }
 .acquisition-badge[data-acq-status="closed"] { background:#ede7ff; color:#5b30c6; }
+.acquisition-badge[data-acq-status="archived"] { background:#f0edf7; color:#5a4d71; }
+.acquisition-badge[data-acq-status="damaged-on-arrival"] { background:#fff0f0; color:#8f1f1f; }
 .acquisition-badge[data-acq-status="item-activated-into-catalog"], .acquisition-badge[data-acq-status="order-fully-received-and-closed"] { background:#ede7ff; color:#5b30c6; }
 .acquisition-badge[data-acq-status="new"], .acquisition-badge[data-acq-status="new-received"] { background:#eef2ff; color:#3348a8; }
 .acquisition-badge[data-acq-status="under-review"] { background:#fff2db; color:#8b4d00; }

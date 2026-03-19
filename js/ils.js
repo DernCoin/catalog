@@ -1984,11 +1984,12 @@ function printCheckoutReceipt() {
     setCirculationMessage("Complete a checkout before printing a receipt.", "error");
     return;
   }
-  const printWindow = window.open("", "checkout-receipt-print", "width=420,height=720");
+  const printWindow = window.open("", `checkout-receipt-print-${Date.now()}`, "width=420,height=720,noopener");
   if (!printWindow) {
     setCirculationMessage("Unable to open the print dialog. Check browser pop-up settings.", "error");
     return;
   }
+  printWindow.document.open();
   printWindow.document.write(`<!doctype html><html><head><title>Checkout Receipt</title><style>
     body{margin:0;background:#fff;color:#000;font-family:Arial,sans-serif;}
     .receipt-card{width:80mm;box-sizing:border-box;margin:0 auto;padding:12px 14px;display:grid;gap:10px;}
@@ -2938,7 +2939,15 @@ function getAcquisitionStageMeta() {
   };
 }
 
+function isDamagedAcquisitionMaterial(material = {}) {
+  const status = String(material.status || "").toLowerCase();
+  const condition = String(material.condition || "").toLowerCase();
+  const notes = String(material.notes || "").toLowerCase();
+  return [status, condition, notes].some((value) => value.includes("damaged"));
+}
+
 function deriveOrderStatus(order, materials) {
+  if (order.archivedAt) return "Archived";
   if (order.closedAt) return "Closed";
   const total = materials.length;
   const receivedCount = materials.filter((material) => material.receivedQuantity >= material.quantityOrdered).length;
@@ -3011,16 +3020,17 @@ function getAcquisitionWorkflowData() {
     const receivedItems = orderMaterials.filter((material) => material.receivedQuantity >= material.quantityOrdered).length;
     const pendingItems = orderMaterials.filter((material) => material.workflowStage === "pending").length;
     const completedItems = orderMaterials.filter((material) => material.workflowStage === "completed").length;
+    const damagedItems = orderMaterials.filter((material) => isDamagedAcquisitionMaterial(material)).length;
     const status = deriveOrderStatus(order, orderMaterials);
-    return { ...order, totalItems, receivedItems, pendingItems, completedItems, status, progressPercent: totalItems ? Math.round((receivedItems / totalItems) * 100) : 0, materials: orderMaterials };
+    return { ...order, totalItems, receivedItems, pendingItems, completedItems, damagedItems, status, progressPercent: totalItems ? Math.round((receivedItems / totalItems) * 100) : 0, materials: orderMaterials };
   }).sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
 
   const donationWorkflow = getDonationWorkflowData();
-  const openOrders = orders.filter((order) => order.status !== "Closed");
+  const openOrders = orders.filter((order) => !["Closed", "Archived"].includes(order.status));
   const awaitingReceipt = materials.filter((material) => material.sourceType !== "donation" && material.workflowStage !== "completed" && material.workflowStage !== "pending");
   const pending = materials.filter((material) => material.workflowStage === "pending");
   const completedMaterials = materials.filter((material) => material.workflowStage === "completed");
-  const completedOrders = orders.filter((order) => order.status === "Closed" || (order.totalItems > 0 && order.receivedItems === order.totalItems));
+  const completedOrders = orders.filter((order) => ["Closed", "Archived"].includes(order.status) || (order.totalItems > 0 && order.receivedItems === order.totalItems));
   return { materials, orders, openOrders, awaitingReceipt, pending, completedMaterials, completedOrders, donationWorkflow };
 }
 
@@ -3321,6 +3331,24 @@ function archiveDonationBatch(batchId) {
   renderAcquisitionsWorkspace();
 }
 
+
+function toggleArrivalDamage(materialId) {
+  updateAcquisitionMaterial(materialId, (material) => {
+    const damaged = isDamagedAcquisitionMaterial(material);
+    const nextNotes = damaged
+      ? String(material.notes || "").replace(/\s*Damaged on arrival\.?/gi, "").trim()
+      : [String(material.notes || "").trim(), "Damaged on arrival."].filter(Boolean).join(" ").trim();
+    return {
+      ...material,
+      condition: damaged ? "" : "Damaged on arrival",
+      status: damaged ? (material.receivedQuantity > 0 ? (material.receivedQuantity >= material.quantityOrdered ? "Received" : "Partially Received") : "Awaiting Receipt") : "Damaged on Arrival",
+      notes: nextNotes,
+    };
+  });
+  setAcquisitionMessage("Arrival damage status updated.");
+  renderAcquisitionsWorkspace();
+}
+
 function activatePendingMaterial(materialId) {
   const materials = getAcquisitionMaterials();
   const material = materials.find((entry) => entry.id === materialId);
@@ -3375,13 +3403,39 @@ function closeOrder(orderId) {
     setAcquisitionMessage("Receive outstanding items before closing this order.", true);
     return;
   }
-  saveAcquisitionOrders(orders.map((order) => (order.id === orderId ? { ...order, closedAt: new Date().toISOString() } : order)));
+  if (materials.some((material) => material.workflowStage !== "completed")) {
+    setAcquisitionMessage("Finish processing every received item before closing this order.", true);
+    return;
+  }
+  saveAcquisitionOrders(orders.map((order) => (order.id === orderId ? { ...order, closedAt: new Date().toISOString(), archivedAt: "" } : order)));
   setAcquisitionMessage("Order closed.");
+  state.acquisitionsStage = "completed";
+  renderAcquisitionsWorkspace();
+}
+
+function archiveOrder(orderId) {
+  const orders = getAcquisitionOrders();
+  const materials = getAcquisitionMaterials().filter((material) => material.orderId === orderId);
+  if (!materials.length) {
+    setAcquisitionMessage("This order does not have any items to archive yet.", true);
+    return;
+  }
+  if (materials.some((material) => material.receivedQuantity < material.quantityOrdered)) {
+    setAcquisitionMessage("Receive every item before archiving this order.", true);
+    return;
+  }
+  if (materials.some((material) => material.workflowStage !== "completed")) {
+    setAcquisitionMessage("Complete processing for every item before archiving this order.", true);
+    return;
+  }
+  saveAcquisitionOrders(orders.map((order) => (order.id === orderId ? { ...order, closedAt: order.closedAt || new Date().toISOString(), archivedAt: new Date().toISOString() } : order)));
+  setAcquisitionMessage("Order archived.");
+  state.acquisitionsStage = "completed";
   renderAcquisitionsWorkspace();
 }
 
 function reopenOrder(orderId) {
-  saveAcquisitionOrders(getAcquisitionOrders().map((order) => (order.id === orderId ? { ...order, closedAt: "" } : order)));
+  saveAcquisitionOrders(getAcquisitionOrders().map((order) => (order.id === orderId ? { ...order, closedAt: "", archivedAt: "" } : order)));
   setAcquisitionMessage("Order reopened.");
   state.acquisitionsStage = "orders";
   renderAcquisitionsWorkspace();
@@ -3398,6 +3452,7 @@ function renderAcquisitionSummaryCards() {
     { label: "Accepted for Collection", value: donationWorkflow.acceptedCount, copy: "Accepted donations not yet handed off to processing.", stage: "donations" },
     { label: "Rejected / Sale / Disposition", value: donationWorkflow.dispositionCount, copy: "Donation items resolved outside the collection.", stage: "donations" },
     { label: "Awaiting Processing", value: donationWorkflow.awaitingProcessingCount, copy: "Donation items already sent into Pending Materials.", stage: "pending" },
+    { label: "Completed Today", value: [...workflow.completedMaterials, ...donationWorkflow.items.filter((item) => item.reviewStatus === "Activated")].filter((entry) => String(entry.activatedAt || "").slice(0, 10) === todayIso()).length, copy: "Items activated into the catalog today.", stage: "completed" },
   ];
   els.acquisitionSummaryCards.innerHTML = cards.map((card) => `<button class="acquisition-summary-card" type="button" data-acq-nav-stage="${card.stage}"><span class="acquisition-summary-label">${card.label}</span><strong class="acquisition-summary-value">${card.value}</strong><span class="acquisition-summary-copy">${card.copy}</span></button>`).join("");
 }
@@ -3405,11 +3460,19 @@ function renderAcquisitionSummaryCards() {
 function renderAcquisitionStageNav() {
   if (!els.acquisitionsStageNav) return;
   const meta = getAcquisitionStageMeta();
-  els.acquisitionsStageNav.innerHTML = Object.entries(meta).map(([id, config]) => `<button class="button button-secondary acquisition-stage-btn ${state.acquisitionsStage === id ? "is-active" : ""}" type="button" data-acq-nav-stage="${id}"><span>${config.label}</span><small>${config.copy}</small></button>`).join("");
+  const workflow = getAcquisitionWorkflowData();
+  const counts = {
+    orders: workflow.openOrders.length,
+    receiving: workflow.awaitingReceipt.length,
+    donations: workflow.donationWorkflow.awaitingReviewCount,
+    pending: workflow.pending.length,
+    completed: workflow.completedMaterials.length + workflow.completedOrders.length + workflow.donationWorkflow.activatedCount,
+  };
+  els.acquisitionsStageNav.innerHTML = Object.entries(meta).map(([id, config]) => `<button class="button button-secondary acquisition-stage-btn ${state.acquisitionsStage === id ? "is-active" : ""}" type="button" data-acq-nav-stage="${id}"><span>${config.label}</span><strong class="acquisition-stage-count">${counts[id] ?? 0}</strong><small>${config.copy}</small></button>`).join("");
 }
 
 function renderOrdersStage(workflow) {
-  const rows = workflow.orders.filter((order) => order.status !== "Closed");
+  const rows = workflow.orders.filter((order) => !["Closed", "Archived"].includes(order.status));
   const empty = `<div class="acquisition-empty-state"><h4>No open orders right now</h4><p class="muted">Start a new order to begin the acquisitions pipeline.</p><button class="button" type="button" data-acq-focus-form="true">Create Order</button></div>`;
   return `
     <div class="panel-header compact acquisitions-stage-header">
@@ -3440,7 +3503,7 @@ function renderOrdersStage(workflow) {
         <div class="acquisition-data-table-wrap">
           <table class="serials-table acquisition-stage-table">
             <thead><tr><th>Order</th><th>Status</th><th>Vendor</th><th>Created</th><th>Progress</th><th>Actions</th></tr></thead>
-            <tbody>${rows.length ? rows.map((order) => `<tr><td><strong>${order.name || "Untitled order"}</strong><div class="muted">${order.totalItems} item${order.totalItems === 1 ? "" : "s"}</div></td><td>${getAcquisitionStatusBadge(order.status)}</td><td>${order.vendor || "—"}</td><td>${formatShortDate(order.orderDate || order.createdAt)}</td><td><div class="acquisition-progress-meta"><strong>${order.receivedItems} of ${order.totalItems || 0} items received</strong></div><div class="acquisition-progress-bar"><span style="width:${order.progressPercent}%"></span></div></td><td><div class="row-actions"><button class="button button-secondary" type="button" data-acq-nav-stage="receiving">View order details</button><button class="button button-secondary" type="button" data-acq-nav-stage="receiving">Mark items as received</button>${order.receivedItems === order.totalItems && order.totalItems ? `<button class="button" type="button" data-acq-close-order="${order.id}">Close order</button>` : ``}</div></td></tr>`).join("") : `<tr><td colspan="6">${empty}</td></tr>`}</tbody>
+            <tbody>${rows.length ? rows.map((order) => `<tr class="${order.damagedItems ? "acquisition-order-row-damaged" : ""}"><td><strong>${order.name || "Untitled order"}</strong><div class="muted">${order.totalItems} item${order.totalItems === 1 ? "" : "s"}</div>${order.damagedItems ? `<div class="acquisition-inline-flag acquisition-inline-flag-danger">${order.damagedItems} damaged item${order.damagedItems === 1 ? "" : "s"} flagged on arrival</div>` : ``}</td><td>${getAcquisitionStatusBadge(order.status)}</td><td>${order.vendor || "—"}</td><td>${formatShortDate(order.orderDate || order.createdAt)}</td><td><div class="acquisition-progress-meta"><strong>${order.receivedItems} of ${order.totalItems || 0} items received</strong></div><div class="acquisition-progress-bar"><span style="width:${order.progressPercent}%"></span></div></td><td><div class="row-actions"><button class="button button-secondary" type="button" data-acq-nav-stage="receiving">View order details</button><button class="button button-secondary" type="button" data-acq-nav-stage="receiving">Mark items as received</button>${order.receivedItems === order.totalItems && order.totalItems && order.completedItems === order.totalItems ? `<button class="button" type="button" data-acq-close-order="${order.id}">Close order</button>` : ``}</div></td></tr>`).join("") : `<tr><td colspan="6">${empty}</td></tr>`}</tbody>
           </table>
         </div>
       </section>
@@ -3450,7 +3513,7 @@ function renderOrdersStage(workflow) {
 function renderReceivingStage(workflow) {
   const rows = workflow.materials.filter((material) => material.sourceType !== "donation" && (material.workflowStage === "orders" || material.workflowStage === "receiving"));
   if (!rows.length) return `<div class="panel-header compact acquisitions-stage-header"><div><h3>Receiving</h3><p class="muted">Acknowledge incoming materials and hand them off to processing.</p></div></div><div class="acquisition-empty-state"><h4>No materials are awaiting receipt</h4><p class="muted">When ordered materials arrive, they will appear here for receiving.</p></div>`;
-  return `<div class="panel-header compact acquisitions-stage-header"><div><h3>Receiving</h3><p class="muted">What just came in, what order it belongs to, and what still needs acknowledgment.</p></div></div><div class="acquisition-card-grid">${rows.map((material) => `<article class="acquisition-stage-card"><div class="acquisition-stage-card-top"><div><h4>${material.title}</h4><p class="muted">${material.orderName || "No order"} · ${material.materialNumber || "No material #"}</p></div>${getAcquisitionStatusBadge(material.status)}</div><div class="acquisition-detail-grid"><div><span class="status-label">Quantity ordered</span><strong>${material.quantityOrdered}</strong></div><div><span class="status-label">Quantity received</span><strong>${material.receivedQuantity}</strong></div><div><span class="status-label">Received date</span><strong>${formatShortDate(material.receivedAt)}</strong></div><div><span class="status-label">Format</span><strong>${material.format || "—"}</strong></div></div><div class="row-actions"><button class="button button-secondary" type="button" data-acq-receive="${material.id}">Mark as received</button><button class="button button-secondary" type="button" data-acq-receive-all="${material.id}">Receive all copies</button>${material.receivedQuantity > 0 ? `<button class="button button-secondary" type="button" data-acq-undo-receipt="${material.id}">Undo receipt</button>` : ``}${material.receivedQuantity > 0 ? `<button class="button" type="button" data-acq-send-pending="${material.id}">Send to Pending Materials</button>` : ``}</div></article>`).join("")}</div>`;
+  return `<div class="panel-header compact acquisitions-stage-header"><div><h3>Receiving</h3><p class="muted">What just came in, what order it belongs to, and what still needs acknowledgment.</p></div></div><div class="acquisition-card-grid">${rows.map((material) => `<article class="acquisition-stage-card ${isDamagedAcquisitionMaterial(material) ? "acquisition-stage-card-damaged" : ""}"><div class="acquisition-stage-card-top"><div><h4>${material.title}</h4><p class="muted">${material.orderName || "No order"} · ${material.materialNumber || "No material #"}</p>${isDamagedAcquisitionMaterial(material) ? `<div class="acquisition-inline-flag acquisition-inline-flag-danger">Damaged on arrival</div>` : ``}</div>${getAcquisitionStatusBadge(material.status)}</div><div class="acquisition-detail-grid"><div><span class="status-label">Quantity ordered</span><strong>${material.quantityOrdered}</strong></div><div><span class="status-label">Quantity received</span><strong>${material.receivedQuantity}</strong></div><div><span class="status-label">Received date</span><strong>${formatShortDate(material.receivedAt)}</strong></div><div><span class="status-label">Format</span><strong>${material.format || "—"}</strong></div></div><div class="row-actions"><button class="button button-secondary" type="button" data-acq-receive="${material.id}">Mark as received</button><button class="button button-secondary" type="button" data-acq-receive-all="${material.id}">Receive all copies</button><button class="button button-secondary" type="button" data-acq-mark-damaged="${material.id}">${isDamagedAcquisitionMaterial(material) ? "Unmark damage" : "Mark damaged on arrival"}</button>${material.receivedQuantity > 0 ? `<button class="button button-secondary" type="button" data-acq-undo-receipt="${material.id}">Undo receipt</button>` : ``}${material.receivedQuantity > 0 ? `<button class="button" type="button" data-acq-send-pending="${material.id}">Send to Pending Materials</button>` : ``}</div></article>`).join("")}</div>`;
 }
 
 function renderDonationBatchOptions(batches) {
@@ -3560,9 +3623,9 @@ function renderPendingStage(workflow) {
 
 function renderCompletedStage(workflow) {
   const donationCompleted = workflow.donationWorkflow.items.filter((item) => item.reviewStatus === "Activated").map((item) => ({ label: item.title || "Untitled donation item", type: "Donation activated into catalog", date: item.activatedAt, context: item.batch?.name || item.batch?.batchId || "Donation batch" }));
-  const completedRows = [...workflow.completedMaterials.map((material) => ({ label: material.title, type: material.sourceType === "donation" ? "Donation item activated into catalog" : "Item activated into catalog", date: material.activatedAt, context: material.sourceType === "donation" ? material.donationBatchName || "Donation batch" : material.orderName || "No order" })), ...workflow.completedOrders.map((order) => ({ label: order.name || "Untitled order", type: order.closedAt ? "Order fully received and closed" : "Order fully received", date: order.closedAt || order.orderDate || order.createdAt, context: `${order.receivedItems}/${order.totalItems || 0} items received`, orderId: order.id, closed: Boolean(order.closedAt) })), ...donationCompleted].sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).slice(0, 12);
+  const completedRows = [...workflow.completedMaterials.map((material) => ({ label: material.title, type: material.sourceType === "donation" ? "Donation item activated into catalog" : "Item activated into catalog", date: material.activatedAt || material.updatedAt || material.createdAt, context: material.sourceType === "donation" ? material.donationBatchName || "Donation batch" : material.orderName || "No order" })), ...workflow.completedOrders.map((order) => ({ label: order.name || "Untitled order", type: order.archivedAt ? "Order archived" : order.closedAt ? "Order fully received and closed" : "Order fully received", date: order.archivedAt || order.closedAt || order.updatedAt || order.orderDate || order.createdAt, context: `${order.receivedItems}/${order.totalItems || 0} items received`, orderId: order.id, closed: Boolean(order.closedAt), archived: Boolean(order.archivedAt) })), ...donationCompleted].filter((entry) => entry.date).sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).slice(0, 12);
   if (!completedRows.length) return `<div class="panel-header compact acquisitions-stage-header"><div><h3>Completed</h3><p class="muted">Recently activated materials and recently closed orders.</p></div></div><div class="acquisition-empty-state"><h4>No recently completed acquisitions activity</h4><p class="muted">Completed receiving, donation review, and activation work will appear here.</p></div>`;
-  return `<div class="panel-header compact acquisitions-stage-header"><div><h3>Completed</h3><p class="muted">Closure for the workflow: activated items, finished receiving, donation outcomes, and closed orders.</p></div></div><div class="acquisition-card-grid acquisition-card-grid-compact">${completedRows.map((entry) => `<article class="acquisition-stage-card"><div class="acquisition-stage-card-top"><div><h4>${entry.label}</h4><p class="muted">${entry.context}</p></div>${getAcquisitionStatusBadge(entry.type.includes("Order") ? "Closed" : "Activated")}</div><div class="acquisition-detail-grid"><div><span class="status-label">Completed action</span><strong>${entry.type}</strong></div><div><span class="status-label">Date completed</span><strong>${formatShortDate(entry.date)}</strong></div><div><span class="status-label">Relative time</span><strong>${formatRelativeAge(new Date(entry.date || 0).getTime())}</strong></div></div>${entry.orderId && entry.closed ? `<div class="row-actions"><button class="button button-secondary" type="button" data-acq-reopen-order="${entry.orderId}">Reopen order</button></div>` : ``}</article>`).join("")}</div>`;
+  return `<div class="panel-header compact acquisitions-stage-header"><div><h3>Completed</h3><p class="muted">Closure for the workflow: activated items, finished receiving, donation outcomes, and closed orders.</p></div></div><div class="acquisition-card-grid acquisition-card-grid-compact">${completedRows.map((entry) => `<article class="acquisition-stage-card"><div class="acquisition-stage-card-top"><div><h4>${entry.label}</h4><p class="muted">${entry.context}</p></div>${getAcquisitionStatusBadge(entry.archived ? "Archived" : entry.type.includes("Order") ? "Closed" : "Activated")}</div><div class="acquisition-detail-grid"><div><span class="status-label">Completed action</span><strong>${entry.type}</strong></div><div><span class="status-label">Date completed</span><strong>${formatShortDate(entry.date)}</strong></div><div><span class="status-label">Relative time</span><strong>${formatRelativeAge(new Date(entry.date || 0).getTime())}</strong></div></div>${entry.orderId && entry.closed ? `<div class="row-actions"><button class="button button-secondary" type="button" data-acq-reopen-order="${entry.orderId}">Reopen order</button>${!entry.archived ? `<button class="button" type="button" data-acq-archive-order="${entry.orderId}">Archive order</button>` : ``}</div>` : ``}</article>`).join("")}</div>`;
 }
 
 function renderAcquisitionsWorkspace() {
@@ -3604,6 +3667,8 @@ function bindAcquisitionStageEvents() {
   document.querySelectorAll("[data-acq-remove]").forEach((button) => button.addEventListener("click", () => removePendingMaterial(button.dataset.acqRemove)));
   document.querySelectorAll("[data-acq-close-order]").forEach((button) => button.addEventListener("click", () => closeOrder(button.dataset.acqCloseOrder)));
   document.querySelectorAll("[data-acq-reopen-order]").forEach((button) => button.addEventListener("click", () => reopenOrder(button.dataset.acqReopenOrder)));
+  document.querySelectorAll("[data-acq-archive-order]").forEach((button) => button.addEventListener("click", () => archiveOrder(button.dataset.acqArchiveOrder)));
+  document.querySelectorAll("[data-acq-mark-damaged]").forEach((button) => button.addEventListener("click", () => toggleArrivalDamage(button.dataset.acqMarkDamaged)));
   document.querySelectorAll("[data-donation-open-batch]").forEach((button) => button.addEventListener("click", () => { state.activeDonationBatchId = button.dataset.donationOpenBatch; setAcquisitionStage("donations"); }));
   document.querySelectorAll("[data-donation-edit-batch]").forEach((button) => button.addEventListener("click", () => editDonationBatch(button.dataset.donationEditBatch)));
   document.querySelectorAll("[data-donation-edit-item]").forEach((button) => button.addEventListener("click", () => editDonationItem(button.dataset.donationEditItem)));
