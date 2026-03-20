@@ -38,7 +38,6 @@ const state = {
   activeReportId: "monthly-circulation",
 };
 
-
 function isFirebaseConfigured() {
   return Boolean(FIREBASE_CONFIG?.apiKey && FIREBASE_CONFIG?.projectId);
 }
