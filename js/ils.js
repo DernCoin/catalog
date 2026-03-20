@@ -2459,19 +2459,19 @@ function checkOutRecord(event) {
         dueDateLabel: dueDate,
       });
       return {
-        ...holding,
-        status: "On Loan",
-        checkedOutTo: patron.id,
-        checkedOutToName: patron.name || "",
-        checkedOutAt: new Date().toISOString(),
-        dueDate,
-      };
-    });
-    return normalizeRecord({
-      ...record,
-      holdings,
-      circulationHistory: appendCirculationHistory(record, `Checked out to ${patron.name || "Unknown patron"} (${patron.cardNumber || "No card"})`),
-    });
+  ...holding,
+  status: "On Loan",
+  checkedOutTo: patron.id,
+  checkedOutToName: patron.name || "",
+  checkedOutAt: new Date().toISOString(),
+  dueDate,
+};
+
+return normalizeRecord({
+  ...record,
+  holdings,
+  circulationHistory: appendCirculationHistory(record, `Checked out to ${patron.name || "Unknown patron"} (${patron.cardNumber || "No card"})`),
+});
   });
 
   saveRecords(state.records);
