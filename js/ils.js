@@ -20,6 +20,9 @@ const state = {
   activeWorkspaceRecordId: "",
   editingPatronId: "",
   selectedPatronId: "",
+  patronSearchQuery: "",
+  patronSearchIndex: -1,
+  activePatronModal: "",
   draftHoldings: [],
   formDirty: false,
   acquisitionsStage: "orders",
@@ -161,17 +164,21 @@ const els = {
   patronNotes: $("#patronNotes"),
   patronBlocks: $("#patronBlocks"),
   patronAlerts: $("#patronAlerts"),
-  patronsBody: $("#patronsBody"),
+  patronSearchInput: $("#patronSearchInput"),
+  patronSearchResults: $("#patronSearchResults"),
+  openPatronCreateModalBtn: $("#openPatronCreateModalBtn"),
   patronDetailPanel: $("#patronDetailPanel"),
   patronDetailBadge: $("#patronDetailBadge"),
   patronListSummary: $("#patronListSummary"),
-  patronFeeForm: $("#patronFeeForm"),
-  feeCategory: $("#feeCategory"),
-  feeDateAssessed: $("#feeDateAssessed"),
-  feeAmount: $("#feeAmount"),
-  feeStatus: $("#feeStatus"),
-  feeDescription: $("#feeDescription"),
-  patronFeeMessage: $("#patronFeeMessage"),
+  patronAccountModal: $("#patronAccountModal"),
+  closePatronModalBtn: $("#closePatronModalBtn"),
+  patronModalTitle: $("#patronModalTitle"),
+  patronModalSubtitle: $("#patronModalSubtitle"),
+  patronModalBody: $("#patronModalBody"),
+  patronEditorModal: $("#patronEditorModal"),
+  closePatronEditorModalBtn: $("#closePatronEditorModalBtn"),
+  patronEditorTitle: $("#patronEditorTitle"),
+  patronEditorSubtitle: $("#patronEditorSubtitle"),
   serialIssueForm: $("#serialIssueForm"),
   serialTitle: $("#serialTitle"),
   serialIssueLabel: $("#serialIssueLabel"),
@@ -457,6 +464,9 @@ function switchIlsTab(tab) {
   els.ilsTabPanels.forEach((panel) => panel.classList.toggle("hidden", panel.dataset.ilsPanel !== tab));
   renderIlsSubnav(state.ilsSection);
   if (tab !== "records") hideSearchPopover();
+  if (tab === "patrons") {
+    window.requestAnimationFrame(() => els.patronSearchInput?.focus());
+  }
 }
 
 function getPatrons() {
@@ -474,7 +484,110 @@ function resetPatronForm() {
   if (els.patronId) els.patronId.value = "";
   if (els.patronStatus) els.patronStatus.value = "Active";
   if (els.patronSubmitBtn) els.patronSubmitBtn.textContent = "Add Patron";
+  if (els.patronEditorTitle) els.patronEditorTitle.textContent = "Add Patron";
+  if (els.patronEditorSubtitle) els.patronEditorSubtitle.textContent = "Create a new patron account or update an existing one.";
   state.editingPatronId = "";
+}
+
+function openModal(modal) {
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeModal(modal) {
+  if (!modal) return;
+  modal.classList.add("hidden");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+function openPatronEditorModal(mode = "add") {
+  if (els.patronEditorTitle) els.patronEditorTitle.textContent = mode === "edit" ? "Edit Patron" : "Add Patron";
+  if (els.patronEditorSubtitle) els.patronEditorSubtitle.textContent = mode === "edit" ? "Update patron contact and account information." : "Create a new patron account or update an existing one.";
+  openModal(els.patronEditorModal);
+  window.requestAnimationFrame(() => els.patronName?.focus());
+}
+
+function closePatronEditorModal() {
+  closeModal(els.patronEditorModal);
+}
+
+function openPatronAccountModal(view, patron = getPatrons().find((entry) => entry.id === state.selectedPatronId)) {
+  if (!patron || !els.patronModalBody) return;
+  state.activePatronModal = view;
+  const summary = getPatronAccountSummary(patron);
+  const holdHistory = getPatronHoldHistory(patron.id);
+  const blocks = String(patron.blocks || "").split(/\s*,\s*/).filter(Boolean);
+  const alerts = String(patron.alerts || "").split(/\s*,\s*/).filter(Boolean);
+  const views = {
+    checkouts: {
+      title: "Current checkouts",
+      subtitle: `${summary.loans.length} item${summary.loans.length === 1 ? "" : "s"} currently checked out.`,
+      body: summary.loans.length
+        ? `<ul class="patron-modal-list">${summary.loans.map(({ record, holding }) => `<li><div class="patron-modal-list-header"><strong>${escapeHtml(record.title || "Untitled")}</strong><span>${escapeHtml(holding.materialNumbers?.[0] || "No barcode")}</span></div><span>Due ${escapeHtml(holding.dueDate || "No due date")}</span></li>`).join("")}</ul>`
+        : '<div class="empty-state">No items are currently checked out.</div>',
+    },
+    holds: {
+      title: "Active holds",
+      subtitle: `${summary.holds.length} active hold${summary.holds.length === 1 ? "" : "s"} on this account.`,
+      body: summary.holds.length
+        ? `<ul class="patron-modal-list">${summary.holds.map((hold) => `<li><div class="patron-modal-list-header"><strong>${escapeHtml(hold.itemTitle || "Untitled")}</strong><span>Queue #${escapeHtml(String(hold.queuePosition || "—"))}</span></div><span>${escapeHtml(hold.status)}${hold.pickupExpirationDate ? ` · Pickup by ${escapeHtml(hold.pickupExpirationDate)}` : ""}</span></li>`).join("")}</ul>`
+        : '<div class="empty-state">No active holds or reserves.</div>',
+    },
+    fines: {
+      title: "Fines / Fees",
+      subtitle: `${formatCurrency(summary.unpaidAmount)} outstanding on this account.`,
+      body: `<section class="patron-modal-section"><form id="patronFeeForm" class="simple-form patron-form-grid">
+          <label>Fee category
+            <select id="feeCategory"><option>Fine</option><option>Replacement Cost</option><option>Card Replacement</option><option>Fee</option><option>Other</option></select>
+          </label>
+          <label>Date assessed
+            <input id="feeDateAssessed" type="date" />
+          </label>
+          <label>Amount
+            <input id="feeAmount" type="number" min="0" step="0.01" required />
+          </label>
+          <label>Status
+            <select id="feeStatus"><option>Unpaid</option><option>Partially Paid</option><option>Paid</option><option>Waived</option></select>
+          </label>
+          <label class="form-grid-span">Description / reason
+            <textarea id="feeDescription" rows="2" placeholder="Overdue fine, replacement copy, card replacement, etc."></textarea>
+          </label>
+          <div class="form-grid-span patron-fee-actions"><button id="addFeeBtn" class="button" type="submit">Add payment / charge</button></div>
+        </form><p id="patronFeeMessage" class="status-message" aria-live="polite"></p></section>
+        <section class="patron-modal-section">${summary.entries.length ? `<ul class="patron-modal-list">${summary.entries.sort((a, b) => String(b.dateAssessed).localeCompare(String(a.dateAssessed))).map((entry) => `<li class="patron-fee-entry"><div class="patron-modal-list-header"><strong>${escapeHtml(entry.category)}</strong><span>${formatCurrency(entry.amount)} · ${escapeHtml(entry.status)}</span></div><span>${escapeHtml(entry.dateAssessed)} · ${escapeHtml(entry.description || "No description")}</span><span>Remaining: ${formatCurrency(entry.remainingAmount)}</span>${["Paid", "Waived"].includes(entry.status) ? "" : `<div class="patron-fee-actions"><button class="button button-secondary" type="button" data-fee-status="${entry.id}" data-next-status="Paid">Mark Paid</button><button class="button button-secondary" type="button" data-fee-status="${entry.id}" data-next-status="Waived">Waive</button></div>`}</li>`).join("")}</ul>` : '<div class="empty-state">No fines or fees have been assessed.</div>'}</section>`,
+    },
+    history: {
+      title: "Checkout history",
+      subtitle: `${summary.history.length} recent circulation entr${summary.history.length === 1 ? "y" : "ies"}.`,
+      body: summary.history.length
+        ? `<ul class="patron-modal-list">${summary.history.map((entry) => `<li><strong>${escapeHtml(entry.title)}</strong><span>${escapeHtml(entry.line)}</span></li>`).join("")}</ul>`
+        : '<div class="empty-state">No recent checkout history.</div>',
+    },
+    notes: {
+      title: "Notes / Alerts",
+      subtitle: "Staff-only account context and alerts.",
+      body: `<div class="patron-detail-grid"><div class="detail-card"><span class="detail-label">Notes</span><strong>${escapeHtml(patron.notes || "No notes")}</strong></div><div class="detail-card"><span class="detail-label">Blocks</span><strong>${escapeHtml(blocks.join(", ") || "No blocks")}</strong></div><div class="detail-card"><span class="detail-label">Alerts</span><strong>${escapeHtml(alerts.join(", ") || "No alerts")}</strong></div><div class="detail-card"><span class="detail-label">Recent hold history</span><strong>${holdHistory.length ? `${holdHistory.length} recent item(s)` : "No closed holds"}</strong></div></div>${holdHistory.length ? `<ul class="patron-modal-list">${holdHistory.map((hold) => `<li><strong>${escapeHtml(hold.itemTitle || "Untitled")}</strong><span>${escapeHtml(hold.status)} · ${escapeHtml(isoDateFromTimestamp(hold.completedCancelledExpiredDate) || "No close date")}</span></li>`).join("")}</ul>` : ""}`,
+    },
+  };
+  const currentView = views[view];
+  if (!currentView) return;
+  if (els.patronModalTitle) els.patronModalTitle.textContent = `${patron.name || "Patron"} — ${currentView.title}`;
+  if (els.patronModalSubtitle) els.patronModalSubtitle.textContent = currentView.subtitle;
+  els.patronModalBody.className = "patron-modal-body";
+  els.patronModalBody.innerHTML = currentView.body;
+  if (view === "fines") {
+    populateStaticSelects();
+    const feeForm = $("#patronFeeForm");
+    if (feeForm) feeForm.addEventListener("submit", addFeeToSelectedPatron);
+    [...els.patronModalBody.querySelectorAll("[data-fee-status]")].forEach((button) => button.addEventListener("click", () => updateFeeStatus(button.dataset.feeStatus, button.dataset.nextStatus)));
+  }
+  openModal(els.patronAccountModal);
+}
+
+function closePatronAccountModal() {
+  state.activePatronModal = "";
+  closeModal(els.patronAccountModal);
 }
 
 function addPatron(event) {
@@ -508,10 +621,13 @@ function addPatron(event) {
 
   savePatrons(nextPatrons);
   state.selectedPatronId = payload.id;
+  state.patronSearchQuery = payload.name || payload.cardNumber || "";
+  if (els.patronSearchInput) els.patronSearchInput.value = state.patronSearchQuery;
   resetPatronForm();
+  closePatronEditorModal();
   populateHoldPatronPicker();
   buildHoldPlacementPreview();
-  renderPatronsTable();
+  renderPatronSearchResults();
   renderPatronDetail();
   renderCheckoutPatronPreview();
   renderCheckoutPatronContext();
@@ -536,7 +652,7 @@ function editPatron(patronId) {
   if (els.patronBlocks) els.patronBlocks.value = patron.blocks || "";
   if (els.patronAlerts) els.patronAlerts.value = patron.alerts || "";
   if (els.patronSubmitBtn) els.patronSubmitBtn.textContent = "Update Patron";
-  els.patronForm?.scrollIntoView({ behavior: "smooth", block: "start" });
+  openPatronEditorModal("edit");
 }
 
 function removePatron(patronId) {
@@ -545,7 +661,7 @@ function removePatron(patronId) {
   savePatrons(getPatrons().filter((entry) => entry.id !== patronId));
   if (state.selectedPatronId === patronId) state.selectedPatronId = "";
   if (state.editingPatronId === patronId) resetPatronForm();
-  renderPatronsTable();
+  renderPatronSearchResults();
   renderPatronDetail();
   renderCheckoutPatronPreview();
   renderCheckoutPatronContext();
@@ -1104,7 +1220,8 @@ function populateStaticSelects() {
   if (els.registerReportDate && !els.registerReportDate.value) els.registerReportDate.value = todayIso();
   if (els.illOutgoingRequestedDate && !els.illOutgoingRequestedDate.value) els.illOutgoingRequestedDate.value = todayIso();
   if (els.illIncomingRequestDate && !els.illIncomingRequestDate.value) els.illIncomingRequestDate.value = todayIso();
-  if (els.feeDateAssessed && !els.feeDateAssessed.value) els.feeDateAssessed.value = todayIso();
+  const feeDateAssessed = $("#feeDateAssessed");
+  if (feeDateAssessed && !feeDateAssessed.value) feeDateAssessed.value = todayIso();
   if (els.trafficStartDate && !els.trafficStartDate.value) els.trafficStartDate.value = todayIso();
   if (els.trafficEndDate && !els.trafficEndDate.value) els.trafficEndDate.value = todayIso();
   if (els.monthlyCirculationMonth && !els.monthlyCirculationMonth.value) els.monthlyCirculationMonth.value = getMonthKey(todayIso());
@@ -2547,38 +2664,53 @@ function getPatronAccountSummary(patron) {
 
 function selectPatron(patronId = '') {
   state.selectedPatronId = patronId;
-  renderPatronsTable();
+  const patron = getPatrons().find((entry) => entry.id === patronId);
+  if (patron && els.patronSearchInput) {
+    state.patronSearchQuery = `${patron.name || ""}`.trim() || patron.cardNumber || "";
+    els.patronSearchInput.value = state.patronSearchQuery;
+  }
+  hidePatronSearchResults();
   renderPatronDetail();
 }
 
-function renderPatronsTable() {
-  if (!els.patronsBody) return;
+function getFilteredPatronResults() {
+  const query = String(state.patronSearchQuery || "").trim().toLowerCase();
+  const patrons = getPatrons().slice().sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+  if (!query) return patrons.slice(0, 8);
+  return patrons.filter((patron) => [patron.name, patron.cardNumber].some((value) => String(value || "").toLowerCase().includes(query))).slice(0, 8);
+}
 
-  const patrons = getPatrons().slice().sort((a, b) => a.name.localeCompare(b.name));
-  els.patronsBody.innerHTML = '';
-  if (els.patronListSummary) els.patronListSummary.textContent = `${patrons.length} patron account${patrons.length === 1 ? '' : 's'}`;
+function hidePatronSearchResults() {
+  if (!els.patronSearchResults) return;
+  els.patronSearchResults.classList.add("hidden");
+}
 
+function renderPatronSearchResults() {
+  if (!els.patronSearchResults) return;
+  const patrons = getPatrons();
+  if (els.patronListSummary) els.patronListSummary.textContent = `${patrons.length} patron account${patrons.length === 1 ? "" : "s"}`;
+  const results = getFilteredPatronResults();
   if (!patrons.length) {
-    const tr = document.createElement('tr');
-    tr.innerHTML = '<td colspan="7">No patrons added yet. Add a patron to open a full account view.</td>';
-    els.patronsBody.appendChild(tr);
-    state.selectedPatronId = '';
+    els.patronSearchResults.classList.remove("hidden");
+    els.patronSearchResults.innerHTML = '<div class="empty-state">No patron accounts yet. Add a new patron to get started.</div>';
+    state.selectedPatronId = "";
+    state.patronSearchIndex = -1;
     return;
   }
-
-  if (!patrons.some((patron) => patron.id === state.selectedPatronId)) state.selectedPatronId = patrons[0].id;
-
-  patrons.forEach((patron) => {
-    const summary = getPatronAccountSummary(patron);
-    const tr = document.createElement('tr');
-    tr.classList.toggle('is-selected-row', patron.id === state.selectedPatronId);
-    tr.innerHTML = `<td><button class="text-button" type="button" data-act="select">${patron.name}</button></td><td>${patron.cardNumber || ''}</td><td>${patron.status || 'Active'}</td><td>${summary.loans.length}</td><td>${summary.holds.length}</td><td>${formatCurrency(summary.unpaidAmount)}</td><td><button class="button button-secondary" type="button" data-act="edit">Edit</button> <button class="button button-secondary" type="button" data-act="delete">Delete</button></td>`;
-
-    tr.querySelector('[data-act="select"]').addEventListener('click', () => selectPatron(patron.id));
-    tr.querySelector('[data-act="edit"]').addEventListener('click', () => editPatron(patron.id));
-    tr.querySelector('[data-act="delete"]').addEventListener('click', () => removePatron(patron.id));
-    els.patronsBody.appendChild(tr);
-  });
+  if (!results.length && state.patronSearchQuery.trim()) {
+    els.patronSearchResults.classList.remove("hidden");
+    els.patronSearchResults.innerHTML = '<div class="empty-state">No patrons match that search.</div>';
+    state.patronSearchIndex = -1;
+    return;
+  }
+  if (!state.patronSearchQuery.trim()) {
+    hidePatronSearchResults();
+    return;
+  }
+  state.patronSearchIndex = Math.min(Math.max(state.patronSearchIndex, 0), Math.max(results.length - 1, 0));
+  els.patronSearchResults.classList.remove("hidden");
+  els.patronSearchResults.innerHTML = results.map((patron, index) => `<button class="patron-search-result ${index === state.patronSearchIndex ? "is-active" : ""}" type="button" role="option" aria-selected="${index === state.patronSearchIndex}" data-patron-result="${patron.id}"><strong>${escapeHtml(patron.name || "Unnamed patron")}</strong><span>Card #${escapeHtml(patron.cardNumber || "Not assigned")}</span></button>`).join("");
+  [...els.patronSearchResults.querySelectorAll("[data-patron-result]")].forEach((button) => button.addEventListener("click", () => selectPatron(button.dataset.patronResult)));
 }
 
 function renderPatronDetail() {
@@ -2600,35 +2732,39 @@ function renderPatronDetail() {
   els.patronDetailBadge.textContent = status;
   els.patronDetailPanel.className = 'patron-detail-panel';
   els.patronDetailPanel.innerHTML = `
-    <div class="patron-account-header">
-      <div>
-        <h4>${patron.name || 'Unnamed patron'}</h4>
-        <p class="muted">Card #${patron.cardNumber || 'Not assigned'}</p>
+    <div class="patron-account-top">
+      <div class="patron-account-card">
+        <h4 class="patron-account-title">${escapeHtml(patron.name || 'Unnamed patron')}</h4>
+        <span class="patron-account-card-number">Card #${escapeHtml(patron.cardNumber || 'Not assigned')}</span>
+        <span class="patron-account-status"><strong>Status:</strong> ${escapeHtml(status)}</span>
       </div>
-      <div class="patron-account-metrics">
-        <div><strong>${summary.loans.length}</strong><span>Items out</span></div>
-        <div><strong>${summary.holds.length}</strong><span>Holds</span></div>
-        <div><strong>${summary.overdue.length}</strong><span>Overdue</span></div>
-        <div><strong>${formatCurrency(summary.unpaidAmount)}</strong><span>Outstanding balance</span></div>
+      <div class="patron-account-contact-row">
+        <div class="patron-summary-chip"><span class="detail-label">Phone</span><strong>${escapeHtml(patron.phone || 'No phone number')}</strong></div>
+        <div class="patron-summary-chip"><span class="detail-label">Email</span><strong>${escapeHtml(patron.email || 'No email')}</strong></div>
       </div>
     </div>
     <div class="patron-detail-grid">
-      <div class="detail-card"><span class="detail-label">Email</span><strong>${patron.email || 'No email'}</strong></div>
-      <div class="detail-card"><span class="detail-label">Phone</span><strong>${patron.phone || 'No phone number'}</strong></div>
-      <div class="detail-card"><span class="detail-label">Expiration</span><strong>${patron.expirationDate || 'No expiration date'}</strong></div>
-      <div class="detail-card"><span class="detail-label">Account status</span><strong>${status}</strong></div>
+      <div class="detail-card"><span class="detail-label">Expiration</span><strong>${escapeHtml(patron.expirationDate || 'No expiration date')}</strong></div>
+      <div class="detail-card"><span class="detail-label">Items out</span><strong>${summary.loans.length}</strong></div>
+      <div class="detail-card"><span class="detail-label">Holds</span><strong>${summary.holds.length}</strong></div>
+      <div class="detail-card"><span class="detail-label">Fines / fees</span><strong>${formatCurrency(summary.unpaidAmount)}</strong></div>
     </div>
-    <div class="patron-detail-columns">
-      <section class="detail-section card-like"><h5>Notes</h5><p>${patron.notes || 'No notes.'}</p></section>
-      <section class="detail-section card-like"><h5>Blocks & alerts</h5><p><strong>Blocks:</strong> ${blocks.length ? blocks.join(', ') : 'No blocks.'}</p><p><strong>Alerts:</strong> ${alerts.length ? alerts.join(', ') : 'No alerts.'}</p></section>
+    <div class="patron-detail-address">
+      <span class="detail-label">Address</span>
+      <strong>${escapeHtml(patron.address || 'No address on file')}</strong>
     </div>
-    <section class="detail-section card-like"><h5>Fines and fees</h5>${summary.entries.length ? `<ul class="fee-entry-list">${summary.entries.sort((a, b) => String(b.dateAssessed).localeCompare(String(a.dateAssessed))).map((entry) => `<li><div class="fee-entry-meta"><strong>${escapeHtml(entry.category)}</strong><span>${formatCurrency(entry.amount)} · ${escapeHtml(entry.status)}</span></div><span>${escapeHtml(entry.dateAssessed)} · ${escapeHtml(entry.description || 'No description')}</span><p class="fee-entry-payments">Remaining: ${formatCurrency(entry.remainingAmount)}${entry.paymentHistory.length ? ` · Payments: ${entry.paymentHistory.map((payment) => `${payment.date} ${formatCurrency(payment.amount)}`).join(', ')}` : ''}</p>${['Paid', 'Waived'].includes(entry.status) ? '' : `<div class="patron-fee-actions"><button class="button button-secondary" type="button" data-fee-status="${entry.id}" data-next-status="Paid">Mark Paid</button><button class="button button-secondary" type="button" data-fee-status="${entry.id}" data-next-status="Waived">Waive</button></div>`}</li>`).join('')}</ul>` : '<p>No fines or fees have been assessed.</p>'}</section>
-    <section class="detail-section card-like"><h5>Items currently out</h5>${summary.loans.length ? `<ul class="patron-activity-list">${summary.loans.map(({ record, holding }) => `<li><strong>${record.title || 'Untitled'}</strong><span>${holding.materialNumbers?.[0] || 'No barcode'} · Due ${holding.dueDate || 'No due date'}</span></li>`).join('')}</ul>` : '<p>No items currently checked out.</p>'}</section>
-    <section class="detail-section card-like"><h5>Active holds</h5>${summary.holds.length ? `<ul class="patron-activity-list">${summary.holds.map((hold) => `<li><strong>${escapeHtml(hold.itemTitle || 'Untitled')}</strong><span>${escapeHtml(hold.status)} · Queue #${hold.queuePosition || '—'}${hold.pickupExpirationDate ? ` · Pickup by ${hold.pickupExpirationDate}` : ''}</span></li>`).join('')}</ul>` : '<p>No active holds or reserves.</p>'}</section>
-    <section class="detail-section card-like"><h5>Recent hold history</h5>${holdHistory.length ? `<ul class="patron-activity-list">${holdHistory.map((hold) => `<li><strong>${escapeHtml(hold.itemTitle || 'Untitled')}</strong><span>${escapeHtml(hold.status)} · ${escapeHtml(isoDateFromTimestamp(hold.completedCancelledExpiredDate) || 'No close date')}</span></li>`).join('')}</ul>` : '<p>No recent expired, cancelled, or picked up holds.</p>'}</section>
-    <section class="detail-section card-like"><h5>Recent activity</h5>${summary.history.length ? `<ul class="patron-activity-list">${summary.history.map((entry) => `<li><strong>${entry.title}</strong><span>${entry.line}</span></li>`).join('')}</ul>` : '<p>No recent activity.</p>'}</section>
+    <div class="patron-account-actions">
+      <button class="button button-secondary" type="button" data-patron-modal="checkouts">Checkouts</button>
+      <button class="button button-secondary" type="button" data-patron-modal="holds">Holds</button>
+      <button class="button button-secondary" type="button" data-patron-modal="fines">Fines / Fees</button>
+      <button class="button button-secondary" type="button" data-patron-modal="history">History</button>
+      <button class="button button-secondary" type="button" data-patron-modal="notes">Notes / Alerts</button>
+      <button class="button" type="button" data-patron-edit="${escapeHtml(patron.id)}">Edit Info</button>
+    </div>
+    ${(blocks.length || alerts.length || holdHistory.length) ? `<div class="detail-card"><span class="detail-label">At a glance</span><strong>${escapeHtml(blocks.join(", ") || alerts.join(", ") || "Recent account notes available")}</strong></div>` : ""}
   `;
-  [...els.patronDetailPanel.querySelectorAll('[data-fee-status]')].forEach((button) => button.addEventListener('click', () => updateFeeStatus(button.dataset.feeStatus, button.dataset.nextStatus)));
+  [...els.patronDetailPanel.querySelectorAll("[data-patron-modal]")].forEach((button) => button.addEventListener("click", () => openPatronAccountModal(button.dataset.patronModal, patron)));
+  els.patronDetailPanel.querySelector("[data-patron-edit]")?.addEventListener("click", () => editPatron(patron.id));
 }
 
 function getPatronHolds(patronId) {
@@ -4958,9 +5094,10 @@ function recordFieldIsMissing(record, field) {
 
 
 function setPatronFeeMessage(message, isError = false) {
-  if (!els.patronFeeMessage) return;
-  els.patronFeeMessage.textContent = message;
-  els.patronFeeMessage.classList.toggle('warning', isError);
+  const feeMessage = $("#patronFeeMessage");
+  if (!feeMessage) return;
+  feeMessage.textContent = message;
+  feeMessage.classList.toggle('warning', isError);
 }
 
 function addFeeToSelectedPatron(event) {
@@ -4974,17 +5111,17 @@ function addFeeToSelectedPatron(event) {
     patronId: patron.id,
     patronName: patron.name,
     patronCardNumber: patron.cardNumber,
-    category: els.feeCategory?.value,
-    dateAssessed: els.feeDateAssessed?.value || todayIso(),
-    amount: els.feeAmount?.value,
-    description: els.feeDescription?.value,
-    status: els.feeStatus?.value,
+    category: $("#feeCategory")?.value,
+    dateAssessed: $("#feeDateAssessed")?.value || todayIso(),
+    amount: $("#feeAmount")?.value,
+    description: $("#feeDescription")?.value,
+    status: $("#feeStatus")?.value,
   });
   saveFeeEntries([entry, ...getFeeEntries()]);
-  els.patronFeeForm?.reset();
+  $("#patronFeeForm")?.reset();
   populateStaticSelects();
   setPatronFeeMessage(`Added ${entry.category.toLowerCase()} for ${patron.name}.`);
-  renderPatronsTable();
+  openPatronAccountModal('fines', patron);
   renderPatronDetail();
   renderStatsPanel();
   renderDashboard();
@@ -5007,8 +5144,8 @@ function updateFeeStatus(feeId, status) {
     return normalizeFeeEntry({ ...normalized, status, amountPaid, paymentHistory, updatedAt: Date.now() });
   });
   saveFeeEntries(current);
-  renderPatronsTable();
   renderPatronDetail();
+  if (state.activePatronModal === 'fines') openPatronAccountModal('fines');
   renderRegisterWorkspace();
   renderStatsPanel();
   renderDashboard();
@@ -5420,6 +5557,10 @@ function bindEvents() {
     if (event.target === els.searchInput || (els.searchResultsPopover && els.searchResultsPopover.contains(event.target))) return;
     hideSearchPopover();
   });
+  document.addEventListener("click", (event) => {
+    if (event.target === els.patronSearchInput || els.patronSearchResults?.contains(event.target)) return;
+    hidePatronSearchResults();
+  });
 
   on(els.selectAllRows, "change", (event) => {
     state.selectedIds.clear();
@@ -5438,7 +5579,37 @@ function bindEvents() {
   });
   if (els.exportActiveMarcBtn) els.exportActiveMarcBtn.addEventListener("click", exportActiveMarc);
   if (els.patronForm) els.patronForm.addEventListener("submit", addPatron);
-  if (els.patronFeeForm) els.patronFeeForm.addEventListener("submit", addFeeToSelectedPatron);
+  if (els.patronSearchInput) {
+    els.patronSearchInput.addEventListener("input", (event) => {
+      state.patronSearchQuery = event.target.value || "";
+      state.patronSearchIndex = 0;
+      renderPatronSearchResults();
+    });
+    els.patronSearchInput.addEventListener("focus", renderPatronSearchResults);
+    els.patronSearchInput.addEventListener("keydown", (event) => {
+      const results = getFilteredPatronResults();
+      if (!results.length) return;
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        state.patronSearchIndex = Math.min((state.patronSearchIndex < 0 ? -1 : state.patronSearchIndex) + 1, results.length - 1);
+        renderPatronSearchResults();
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        state.patronSearchIndex = Math.max((state.patronSearchIndex < 0 ? results.length : state.patronSearchIndex) - 1, 0);
+        renderPatronSearchResults();
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        selectPatron(results[Math.max(state.patronSearchIndex, 0)]?.id || results[0].id);
+      } else if (event.key === "Escape") {
+        hidePatronSearchResults();
+      }
+    });
+  }
+  if (els.openPatronCreateModalBtn) els.openPatronCreateModalBtn.addEventListener("click", () => { resetPatronForm(); openPatronEditorModal("add"); });
+  if (els.closePatronModalBtn) els.closePatronModalBtn.addEventListener("click", closePatronAccountModal);
+  if (els.closePatronEditorModalBtn) els.closePatronEditorModalBtn.addEventListener("click", closePatronEditorModal);
+  if (els.patronAccountModal) els.patronAccountModal.addEventListener("click", (event) => { if (event.target === els.patronAccountModal) closePatronAccountModal(); });
+  if (els.patronEditorModal) els.patronEditorModal.addEventListener("click", (event) => { if (event.target === els.patronEditorModal) closePatronEditorModal(); });
   if (els.serialIssueForm) els.serialIssueForm.addEventListener("submit", addSerialIssue);
   if (els.serialSubscriptionForm) els.serialSubscriptionForm.addEventListener("submit", saveSubscription);
   if (els.illOutgoingForm) els.illOutgoingForm.addEventListener("submit", saveOutgoingIll);
@@ -5531,7 +5702,7 @@ function render() {
   fillCuratedShelves();
   renderHoldingsEditor(collectDraftHoldings().length ? collectDraftHoldings() : state.draftHoldings);
   renderTable();
-  renderPatronsTable();
+  renderPatronSearchResults();
   renderPatronDetail();
   renderSubscriptionsTable();
   renderSerialIssuesTable();
