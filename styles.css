@@ -1044,33 +1044,26 @@ label > span, .status-label { display:block; font-size:.83rem; font-weight:700; 
 @media (max-width: 900px) { .bar-list li { grid-template-columns: 1fr; } }
 
 .authority-shell { display:grid; gap: 1rem; }
-.authority-home, .authority-workspace { display:grid; gap: 1rem; }
-.authority-home-header { align-items:flex-start; }
-.authority-summary-strip { display:flex; gap:.65rem; flex-wrap:wrap; }
-.authority-summary-chip { min-width:120px; border:1px solid var(--border); border-radius:14px; padding:.7rem .9rem; background:#fcf9ff; display:grid; gap:.15rem; }
-.authority-summary-chip strong { font-size:1.15rem; }
-.authority-summary-chip span { color:var(--muted); font-size:.82rem; }
+.authority-home { display:grid; gap: 1rem; }
+.authority-home-header { align-items:flex-start; justify-content:space-between; gap:1rem; }
 .authority-home-tools, .authority-workspace-tools { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.75rem; align-items:center; }
-.authority-workspace-tools { grid-template-columns:minmax(0,1fr) 180px 180px; }
+.authority-workspace-tools { grid-template-columns:minmax(0,1fr) 150px 170px auto; margin-bottom:.5rem; }
 .authority-quick-actions { display:flex; gap:.5rem; flex-wrap:wrap; justify-content:flex-end; }
-.authority-home-sections { display:grid; gap:1rem; }
-.authority-category-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:.9rem; }
-.authority-category-card { border:1px solid var(--border); border-radius:18px; padding:1rem; background:linear-gradient(180deg, #fff, #fbf7ff); display:grid; gap:.75rem; cursor:pointer; }
-.authority-category-card.is-rich { border-color:#d8c6f4; }
-.authority-card-topline, .authority-card-metrics, .authority-card-footer { display:flex; gap:.5rem; justify-content:space-between; flex-wrap:wrap; align-items:center; }
-.authority-card-metrics span { font-size:.82rem; color:var(--muted); background:#f7f1ff; border:1px solid var(--border); border-radius:999px; padding:.2rem .5rem; }
-.authority-activity-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:1rem; }
-.authority-side-card { display:grid; gap:.7rem; }
-.authority-mini-list { display:grid; gap:.55rem; }
-.authority-mini-item { border:1px solid var(--border); border-radius:14px; padding:.75rem .8rem; background:#fff; text-align:left; display:grid; gap:.15rem; cursor:pointer; }
-.authority-mini-item span { color:var(--muted); font-size:.84rem; }
-.authority-back-btn { font-size:.88rem; margin-bottom:.35rem; }
-.authority-workspace-header { align-items:flex-start; }
+.authority-home-sections { display:grid; gap:1.15rem; }
+.authority-group { display:grid; gap:.75rem; }
+.authority-category-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:.8rem; }
+.authority-category-card { border:1px solid var(--border); border-radius:18px; padding:1rem; background:#fff; display:grid; gap:.75rem; text-align:left; }
+.authority-category-card:hover { border-color:#cdb5f1; box-shadow:0 10px 28px rgba(82, 49, 115, .08); }
+.authority-card-main, .authority-card-meta { display:flex; gap:.65rem; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; }
+.authority-card-main h4 { margin:0 0 .2rem; }
+.authority-card-meta span, .authority-count-pill { font-size:.82rem; color:var(--muted); background:#f7f1ff; border:1px solid var(--border); border-radius:999px; padding:.25rem .55rem; }
+.authority-category-modal-content, .authority-modal-content { width:min(1040px,100%); }
 .authority-table-wrap { border:1px solid var(--border); border-radius:16px; overflow:auto; background:#fff; }
 .authority-table th { background:#f8f2ff; font-size:.84rem; letter-spacing:.04em; text-transform:uppercase; color:#5b4670; }
+.authority-entry-row { cursor:pointer; }
+.authority-entry-row:hover { background:#fcf9ff; }
 .authority-term-cell { display:grid; gap:.2rem; min-width:220px; }
 .authority-alt-list { margin-top:.35rem; color:var(--muted); font-size:.88rem; }
-.authority-modal-content { width:min(860px,100%); }
 .authority-entry-form { display:grid; gap:1rem; }
 .authority-entry-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:.8rem; }
 .authority-modal-actions { justify-content:flex-end; flex-wrap:wrap; }
