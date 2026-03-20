@@ -413,6 +413,8 @@ mark { background:#ffe8f6; color:inherit; padding:0 .15em; border-radius:3px; }
 .patron-fee-actions, .patron-editor-actions { display:flex; gap:.5rem; flex-wrap:wrap; justify-content:flex-end; }
 .patron-editor-modal-content { width:min(920px, 100%); }
 .patron-account-modal-content { width:min(980px, 100%); }
+.register-transactions-modal-content { width:min(1120px, 100%); }
+.register-transactions-modal-body { display:grid; gap:.75rem; }
 .detail-label { color:var(--muted); font-size:.82rem; text-transform:uppercase; letter-spacing:.05em; }
 .patron-activity-list { list-style:none; padding:0; margin:0; display:grid; gap:.55rem; }
 .patron-activity-list li { border:1px solid var(--border); border-radius:12px; padding:.65rem .75rem; background:#fff; display:grid; gap:.15rem; }
@@ -993,6 +995,12 @@ label > span, .status-label { display:block; font-size:.83rem; font-weight:700; 
 
 .ill-workspace-grid, .register-workspace-grid { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:1rem; }
 .ill-form-grid, .register-form-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.register-primary-card { display:grid; gap:1rem; align-content:start; }
+.register-toolbar { display:flex; justify-content:space-between; gap:.8rem; align-items:end; flex-wrap:wrap; }
+.register-toolbar-actions, .register-quick-copy-actions, .register-form-actions, .table-actions { display:flex; gap:.5rem; flex-wrap:wrap; }
+.register-quick-copy-card { border:1px solid var(--border); border-radius:14px; padding:.85rem; background:#fff; display:flex; justify-content:space-between; gap:1rem; align-items:center; flex-wrap:wrap; }
+.register-transaction-preview { list-style:none; margin:0; padding:0; display:grid; gap:.5rem; }
+.register-transaction-preview li { display:flex; justify-content:space-between; gap:.75rem; flex-wrap:wrap; border:1px solid var(--border); border-radius:12px; padding:.6rem .75rem; background:#fff; }
 .stack-list { display:grid; gap:.8rem; }
 .stack-card { border:1px solid var(--border); border-radius:16px; padding:1rem; background:#fff; display:grid; gap:.7rem; }
 .item-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:.5rem .75rem; color:var(--muted); }
@@ -1014,6 +1022,7 @@ label > span, .status-label { display:block; font-size:.83rem; font-weight:700; 
   .ill-workspace-grid, .register-workspace-grid, .report-split-grid { grid-template-columns: 1fr; }
   .header-actions-staff { align-items: stretch; }
   .quick-counter-feedback { text-align:left; }
+  .register-toolbar, .register-quick-copy-card, .register-transaction-preview li { flex-direction:column; align-items:stretch; }
 }
 
 .report-filter-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap:.7rem; margin-bottom:.9rem; }
