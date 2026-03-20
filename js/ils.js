@@ -2459,19 +2459,20 @@ function checkOutRecord(event) {
         dueDateLabel: dueDate,
       });
       return {
-  ...holding,
-  status: "On Loan",
-  checkedOutTo: patron.id,
-  checkedOutToName: patron.name || "",
-  checkedOutAt: new Date().toISOString(),
-  dueDate,
-};
+        ...holding,
+        status: "On Loan",
+        checkedOutTo: patron.id,
+        checkedOutToName: patron.name || "",
+        checkedOutAt: new Date().toISOString(),
+        dueDate,
+      };
+    });
 
-return normalizeRecord({
-  ...record,
-  holdings,
-  circulationHistory: appendCirculationHistory(record, `Checked out to ${patron.name || "Unknown patron"} (${patron.cardNumber || "No card"})`),
-});
+    return normalizeRecord({
+      ...record,
+      holdings,
+      circulationHistory: appendCirculationHistory(record, `Checked out to ${patron.name || "Unknown patron"} (${patron.cardNumber || "No card"})`),
+    });
   });
 
   saveRecords(state.records);
@@ -2536,8 +2537,7 @@ function getPatronAccountSummary(patron) {
   const holds = getPatronHolds(patron.id);
   const overdue = loans.filter(({ holding }) => holding.dueDate && holding.dueDate < todayIso());
   const history = state.records.flatMap((record) => String(record.circulationHistory || '')
-    .split('
-')
+    .split(/\n+/)
     .filter(Boolean)
     .filter((line) => line.includes(patron.name || '') || line.includes(patron.cardNumber || ''))
     .map((line) => ({ title: record.title || 'Untitled', line })));
