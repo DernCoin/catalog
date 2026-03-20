@@ -1116,3 +1116,33 @@ label > span, .status-label { display:block; font-size:.83rem; font-weight:700; 
 }
 
 @media (max-width: 900px) { .checkout-queue-item { flex-direction:column; } .checkout-queue-main { width:100%; flex-wrap:wrap; } .checkout-inline-due-date { width:100%; } }
+
+.holds-placement-card,
+.holds-toolbar-card,
+.holds-list-card { display:grid; gap:.8rem; }
+.holds-form-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); align-items:start; }
+.holds-request-summary { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:.75rem; padding:.85rem; border:1px solid var(--border); border-radius:16px; background:#fcf9ff; }
+.holds-request-summary strong { display:block; margin-bottom:.2rem; }
+.holds-filter-row { display:flex; gap:.55rem; flex-wrap:wrap; }
+.holds-filter-row .button.is-active { background: linear-gradient(90deg, var(--accent), var(--accent-2)); color:#fff; }
+.holds-list-card-pending { border-color:#d8c9f3; }
+.holds-list-card-ready { border-color:#bfe7ca; background:linear-gradient(180deg, #fff, #f6fff8); }
+.holds-list-card-closed { border-color:#e8dff1; opacity:.96; }
+.holds-shelf-toolbar { display:flex; justify-content:flex-end; }
+.hold-status-badge { display:inline-flex; align-items:center; padding:.28rem .65rem; border-radius:999px; font-size:.74rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
+.hold-status-badge.status-pending { background:#f4ecff; color:#5a2d91; }
+.hold-status-badge.status-trapped,
+.hold-status-badge.status-ready-for-pickup { background:#e9f8ef; color:#176a37; }
+.hold-status-badge.status-picked-up { background:#e8f1ff; color:#28518c; }
+.hold-status-badge.status-cancelled,
+.hold-status-badge.status-expired { background:#f7eef9; color:#6a4e79; }
+.hold-queue-modal-content { width:min(980px,100%); }
+.hold-queue-modal-body { display:grid; gap:.75rem; }
+.checkin-result-panel.has-hold-alert { border:2px solid #e0b443; background:linear-gradient(180deg, #fffaf0, #fff); }
+.checkout-warning-row.is-large-alert { font-size:1rem; font-weight:700; border:1px solid #f2cf7e; box-shadow:0 12px 24px rgba(186, 130, 17, .12); }
+
+@media (max-width: 900px) {
+  .holds-request-summary,
+  .holds-form-grid { grid-template-columns: 1fr; }
+  .holds-shelf-toolbar { justify-content:stretch; }
+}

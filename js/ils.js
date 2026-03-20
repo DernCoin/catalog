@@ -12,6 +12,7 @@ const state = {
   activeSearchIndex: -1,
   unsubscribeRecords: null,
   circulationTab: "checkout",
+  holdFilter: "all-pending",
   queuedCheckoutItems: [],
   checkoutPatronId: "",
   lastCheckInResult: null,
@@ -216,11 +217,27 @@ const els = {
   checkInResult: $("#checkInResult"),
   holdForm: $("#holdForm"),
   holdCardNumber: $("#holdCardNumber"),
+  holdPatronSelect: $("#holdPatronSelect"),
   holdMaterialNumber: $("#holdMaterialNumber"),
   holdType: $("#holdType"),
+  holdShelfDays: $("#holdShelfDays"),
+  holdShelfDurationBadge: $("#holdShelfDurationBadge"),
+  holdStaffNote: $("#holdStaffNote"),
+  holdRequestSummary: $("#holdRequestSummary"),
+  runHoldExpirationBtn: $("#runHoldExpirationBtn"),
+  holdQuickFilters: $$("[data-hold-filter]"),
+  holdsPendingCount: $("#holdsPendingCount"),
+  holdsReadyCount: $("#holdsReadyCount"),
+  holdsClosedCount: $("#holdsClosedCount"),
+  holdsReadySort: $("#holdsReadySort"),
   holdsActiveBody: $("#holdsActiveBody"),
   holdsReadyBody: $("#holdsReadyBody"),
   holdsClosedBody: $("#holdsClosedBody"),
+  holdQueueModal: $("#holdQueueModal"),
+  closeHoldQueueModalBtn: $("#closeHoldQueueModalBtn"),
+  holdQueueModalTitle: $("#holdQueueModalTitle"),
+  holdQueueModalSubtitle: $("#holdQueueModalSubtitle"),
+  holdQueueModalBody: $("#holdQueueModalBody"),
   circulationTabButtons: $$(".circulation-tab-btn"),
   circulationPanels: $$("[data-circulation-panel]"),
   circulationMessage: $("#circulationMessage"),
@@ -489,6 +506,8 @@ function addPatron(event) {
   savePatrons(nextPatrons);
   state.selectedPatronId = payload.id;
   resetPatronForm();
+  populateHoldPatronPicker();
+  buildHoldPlacementPreview();
   renderPatronsTable();
   renderPatronDetail();
   renderCheckoutPatronPreview();
@@ -1077,6 +1096,8 @@ function populateStaticSelects() {
   if (els.registerCategory) els.registerCategory.innerHTML = REGISTER_CATEGORIES.map((category) => `<option value="${category}">${category}</option>`).join("");
   if (els.registerDonationPurpose) els.registerDonationPurpose.innerHTML = DONATION_PURPOSES.map((purpose) => `<option value="${purpose}">${purpose}</option>`).join("");
   if (els.registerDate && !els.registerDate.value) els.registerDate.value = todayIso();
+  if (els.holdShelfDays && !els.holdShelfDays.value) els.holdShelfDays.value = String(getHoldShelfDuration());
+  if (els.holdShelfDurationBadge) els.holdShelfDurationBadge.textContent = `${getHoldShelfDuration()}-day shelf`;
   if (els.registerReportDate && !els.registerReportDate.value) els.registerReportDate.value = todayIso();
   if (els.illOutgoingRequestedDate && !els.illOutgoingRequestedDate.value) els.illOutgoingRequestedDate.value = todayIso();
   if (els.illIncomingRequestDate && !els.illIncomingRequestDate.value) els.illIncomingRequestDate.value = todayIso();
@@ -1456,6 +1477,7 @@ function renderHoldingsEditor(holdings = state.draftHoldings) {
         <label>Retail Value <input data-holding-field="retailPrice" type="number" min="0" step="0.01" value="${holding.retailPrice || ""}" /></label>
       </div>
       <p class="muted holding-meta">${holding.checkedOutToName ? `Checked out to ${holding.checkedOutToName}${holding.dueDate ? ` · Due ${holding.dueDate}` : ""}` : "Not currently checked out."}</p>
+      <p class="muted holding-meta">${(() => { const summary = getItemHoldSummary(holding.materialNumbers?.[0] || ''); return summary.active ? `${summary.active} active hold request${summary.active === 1 ? '' : 's'} · ${summary.waiting} waiting · ${summary.ready} trapped/ready${summary.trapped ? ` · Shelf for ${summary.trapped.patronName}` : ''}` : 'No active holds for this item.'; })()}</p>
     `;
     article.querySelector('[data-act="remove-holding"]').addEventListener("click", () => {
       if (state.draftHoldings.length <= 1) return;
@@ -1573,6 +1595,85 @@ function findPatronByCardNumber(cardNumber) {
   const normalized = String(cardNumber || "").trim().toLowerCase();
   if (!normalized) return null;
   return getPatrons().find((entry) => String(entry.cardNumber || "").trim().toLowerCase() === normalized) || null;
+}
+
+const HOLD_STATUS = {
+  PENDING: 'Pending',
+  TRAPPED: 'Trapped',
+  READY: 'Ready for Pickup',
+  PICKED_UP: 'Picked Up',
+  CANCELLED: 'Cancelled',
+  EXPIRED: 'Expired',
+};
+
+const HOLD_CLOSED_STATUSES = [HOLD_STATUS.PICKED_UP, HOLD_STATUS.CANCELLED, HOLD_STATUS.EXPIRED];
+
+function getHoldShelfDuration() {
+  const configured = Number(state.settings.holdShelfDays || els.holdShelfDays?.value || 7);
+  return Number.isFinite(configured) && configured > 0 ? configured : 7;
+}
+
+function addDays(isoDate, days) {
+  if (!isoDate) return '';
+  const date = new Date(`${isoDate}T00:00:00Z`);
+  if (!Number.isFinite(date.getTime())) return '';
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function isoDateFromTimestamp(value) {
+  const parsed = Date.parse(value || '');
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString().slice(0, 10) : '';
+}
+
+function normalizeHoldRecord(hold = {}) {
+  const statusMap = { Active: HOLD_STATUS.PENDING, Ready: HOLD_STATUS.READY, Trapped: HOLD_STATUS.TRAPPED, 'Ready for pickup': HOLD_STATUS.READY, 'Ready for Pickup': HOLD_STATUS.READY };
+  const normalizedStatus = statusMap[String(hold.status || '').trim()] || (Object.values(HOLD_STATUS).includes(hold.status) ? hold.status : HOLD_STATUS.PENDING);
+  const placedAt = hold.placedAt || hold.datePlaced || new Date().toISOString();
+  const stableId = hold.holdId || hold.id || crypto.randomUUID();
+  return {
+    holdId: stableId,
+    id: stableId,
+    recordId: hold.recordId || '',
+    holdingId: hold.holdingId || '',
+    itemId: hold.itemId || hold.materialNumber || '',
+    materialNumber: hold.materialNumber || hold.itemId || '',
+    itemTitle: hold.itemTitle || hold.title || 'Untitled',
+    title: hold.itemTitle || hold.title || 'Untitled',
+    patronId: hold.patronId || '',
+    patronCardNumber: hold.patronCardNumber || '',
+    patronName: hold.patronName || 'Unknown patron',
+    type: hold.type || hold.requestType || 'Hold',
+    requestType: hold.type || hold.requestType || 'Hold',
+    status: normalizedStatus,
+    queuePosition: Number(hold.queuePosition || 0) || 0,
+    datePlaced: hold.datePlaced || placedAt,
+    placedAt,
+    trappedDate: hold.trappedDate || hold.trappedAt || '',
+    readyForPickupDate: hold.readyForPickupDate || hold.readyAt || '',
+    pickupExpirationDate: hold.pickupExpirationDate || hold.expiresAt || '',
+    completedCancelledExpiredDate: hold.completedCancelledExpiredDate || hold.closedAt || hold.cancelledAt || hold.expiredAt || hold.pickedUpAt || '',
+    pickedUpAt: hold.pickedUpAt || '',
+    cancelledAt: hold.cancelledAt || '',
+    expiredAt: hold.expiredAt || '',
+    staffNotes: hold.staffNotes || hold.note || '',
+    notificationStatus: hold.notificationStatus || 'Not Yet Notified',
+    updatedAt: hold.updatedAt || placedAt,
+  };
+}
+
+function compareHoldsByQueue(a, b) {
+  const queueDiff = Number(a.queuePosition || 0) - Number(b.queuePosition || 0);
+  if (queueDiff) return queueDiff;
+  return String(a.datePlaced || a.placedAt || '').localeCompare(String(b.datePlaced || b.placedAt || ''));
+}
+
+function isHoldWaitingStatus(status = '') {
+  return [HOLD_STATUS.PENDING, HOLD_STATUS.TRAPPED, HOLD_STATUS.READY].includes(status);
+}
+
+function isHoldClosedStatus(status = '') {
+  return HOLD_CLOSED_STATUSES.includes(status);
 }
 
 function setFormDirty(isDirty) {
@@ -2228,16 +2329,13 @@ function getPatronLoanEntries(patronId) {
     .map((holding) => ({ record, holding })));
 }
 
-function getPatronHolds(patronId) {
-  return getHolds().filter((hold) => hold.patronId === patronId && !['Cancelled', 'Expired', 'Picked Up'].includes(hold.status || 'Active'));
-}
-
 function getPatronAccountSummary(patron) {
   const loans = getPatronLoanEntries(patron.id);
   const holds = getPatronHolds(patron.id);
   const overdue = loans.filter(({ holding }) => holding.dueDate && holding.dueDate < todayIso());
   const history = state.records.flatMap((record) => String(record.circulationHistory || '')
-    .split('\n')
+    .split('
+')
     .filter(Boolean)
     .filter((line) => line.includes(patron.name || '') || line.includes(patron.cardNumber || ''))
     .map((line) => ({ title: record.title || 'Untitled', line })));
@@ -2292,6 +2390,7 @@ function renderPatronDetail() {
   }
 
   const summary = getPatronAccountSummary(patron);
+  const holdHistory = getPatronHoldHistory(patron.id);
   const blocks = String(patron.blocks || '').split(/\s*,\s*/).filter(Boolean);
   const alerts = String(patron.alerts || '').split(/\s*,\s*/).filter(Boolean);
   const status = patron.status || 'Active';
@@ -2323,223 +2422,304 @@ function renderPatronDetail() {
     </div>
     <section class="detail-section card-like"><h5>Fines and fees</h5>${summary.entries.length ? `<ul class="fee-entry-list">${summary.entries.sort((a, b) => String(b.dateAssessed).localeCompare(String(a.dateAssessed))).map((entry) => `<li><div class="fee-entry-meta"><strong>${escapeHtml(entry.category)}</strong><span>${formatCurrency(entry.amount)} · ${escapeHtml(entry.status)}</span></div><span>${escapeHtml(entry.dateAssessed)} · ${escapeHtml(entry.description || 'No description')}</span><p class="fee-entry-payments">Remaining: ${formatCurrency(entry.remainingAmount)}${entry.paymentHistory.length ? ` · Payments: ${entry.paymentHistory.map((payment) => `${payment.date} ${formatCurrency(payment.amount)}`).join(', ')}` : ''}</p>${['Paid', 'Waived'].includes(entry.status) ? '' : `<div class="patron-fee-actions"><button class="button button-secondary" type="button" data-fee-status="${entry.id}" data-next-status="Paid">Mark Paid</button><button class="button button-secondary" type="button" data-fee-status="${entry.id}" data-next-status="Waived">Waive</button></div>`}</li>`).join('')}</ul>` : '<p>No fines or fees have been assessed.</p>'}</section>
     <section class="detail-section card-like"><h5>Items currently out</h5>${summary.loans.length ? `<ul class="patron-activity-list">${summary.loans.map(({ record, holding }) => `<li><strong>${record.title || 'Untitled'}</strong><span>${holding.materialNumbers?.[0] || 'No barcode'} · Due ${holding.dueDate || 'No due date'}</span></li>`).join('')}</ul>` : '<p>No items currently checked out.</p>'}</section>
+    <section class="detail-section card-like"><h5>Active holds</h5>${summary.holds.length ? `<ul class="patron-activity-list">${summary.holds.map((hold) => `<li><strong>${escapeHtml(hold.itemTitle || 'Untitled')}</strong><span>${escapeHtml(hold.status)} · Queue #${hold.queuePosition || '—'}${hold.pickupExpirationDate ? ` · Pickup by ${hold.pickupExpirationDate}` : ''}</span></li>`).join('')}</ul>` : '<p>No active holds or reserves.</p>'}</section>
+    <section class="detail-section card-like"><h5>Recent hold history</h5>${holdHistory.length ? `<ul class="patron-activity-list">${holdHistory.map((hold) => `<li><strong>${escapeHtml(hold.itemTitle || 'Untitled')}</strong><span>${escapeHtml(hold.status)} · ${escapeHtml(isoDateFromTimestamp(hold.completedCancelledExpiredDate) || 'No close date')}</span></li>`).join('')}</ul>` : '<p>No recent expired, cancelled, or picked up holds.</p>'}</section>
     <section class="detail-section card-like"><h5>Recent activity</h5>${summary.history.length ? `<ul class="patron-activity-list">${summary.history.map((entry) => `<li><strong>${entry.title}</strong><span>${entry.line}</span></li>`).join('')}</ul>` : '<p>No recent activity.</p>'}</section>
   `;
   [...els.patronDetailPanel.querySelectorAll('[data-fee-status]')].forEach((button) => button.addEventListener('click', () => updateFeeStatus(button.dataset.feeStatus, button.dataset.nextStatus)));
 }
 
-function setCirculationMessage(message, type = 'info') {
-  if (!els.circulationMessage) return;
-  const normalizedType = type === true ? 'error' : (type === false ? 'info' : type);
-  els.circulationMessage.textContent = message;
-  els.circulationMessage.className = 'status-message circulation-message-panel';
-  if (normalizedType && normalizedType !== 'info') els.circulationMessage.classList.add(`is-${normalizedType}`);
+function getPatronHolds(patronId) {
+  return getHolds().filter((hold) => hold.patronId === patronId && !isHoldClosedStatus(hold.status));
 }
 
-function appendCirculationHistory(record, action) {
-  const stamp = new Date().toISOString().replace('T', ' ').slice(0, 16);
-  const existing = String(record.circulationHistory || '').trim();
-  const line = `[${stamp}] ${action}`;
-  return existing ? `${existing}
-${line}` : line;
+function getPatronHoldHistory(patronId) {
+  return getHolds().filter((hold) => hold.patronId === patronId && isHoldClosedStatus(hold.status)).sort((a, b) => String(b.completedCancelledExpiredDate || '').localeCompare(String(a.completedCancelledExpiredDate || ''))).slice(0, 5);
 }
 
-function clearCheckoutSession(options = {}) {
-  state.checkoutPatronId = '';
-  state.queuedCheckoutItems = [];
-  if (els.checkOutForm) els.checkOutForm.reset();
-  if (!options.keepReceipt) renderCheckoutReceipt(null);
-  renderCheckoutPatronPreview('');
-  renderCheckoutPatronContext();
-  renderCheckoutQueue();
-  refreshQueuedDueDate();
-  updateCheckoutStatus('Awaiting patron load.', 'Items will display updated status here.');
-  if (!options.silent) setCirculationMessage('Checkout session cleared. Ready for next patron.', 'info');
+function getItemHoldQueue(materialNumber) {
+  const normalized = String(materialNumber || '').trim().toLowerCase();
+  return getHolds().filter((hold) => String(hold.materialNumber || '').trim().toLowerCase() === normalized).sort(compareHoldsByQueue);
 }
 
-function loadCheckoutPatron(cardNumber = els.checkOutCardNumber?.value || '') {
-  const patron = findPatronByCardNumber(cardNumber);
-  if (!cardNumber.trim()) {
-    state.checkoutPatronId = '';
-    renderCheckoutPatronPreview('');
-    renderCheckoutPatronContext();
-    updateCheckoutStatus('Awaiting patron load.', 'Items will display updated status here.');
-    setCirculationMessage('Scan a patron card to begin checkout.', 'info');
-    return null;
-  }
-  if (!patron) {
-    state.checkoutPatronId = '';
-    renderCheckoutPatronPreview(cardNumber);
-    renderCheckoutPatronContext();
-    updateCheckoutStatus('Awaiting valid patron.', 'Load a valid patron before checking out items.');
-    setCirculationMessage('No patron found with that card number.', 'error');
-    return null;
-  }
-  state.checkoutPatronId = patron.id;
-  renderCheckoutPatronPreview(cardNumber);
-  renderCheckoutPatronContext();
-  updateCheckoutStatus(`Patron loaded: ${patron.name}`, 'Ready to scan items into the checkout queue.');
-  setCirculationMessage(`Patron loaded: ${patron.name}. Review account context, then scan items.`, 'success');
-  if (els.checkOutMaterialNumber) els.checkOutMaterialNumber.focus();
-  return patron;
-}
-
-function queueCheckoutItem() {
-  const patron = getCheckoutPatron();
-  if (!patron) {
-    setCirculationMessage('Scan patron card before scanning items.', 'error');
-    renderCheckoutGateState();
-    return;
-  }
-  const materialNumber = els.checkOutMaterialNumber.value.trim();
-  if (!materialNumber) return;
-  const match = getRecordByMaterialNumber(materialNumber);
-  if (!match) {
-    setCirculationMessage(`Invalid barcode: ${materialNumber} was not found.`, 'error');
-    return;
-  }
-  const { record, holding } = match;
-  updateCheckoutStatus(`Status: ${holding.status || 'Available'} · ${record.title}`, `Ready to check out to ${patron.name}.`);
-  if (String(holding.status) === 'On Loan') {
-    setCirculationMessage(`Item already checked out: ${materialNumber}.`, 'error');
-    return;
-  }
-  if (state.queuedCheckoutItems.some((entry) => entry.materialNumber === materialNumber)) {
-    setCirculationMessage(`Item ${materialNumber} is already queued.`, 'error');
-    return;
-  }
-  state.queuedCheckoutItems.push({ recordId: record.id, holdingId: holding.id, materialNumber, title: record.title, materialType: record.materialType || '', autoDueDate: getAutoDueDate(record), overrideDueDate: getAutoDueDate(record), coverUrl: record.coverUrl || '' });
-  els.checkOutMaterialNumber.value = '';
-  refreshQueuedDueDate();
-  const queuedRule = getRuleForMaterialType(record.materialType);
-  setCirculationMessage(queuedRule ? `Queued ${record.title}. ${record.materialType} items default to ${queuedRule.loanDays} day loans.` : `Queued ${record.title}. No circulation rule is set for ${record.materialType || 'this material type'}.`, 'info');
-  renderCheckoutQueue();
-}
-
-
-function renewPatronLoan(recordId, holdingId) {
-  const idx = state.records.findIndex((entry) => entry.id === recordId);
-  if (idx < 0) return;
-  const record = state.records[idx];
-  const rule = getRuleForMaterialType(record.materialType);
-  if (!rule?.loanDays) {
-    setCirculationMessage(`No circulation rule is set for ${record.materialType || 'this material type'}.`, 'error');
-    return;
-  }
-  let renewedDueDate = '';
-  const updatedHoldings = (record.holdings || []).map((holding) => {
-    if (holding.id !== holdingId) return holding;
-    const baseline = holding.dueDate && holding.dueDate > todayIso() ? holding.dueDate : todayIso();
-    renewedDueDate = addDaysToDate(new Date(`${baseline}T00:00:00Z`), Number(rule.loanDays) || 0);
-    return { ...holding, dueDate: renewedDueDate };
-  });
-  state.records[idx] = normalizeRecord({
-    ...record,
-    holdings: updatedHoldings,
-    circulationHistory: appendCirculationHistory(record, `Renewed for ${getCheckoutPatron()?.name || 'patron'} until ${renewedDueDate}`),
-  });
-  saveRecords(state.records);
-  renderCheckoutPatronContext();
-  renderRecentTransactions(els.recentCheckoutTransactions, 'checkout');
-  setCirculationMessage(`Renewed ${record.title || 'item'} until ${renewedDueDate}.`, 'success');
-}
-
-function getRecentCirculationTransactions(kind = 'all', limit = 8) {
-  const entries = [];
-  state.records.forEach((record) => {
-    parseCirculationLines(record).forEach((line) => {
-      const lower = String(line.action || '').toLowerCase();
-      const type = lower.includes('checked out') ? 'checkout' : lower.includes('checked in') ? 'checkin' : lower.includes('hold') || lower.includes('reserve') ? 'hold' : 'other';
-      if (kind !== 'all' && type !== kind) return;
-      entries.push({
-        type,
-        title: record.title || 'Untitled',
-        action: line.action,
-        timestamp: Number.isFinite(line.timestamp) ? line.timestamp : 0,
-      });
-    });
-  });
-  return entries.sort((a, b) => b.timestamp - a.timestamp).slice(0, limit);
-}
-
-function renderRecentTransactions(target, kind) {
-  if (!target) return;
-  const entries = getRecentCirculationTransactions(kind, 6);
-  if (!entries.length) {
-    target.className = 'recent-transactions-list empty-state';
-    target.innerHTML = 'No recent circulation activity.';
-    return;
-  }
-  target.className = 'recent-transactions-list';
-  target.innerHTML = `<ul>${entries.map((entry) => `<li><div><span class="transaction-badge is-${entry.type}">${entry.type === 'checkout' ? 'Checked Out' : entry.type === 'checkin' ? 'Checked In' : 'Hold'}</span><strong>${escapeHtml(entry.title)}</strong><p class="muted">${escapeHtml(entry.action.replace(/^\[[^\]]+\]\s*/, ''))}</p></div><span class="muted">${formatRelativeTime(entry.timestamp)}</span></li>`).join('')}</ul>`;
-}
-
-function checkOutRecord(event) {
-  event.preventDefault();
-  const patron = getCheckoutPatron();
-  if (!patron || !state.queuedCheckoutItems.length) {
-    setCirculationMessage('Load a patron and add at least one queued item before checkout.', 'error');
-    return;
-  }
-
-  const skipped = state.queuedCheckoutItems.filter((entry) => !(entry.overrideDueDate || entry.autoDueDate));
-  if (skipped.length) {
-    setCirculationMessage(`Set a due date or add circulation rules for: ${skipped.map((entry) => entry.title).join(', ')}.`, 'error');
-    return;
-  }
-
-  const checkoutTimestamp = new Date();
-  const receiptItems = [];
-  state.records = state.records.map((record) => {
-    const queuedForRecord = state.queuedCheckoutItems.filter((entry) => entry.recordId === record.id);
-    if (!queuedForRecord.length) return record;
-    const nextHoldings = (record.holdings || []).map((holding) => {
-      const queued = queuedForRecord.find((entry) => entry.holdingId === holding.id);
-      if (!queued) return holding;
-      const assignedDueDate = queued.overrideDueDate || queued.autoDueDate;
-      receiptItems.push({
-        title: record.title || queued.materialNumber,
-        author: record.creator || record.statementOfResponsibility || "",
-        dueDateLabel: `DUE ${assignedDueDate}`,
-      });
-      return { ...holding, status: 'On Loan', checkedOutTo: patron.id, checkedOutToName: patron.name, checkedOutAt: new Date().toISOString(), dueDate: assignedDueDate };
-    });
-    return normalizeRecord({
-      ...record,
-      holdings: nextHoldings,
-      circulationHistory: appendCirculationHistory(record, `Checked out to ${patron.name} (Card: ${patron.cardNumber || 'N/A'}) due ${(queuedForRecord[0].overrideDueDate || queuedForRecord[0].autoDueDate)}`),
-    });
-  });
-
-  const updatedHolds = getHolds().map((hold) => {
-    const queued = state.queuedCheckoutItems.find((entry) => entry.materialNumber === hold.materialNumber);
-    if (!queued) return hold;
-    return hold.patronId === patron.id && (hold.status === 'Ready' || hold.status === 'Active') ? { ...hold, status: 'Picked Up', pickedUpAt: new Date().toISOString() } : hold;
-  });
-  saveHolds(updatedHolds);
-  saveRecords(state.records);
-  const headlineDueDate = receiptItems.map((item) => item.dueDateLabel.replace('DUE ', '')).sort()[0] || '';
-  state.lastCheckoutReceipt = {
-    patron: patron.name,
-    checkedOutAt: checkoutTimestamp.toLocaleString(),
-    itemsCurrentlyOut: getPatronLoanEntries(patron.id).length,
-    dueHeadline: headlineDueDate ? `DUE: ${headlineDueDate}` : 'DUE DATE REQUIRES STAFF REVIEW',
-    items: receiptItems,
+function getItemHoldSummary(materialNumber) {
+  const queue = getItemHoldQueue(materialNumber);
+  return {
+    total: queue.length,
+    active: queue.filter((hold) => !isHoldClosedStatus(hold.status)).length,
+    waiting: queue.filter((hold) => hold.status === HOLD_STATUS.PENDING).length,
+    ready: queue.filter((hold) => [HOLD_STATUS.TRAPPED, HOLD_STATUS.READY].includes(hold.status)).length,
+    trapped: queue.find((hold) => [HOLD_STATUS.TRAPPED, HOLD_STATUS.READY].includes(hold.status)) || null,
   };
-  renderCheckoutReceipt(state.lastCheckoutReceipt);
-  setCirculationMessage(`Checked out to ${patron.name} – Due ${headlineDueDate}`, 'success');
-  updateCheckoutStatus('Status before: Available/Checked In', `Status after: On Loan to ${patron.name}`);
-  clearCheckoutSession({ silent: true, keepReceipt: true });
-  if (els.circulationMessage) els.circulationMessage.classList.add('is-prominent');
+}
+
+function reindexHoldQueue(holds) {
+  const grouped = new Map();
+  holds.forEach((hold) => {
+    const key = String(hold.materialNumber || '').trim().toLowerCase();
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push({ ...hold });
+  });
+  return [...grouped.values()].flatMap((queue) => {
+    const ordered = queue.sort((a, b) => String(a.datePlaced || '').localeCompare(String(b.datePlaced || '')));
+    let position = 1;
+    return ordered.map((hold) => {
+      if (isHoldClosedStatus(hold.status)) return { ...hold, queuePosition: 0 };
+      return { ...hold, queuePosition: position++ };
+    });
+  });
+}
+
+function getHolds() {
+  return reindexHoldQueue((Array.isArray(state.settings.holds) ? state.settings.holds : []).map((hold) => normalizeHoldRecord(hold)));
+}
+
+function saveHolds(holds) {
+  state.settings.holds = reindexHoldQueue(holds.map((hold) => normalizeHoldRecord(hold)));
+  state.settings.holdShelfDays = getHoldShelfDuration();
+  saveSettings(state.settings);
+}
+
+function promoteNextHoldIfPossible(materialNumber, records = state.records) {
+  const queue = getItemHoldQueue(materialNumber).filter((hold) => !isHoldClosedStatus(hold.status)).sort(compareHoldsByQueue);
+  const activeTrap = queue.find((hold) => [HOLD_STATUS.TRAPPED, HOLD_STATUS.READY].includes(hold.status));
+  if (activeTrap) return null;
+  const nextPending = queue.find((hold) => hold.status === HOLD_STATUS.PENDING);
+  if (!nextPending) return null;
+  const now = new Date().toISOString();
+  const today = now.slice(0, 10);
+  const expiration = addDays(today, getHoldShelfDuration());
+  const updated = getHolds().map((hold) => hold.holdId === nextPending.holdId ? { ...hold, status: HOLD_STATUS.TRAPPED, trappedDate: now, readyForPickupDate: today, pickupExpirationDate: expiration, updatedAt: now } : hold);
+  saveHolds(updated);
+  const match = getRecordByMaterialNumber(materialNumber);
+  if (match) {
+    state.records = records.map((record) => record.id !== match.record.id ? record : normalizeRecord({
+      ...record,
+      holdings: (record.holdings || []).map((holding) => holding.id !== match.holding.id ? holding : { ...holding, status: 'Ready for pickup', checkedOutTo: '', checkedOutToName: '', checkedOutAt: '', dueDate: '' }),
+      circulationHistory: appendCirculationHistory(record, `Hold trapped for ${nextPending.patronName} until ${expiration}`),
+    }));
+    saveRecords(state.records);
+  }
+  return { ...nextPending, status: HOLD_STATUS.TRAPPED, trappedDate: now, readyForPickupDate: today, pickupExpirationDate: expiration };
+}
+
+function expireReadyHolds({ silent = false } = {}) {
+  const today = todayIso();
+  let changed = false;
+  let holds = getHolds().map((hold) => {
+    if ([HOLD_STATUS.TRAPPED, HOLD_STATUS.READY].includes(hold.status) && hold.pickupExpirationDate && hold.pickupExpirationDate < today) {
+      changed = true;
+      return { ...hold, status: HOLD_STATUS.EXPIRED, completedCancelledExpiredDate: new Date().toISOString(), expiredAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    }
+    return hold;
+  });
+  if (!changed) {
+    if (!silent) setCirculationMessage('No hold shelf items needed expiration cleanup.', 'info');
+    return 0;
+  }
+  saveHolds(holds);
+  const expiredMaterialNumbers = [...new Set(holds.filter((hold) => hold.status === HOLD_STATUS.EXPIRED && isoDateFromTimestamp(hold.expiredAt) === today).map((hold) => hold.materialNumber))];
+  expiredMaterialNumbers.forEach((materialNumber) => {
+    const promoted = promoteNextHoldIfPossible(materialNumber);
+    if (!promoted) {
+      const match = getRecordByMaterialNumber(materialNumber);
+      if (match) {
+        state.records = state.records.map((record) => record.id !== match.record.id ? record : normalizeRecord({
+          ...record,
+          holdings: (record.holdings || []).map((holding) => holding.id !== match.holding.id ? holding : { ...holding, status: 'Available' }),
+          circulationHistory: appendCirculationHistory(record, 'Hold expired and item returned to available status'),
+        }));
+      }
+    }
+  });
+  saveRecords(state.records);
+  if (!silent) setCirculationMessage(`Expired ${expiredMaterialNumbers.length} hold shelf item${expiredMaterialNumbers.length === 1 ? '' : 's'} and refreshed queues.`, 'success');
+  return expiredMaterialNumbers.length;
+}
+
+function buildHoldPlacementPreview() {
+  const cardNumber = String(els.holdCardNumber?.value || els.holdPatronSelect?.value || '').trim();
+  const materialNumber = String(els.holdMaterialNumber?.value || '').trim();
+  const type = String(els.holdType?.value || 'Hold');
+  const patron = findPatronByCardNumber(cardNumber);
+  const match = materialNumber ? getRecordByMaterialNumber(materialNumber) : null;
+  const invalidPatron = cardNumber && !patron;
+  const invalidItem = materialNumber && !match;
+  if (!els.holdRequestSummary) return { patron, match, queuePosition: 0 };
+  if (!cardNumber && !materialNumber) {
+    els.holdRequestSummary.className = 'holds-request-summary empty-state form-grid-span';
+    els.holdRequestSummary.textContent = 'Scan a patron and item to preview the request and queue position.';
+    return { patron, match, queuePosition: 0 };
+  }
+  if (invalidPatron || invalidItem) {
+    els.holdRequestSummary.className = 'holds-request-summary form-grid-span';
+    els.holdRequestSummary.innerHTML = `<strong>Cannot place request yet.</strong><span>${invalidPatron ? 'Patron card number was not found.' : ''} ${invalidItem ? 'Item material number was not found.' : ''}</span>`;
+    return { patron, match, queuePosition: 0 };
+  }
+  const queuePosition = getItemHoldQueue(materialNumber).filter((hold) => !isHoldClosedStatus(hold.status)).length + 1;
+  els.holdRequestSummary.className = 'holds-request-summary form-grid-span';
+  els.holdRequestSummary.innerHTML = `<div><strong>Confirmation summary</strong><span>${escapeHtml(patron.name)} · Card ${escapeHtml(patron.cardNumber || 'N/A')}</span></div><div><strong>${escapeHtml(match.record.title || 'Untitled')}</strong><span>${escapeHtml(materialNumber)} · ${escapeHtml(type)}</span></div><div><strong>Queue position</strong><span>This request will enter as #${queuePosition}.</span></div>`;
+  return { patron, match, queuePosition };
+}
+
+function populateHoldPatronPicker() {
+  if (!els.holdPatronSelect) return;
+  const patrons = getPatrons().slice().sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+  const current = els.holdPatronSelect.value;
+  els.holdPatronSelect.innerHTML = '<option value="">Choose a patron</option>' + patrons.map((patron) => `<option value="${escapeHtml(patron.cardNumber || '')}">${escapeHtml(patron.name || 'Unnamed patron')} · ${escapeHtml(patron.cardNumber || 'No card')}</option>`).join('');
+  els.holdPatronSelect.value = patrons.some((patron) => patron.cardNumber === current) ? current : '';
+}
+
+function placeHold(event) {
+  event.preventDefault();
+  const cardNumber = String(els.holdCardNumber?.value || els.holdPatronSelect?.value || '').trim();
+  const materialNumber = String(els.holdMaterialNumber?.value || '').trim();
+  const type = String(els.holdType?.value || 'Hold');
+  const note = String(els.holdStaffNote?.value || '').trim();
+  const patron = findPatronByCardNumber(cardNumber);
+  if (!patron) return setCirculationMessage('No patron found with that card number. Use the picker if needed.', 'error');
+  const match = getRecordByMaterialNumber(materialNumber);
+  if (!match) return setCirculationMessage(`Invalid material number: ${materialNumber} was not found.`, 'error');
+  const queue = getItemHoldQueue(materialNumber);
+  const openQueue = queue.filter((hold) => !isHoldClosedStatus(hold.status));
+  const existingActiveForPatron = openQueue.find((hold) => hold.patronId === patron.id);
+  if (existingActiveForPatron) return setCirculationMessage(`${patron.name} already has an active request for this item.`, 'error');
+  const trappedForAnother = openQueue.find((hold) => [HOLD_STATUS.TRAPPED, HOLD_STATUS.READY].includes(hold.status) && hold.patronId !== patron.id);
+  const now = new Date().toISOString();
+  const hold = normalizeHoldRecord({
+    holdId: crypto.randomUUID(),
+    recordId: match.record.id,
+    holdingId: match.holding.id,
+    itemId: materialNumber,
+    materialNumber,
+    itemTitle: match.record.title,
+    patronId: patron.id,
+    patronCardNumber: patron.cardNumber || '',
+    patronName: patron.name,
+    type,
+    status: trappedForAnother || String(match.holding.status) !== 'Available' || openQueue.length ? HOLD_STATUS.PENDING : HOLD_STATUS.TRAPPED,
+    queuePosition: openQueue.length + 1,
+    datePlaced: now,
+    placedAt: now,
+    trappedDate: trappedForAnother || String(match.holding.status) !== 'Available' || openQueue.length ? '' : now,
+    readyForPickupDate: trappedForAnother || String(match.holding.status) !== 'Available' || openQueue.length ? '' : now.slice(0, 10),
+    pickupExpirationDate: trappedForAnother || String(match.holding.status) !== 'Available' || openQueue.length ? '' : addDays(now.slice(0, 10), getHoldShelfDuration()),
+    staffNotes: note,
+  });
+  if ([HOLD_STATUS.TRAPPED, HOLD_STATUS.READY].includes(hold.status) && openQueue.some((entry) => [HOLD_STATUS.TRAPPED, HOLD_STATUS.READY].includes(entry.status))) {
+    return setCirculationMessage('This item is already trapped for another patron. Resolve that hold before assigning another ready-for-pickup item.', 'error');
+  }
+  const holds = [...getHolds(), hold];
+  saveHolds(holds);
+  state.records = state.records.map((entry) => entry.id === match.record.id ? normalizeRecord({
+    ...entry,
+    holdings: (entry.holdings || []).map((holding) => holding.id !== match.holding.id ? holding : { ...holding, status: hold.status === HOLD_STATUS.PENDING ? holding.status : 'Ready for pickup' }),
+    circulationHistory: appendCirculationHistory(entry, `${type} placed for ${patron.name}${hold.status === HOLD_STATUS.PENDING ? ` · queue #${hold.queuePosition}` : ' · trapped for pickup'}`),
+  }) : entry);
+  saveRecords(state.records);
+  if (els.holdForm) els.holdForm.reset();
+  if (els.holdShelfDays) els.holdShelfDays.value = String(getHoldShelfDuration());
+  buildHoldPlacementPreview();
+  setCirculationMessage(`${type} placed. ${patron.name} is now #${hold.queuePosition} in queue.`, 'success');
   render();
 }
 
+function updateHoldStatus(holdId, nextStatus, options = {}) {
+  const now = new Date().toISOString();
+  let affectedMaterialNumber = '';
+  const holds = getHolds().map((hold) => {
+    if (hold.holdId !== holdId) return hold;
+    affectedMaterialNumber = hold.materialNumber;
+    const next = { ...hold, status: nextStatus, updatedAt: now };
+    if (nextStatus === HOLD_STATUS.READY) next.readyForPickupDate = now.slice(0, 10);
+    if (nextStatus === HOLD_STATUS.TRAPPED && !next.trappedDate) next.trappedDate = now;
+    if ([HOLD_STATUS.CANCELLED, HOLD_STATUS.EXPIRED, HOLD_STATUS.PICKED_UP].includes(nextStatus)) next.completedCancelledExpiredDate = now;
+    if (nextStatus === HOLD_STATUS.CANCELLED) next.cancelledAt = now;
+    if (nextStatus === HOLD_STATUS.EXPIRED) next.expiredAt = now;
+    if (nextStatus === HOLD_STATUS.PICKED_UP) next.pickedUpAt = now;
+    if (nextStatus === HOLD_STATUS.READY && !next.pickupExpirationDate) next.pickupExpirationDate = addDays(now.slice(0, 10), getHoldShelfDuration());
+    return next;
+  });
+  saveHolds(holds);
+  if ([HOLD_STATUS.CANCELLED, HOLD_STATUS.EXPIRED, HOLD_STATUS.PICKED_UP].includes(nextStatus) && affectedMaterialNumber) {
+    const promoted = promoteNextHoldIfPossible(affectedMaterialNumber);
+    if (!promoted) {
+      const match = getRecordByMaterialNumber(affectedMaterialNumber);
+      if (match) {
+        state.records = state.records.map((record) => record.id !== match.record.id ? record : normalizeRecord({
+          ...record,
+          holdings: (record.holdings || []).map((holding) => holding.id !== match.holding.id ? holding : { ...holding, status: nextStatus === HOLD_STATUS.PICKED_UP ? 'On Loan' : 'Available' }),
+        }));
+        saveRecords(state.records);
+      }
+    }
+  }
+  if (options.message) setCirculationMessage(options.message, 'success');
+  render();
+}
+
+function cancelHold(holdId) {
+  if (!window.confirm('Cancel this hold request?')) return;
+  updateHoldStatus(holdId, HOLD_STATUS.CANCELLED, { message: 'Hold cancelled.' });
+}
+
+function getHoldBucket(hold) {
+  if (isHoldClosedStatus(hold.status)) return 'closed';
+  if ([HOLD_STATUS.TRAPPED, HOLD_STATUS.READY].includes(hold.status)) return 'ready';
+  return 'active';
+}
+
+function getReadyHoldDaysLeft(hold) {
+  if (!hold.pickupExpirationDate) return null;
+  const diff = Math.ceil((Date.parse(`${hold.pickupExpirationDate}T00:00:00Z`) - Date.parse(`${todayIso()}T00:00:00Z`)) / 86400000);
+  return Number.isFinite(diff) ? diff : null;
+}
+
+function openHoldQueueModal(materialNumber) {
+  if (!els.holdQueueModal || !els.holdQueueModalBody) return;
+  const queue = getItemHoldQueue(materialNumber);
+  const match = getRecordByMaterialNumber(materialNumber);
+  els.holdQueueModalTitle.textContent = match?.record?.title || materialNumber;
+  els.holdQueueModalSubtitle.textContent = `${queue.filter((hold) => !isHoldClosedStatus(hold.status)).length} active request(s) for material #${materialNumber}.`;
+  if (!queue.length) {
+    els.holdQueueModalBody.className = 'hold-queue-modal-body empty-state';
+    els.holdQueueModalBody.textContent = 'No queue entries for this item.';
+  } else {
+    els.holdQueueModalBody.className = 'hold-queue-modal-body';
+    els.holdQueueModalBody.innerHTML = `<table class="serials-table holds-table"><thead><tr><th>Order</th><th>Patron</th><th>Date placed</th><th>Status</th><th>Override</th></tr></thead><tbody>${queue.map((hold) => `<tr><td>${hold.queuePosition || '—'}</td><td>${escapeHtml(hold.patronName)}</td><td>${escapeHtml(String(hold.datePlaced || '').slice(0, 10))}</td><td><span class="hold-status-badge status-${String(hold.status).toLowerCase().replace(/[^a-z]+/g, '-')}">${escapeHtml(hold.status)}</span></td><td>${isHoldClosedStatus(hold.status) ? '<span class="muted">Closed</span>' : `<button class="button button-secondary" type="button" data-override-trap="${hold.holdId}">Move to front</button>`}</td></tr>`).join('')}</tbody></table>`;
+    els.holdQueueModalBody.querySelectorAll('[data-override-trap]').forEach((button) => button.addEventListener('click', () => {
+      const targetId = button.dataset.overrideTrap;
+      const now = new Date().toISOString();
+      saveHolds(getHolds().map((hold) => {
+        if (hold.holdId === targetId) return { ...hold, datePlaced: '0000-01-01T00:00:00.000Z', updatedAt: now };
+        return hold;
+      }));
+      render();
+      openHoldQueueModal(materialNumber);
+    }));
+  }
+  els.holdQueueModal.classList.remove('hidden');
+  els.holdQueueModal.setAttribute('aria-hidden', 'false');
+}
+
+function closeHoldQueueModal() {
+  if (!els.holdQueueModal) return;
+  els.holdQueueModal.classList.add('hidden');
+  els.holdQueueModal.setAttribute('aria-hidden', 'true');
+}
+
 function buildHoldRoutingResult(record, materialNumber) {
-  const waitingHold = getHolds().find((hold) => hold.materialNumber === materialNumber && ['Active', 'Ready'].includes(hold.status || 'Active'));
-  if (!waitingHold) return { hold: null, message: 'Checked in successfully', route: 'Return to shelf' };
-  const updatedHolds = getHolds().map((hold) => hold.id === waitingHold.id ? { ...hold, status: 'Ready', readyAt: hold.readyAt || new Date().toISOString() } : hold);
+  expireReadyHolds({ silent: true });
+  const queue = getItemHoldQueue(materialNumber).filter((hold) => !isHoldClosedStatus(hold.status)).sort(compareHoldsByQueue);
+  const readyExisting = queue.find((hold) => [HOLD_STATUS.TRAPPED, HOLD_STATUS.READY].includes(hold.status));
+  if (readyExisting) return { hold: readyExisting, message: 'Hold already trapped', route: `Keep on hold shelf for ${readyExisting.patronName}` };
+  const nextHold = queue.find((hold) => hold.status === HOLD_STATUS.PENDING);
+  if (!nextHold) return { hold: null, message: 'Checked in successfully', route: 'Return to shelf' };
+  const now = new Date().toISOString();
+  const expiration = addDays(now.slice(0, 10), getHoldShelfDuration());
+  const updatedHolds = getHolds().map((hold) => hold.holdId === nextHold.holdId ? { ...hold, status: HOLD_STATUS.TRAPPED, trappedDate: now, readyForPickupDate: now.slice(0, 10), pickupExpirationDate: expiration, updatedAt: now } : hold);
   saveHolds(updatedHolds);
-  return { hold: { ...waitingHold, status: 'Ready' }, message: 'Item has a hold waiting', route: 'Route to holds shelf' };
+  return { hold: { ...nextHold, status: HOLD_STATUS.TRAPPED, trappedDate: now, readyForPickupDate: now.slice(0, 10), pickupExpirationDate: expiration }, message: 'HOLD FOUND — PLACE ON HOLD SHELF', route: `Trap for ${nextHold.patronName} until ${expiration}` };
 }
 
 function renderCheckInResult() {
@@ -2550,7 +2730,7 @@ function renderCheckInResult() {
     els.checkInResult.innerHTML = 'Scan an item to begin check-in.';
     return;
   }
-  els.checkInResult.className = 'checkin-result-panel';
+  els.checkInResult.className = `checkin-result-panel${result.holdAlert ? ' has-hold-alert' : ''}`;
   els.checkInResult.innerHTML = `
     <div class="panel-header compact"><div><h4>${escapeHtml(result.message)}</h4><p class="muted">${escapeHtml(result.title)}</p></div><span class="transaction-badge is-checkin">Checked In</span></div>
     <div class="checkin-result-grid">
@@ -2560,7 +2740,7 @@ function renderCheckInResult() {
       <div><span>Status after check-in</span><strong>${escapeHtml(result.status)}</strong></div>
     </div>
     <div class="checkout-card-warnings">
-      ${result.holdAlert ? `<div class="checkout-warning-row is-warning"><strong>Hold waiting</strong><span>${escapeHtml(result.holdAlert)}</span></div>` : '<div class="checkout-warning-row is-clear"><strong>No hold waiting</strong><span>Item can return to regular shelving.</span></div>'}
+      ${result.holdAlert ? `<div class="checkout-warning-row is-warning is-large-alert"><strong>HOLD FOUND</strong><span>${escapeHtml(result.holdAlert)}</span></div>` : '<div class="checkout-warning-row is-clear"><strong>No hold waiting</strong><span>Item can return to regular shelving.</span></div>'}
       <div class="checkout-warning-row is-clear"><strong>Routing</strong><span>${escapeHtml(result.routeMessage)}</span></div>
     </div>`;
 }
@@ -2572,15 +2752,16 @@ function checkInRecord(recordId, holdingId = '') {
   let result = null;
   const nextHoldings = (record.holdings || []).map((holding) => {
     if (holdingId && holding.id !== holdingId) return holding;
-    const routing = buildHoldRoutingResult(record, holding.materialNumbers?.[0] || '');
+    const materialNumber = holding.materialNumbers?.[0] || '';
+    const routing = buildHoldRoutingResult(record, materialNumber);
     result = {
       title: record.title || 'Untitled',
-      materialNumber: holding.materialNumbers?.[0] || 'No barcode',
+      materialNumber: materialNumber || 'No barcode',
       previousPatron: holding.checkedOutToName || 'Unknown patron',
       dueDate: holding.dueDate ? `Due ${holding.dueDate}` : 'No due date recorded',
       returnedDate: `Returned ${new Date().toLocaleString()}`,
-      status: routing.hold ? 'Ready for pickup' : 'Available',
-      holdAlert: routing.hold ? `${routing.hold.patronName} is waiting. ${routing.route}.` : '',
+      status: routing.hold ? 'Trapped for hold shelf' : 'Available',
+      holdAlert: routing.hold ? `${routing.hold.patronName} is next in queue. Pickup by ${routing.hold.pickupExpirationDate}.` : '',
       routeMessage: routing.route,
       message: routing.message,
     };
@@ -2600,94 +2781,70 @@ function checkInRecord(recordId, holdingId = '') {
   return result;
 }
 
-function checkInByMaterialNumber(event) {
-  event.preventDefault();
-  const materialNumber = els.checkInMaterialNumber.value.trim();
-  if (!materialNumber) return;
-  const match = getRecordByMaterialNumber(materialNumber);
-  if (!match) {
-    setCirculationMessage(`Invalid barcode: ${materialNumber} was not found.`, 'error');
-    return;
-  }
-  checkInRecord(match.record.id, match.holding.id);
-  els.checkInMaterialNumber.value = '';
-}
-
-function getHolds() {
-  return Array.isArray(state.settings.holds) ? state.settings.holds : [];
-}
-
-function saveHolds(holds) {
-  state.settings.holds = holds;
-  saveSettings(state.settings);
-}
-
-function placeHold(event) {
-  event.preventDefault();
-  const cardNumber = String(els.holdCardNumber?.value || '').trim();
-  const materialNumber = String(els.holdMaterialNumber?.value || '').trim();
-  const type = String(els.holdType?.value || 'Hold');
-  const patron = findPatronByCardNumber(cardNumber);
-  if (!patron) return setCirculationMessage('No patron found with that card number.', true);
-  const match = getRecordByMaterialNumber(materialNumber);
-  if (!match) return setCirculationMessage(`Invalid barcode: ${materialNumber} was not found.`, 'error');
-  const { record, holding } = match;
-
-  const status = String(holding.status) === 'Available' ? 'Ready' : 'Active';
-  const holds = getHolds();
-  holds.push({ id: crypto.randomUUID(), recordId: record.id, materialNumber, title: record.title, patronId: patron.id, patronName: patron.name, type, placedAt: new Date().toISOString(), status, patronCardNumber: patron.cardNumber || '' });
-  saveHolds(holds);
-  state.records = state.records.map((entry) => entry.id === record.id ? { ...entry, circulationHistory: appendCirculationHistory(entry, `${type} placed for ${patron.name}`) } : entry);
-  saveRecords(state.records);
-  if (els.holdForm) els.holdForm.reset();
-  setCirculationMessage(`${type} placed for ${patron.name}.`, 'success');
-  render();
-}
-
-function updateHoldStatus(holdId, nextStatus) {
-  saveHolds(getHolds().map((hold) => hold.id === holdId ? { ...hold, status: nextStatus, updatedAt: new Date().toISOString() } : hold));
-  render();
-}
-
-function cancelHold(holdId) {
-  updateHoldStatus(holdId, 'Cancelled');
-}
-
-function getHoldBucket(hold) {
-  const status = String(hold.status || 'Active');
-  if (['Cancelled', 'Expired', 'Picked Up'].includes(status)) return 'closed';
-  if (status === 'Ready') return 'ready';
-  return 'active';
-}
-
-function renderHoldRows(target, holds, emptyMessage) {
+function renderHoldRows(target, holds, bucket, emptyMessage) {
   if (!target) return;
   target.innerHTML = '';
   if (!holds.length) {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td colspan="6">${emptyMessage}</td>`;
+    tr.innerHTML = `<td colspan="7">${emptyMessage}</td>`;
     target.appendChild(tr);
     return;
   }
   holds.forEach((hold) => {
     const tr = document.createElement('tr');
-    const actions = [];
-    if (getHoldBucket(hold) === 'active') actions.push('<button class="button button-secondary" type="button" data-action="ready">Mark Ready</button>');
-    if (getHoldBucket(hold) !== 'closed') actions.push('<button class="button button-secondary" type="button" data-action="cancel">Cancel</button>');
-    tr.innerHTML = `<td>${escapeHtml(hold.title || 'Untitled')}</td><td>${escapeHtml(hold.patronName || 'Unknown patron')}</td><td>${escapeHtml(hold.type || 'Hold')}</td><td><span class="transaction-badge is-hold">${escapeHtml(hold.status || 'Active')}</span></td><td>${escapeHtml(String(hold.readyAt || hold.placedAt || '').slice(0, 10))}</td><td>${actions.join(' ') || '<span class="muted">No actions</span>'}</td>`;
-    tr.querySelector('[data-action="ready"]')?.addEventListener('click', () => updateHoldStatus(hold.id, 'Ready'));
-    tr.querySelector('[data-action="cancel"]')?.addEventListener('click', () => cancelHold(hold.id));
+    const daysLeft = getReadyHoldDaysLeft(hold);
+    const expiringSoon = daysLeft !== null && daysLeft <= 2;
+    const statusClass = `status-${String(hold.status || '').toLowerCase().replace(/[^a-z]+/g, '-')}`;
+    let actions = [`<button class="button button-secondary" type="button" data-action="queue">View Queue</button>`, `<button class="button button-secondary" type="button" data-action="note">${hold.staffNotes ? 'Edit Note' : 'Add Note'}</button>`];
+    if (bucket === 'active') actions.unshift('<button class="button button-secondary" type="button" data-action="ready">Mark Ready for Pickup</button>');
+    if (bucket === 'ready') actions.unshift('<button class="button button-secondary" type="button" data-action="pickedup">Mark Picked Up</button>', '<button class="button button-secondary" type="button" data-action="slip">Print Slip</button>');
+    if (bucket !== 'closed') actions.push('<button class="button button-secondary" type="button" data-action="cancel">Cancel Hold</button>', '<button class="button button-secondary" type="button" data-action="expire">Expire Hold</button>');
+    if (bucket === 'active') tr.innerHTML = `<td><strong>${escapeHtml(hold.itemTitle)}</strong><div class="muted">${escapeHtml(hold.materialNumber)}</div></td><td>${escapeHtml(hold.patronName)}<div class="muted">Card ${escapeHtml(hold.patronCardNumber || 'N/A')}</div></td><td>${escapeHtml(hold.type)}</td><td>#${hold.queuePosition}</td><td>${escapeHtml(String(hold.datePlaced || '').slice(0,10))}</td><td><span class="hold-status-badge ${statusClass}">${escapeHtml(hold.status)}</span></td><td>${actions.join(' ')}</td>`;
+    else if (bucket === 'ready') tr.innerHTML = `<td><strong>${escapeHtml(hold.itemTitle)}</strong><div class="muted">${escapeHtml(hold.materialNumber)}</div></td><td>${escapeHtml(hold.patronName)}</td><td>${escapeHtml(isoDateFromTimestamp(hold.trappedDate) || '—')}</td><td>${escapeHtml(hold.pickupExpirationDate || '—')}</td><td><span class="${expiringSoon ? 'badge-danger' : 'muted'}">${daysLeft === null ? '—' : `${daysLeft} day${daysLeft === 1 ? '' : 's'}`}</span></td><td><span class="hold-status-badge ${statusClass}">${escapeHtml(hold.status)}</span></td><td>${actions.join(' ')}</td>`;
+    else tr.innerHTML = `<td><strong>${escapeHtml(hold.itemTitle)}</strong><div class="muted">${escapeHtml(hold.materialNumber)}</div></td><td>${escapeHtml(hold.patronName)}</td><td>${escapeHtml(hold.type)}</td><td><span class="hold-status-badge ${statusClass}">${escapeHtml(hold.status)}</span></td><td>${escapeHtml(isoDateFromTimestamp(hold.completedCancelledExpiredDate) || '—')}</td><td><div>${actions.filter((action) => /queue|note/.test(action)).join(' ')}</div><div class="muted top-space">${escapeHtml(hold.staffNotes || 'No staff note')}</div></td>`;
+    tr.querySelector('[data-action="ready"]')?.addEventListener('click', () => updateHoldStatus(hold.holdId, HOLD_STATUS.READY, { message: 'Hold marked ready for pickup.' }));
+    tr.querySelector('[data-action="pickedup"]')?.addEventListener('click', () => updateHoldStatus(hold.holdId, HOLD_STATUS.PICKED_UP, { message: 'Hold marked picked up.' }));
+    tr.querySelector('[data-action="cancel"]')?.addEventListener('click', () => cancelHold(hold.holdId));
+    tr.querySelector('[data-action="expire"]')?.addEventListener('click', () => { if (window.confirm('Expire this hold and advance the queue?')) updateHoldStatus(hold.holdId, HOLD_STATUS.EXPIRED, { message: 'Hold expired.' }); });
+    tr.querySelector('[data-action="queue"]')?.addEventListener('click', () => openHoldQueueModal(hold.materialNumber));
+    tr.querySelector('[data-action="note"]')?.addEventListener('click', () => {
+      const note = window.prompt('Staff note', hold.staffNotes || '');
+      if (note === null) return;
+      saveHolds(getHolds().map((entry) => entry.holdId === hold.holdId ? { ...entry, staffNotes: note, updatedAt: new Date().toISOString() } : entry));
+      render();
+    });
+    tr.querySelector('[data-action="slip"]')?.addEventListener('click', () => window.alert(`Hold slip
+
+Patron: ${hold.patronName}
+Item: ${hold.itemTitle}
+Pickup by: ${hold.pickupExpirationDate || 'Not set'}`));
     target.appendChild(tr);
   });
 }
 
 function renderHoldsTable() {
-  const holds = getHolds().slice().sort((a, b) => String(b.readyAt || b.placedAt || '').localeCompare(String(a.readyAt || a.placedAt || '')));
-  renderHoldRows(els.holdsActiveBody, holds.filter((hold) => getHoldBucket(hold) === 'active'), 'No active holds right now.');
-  renderHoldRows(els.holdsReadyBody, holds.filter((hold) => getHoldBucket(hold) === 'ready'), 'No items are currently ready for pickup.');
-  renderHoldRows(els.holdsClosedBody, holds.filter((hold) => getHoldBucket(hold) === 'closed'), 'No expired or cancelled holds yet.');
+  expireReadyHolds({ silent: true });
+  const holds = getHolds().slice();
+  const pending = holds.filter((hold) => getHoldBucket(hold) === 'active').sort(compareHoldsByQueue);
+  let ready = holds.filter((hold) => getHoldBucket(hold) === 'ready');
+  const closed = holds.filter((hold) => getHoldBucket(hold) === 'closed').sort((a, b) => String(b.completedCancelledExpiredDate || '').localeCompare(String(a.completedCancelledExpiredDate || '')));
+  const readySort = String(els.holdsReadySort?.value || 'expiration');
+  ready = ready.sort((a, b) => {
+    if (readySort === 'patron') return String(a.patronName || '').split(/\s+/).slice(-1)[0].localeCompare(String(b.patronName || '').split(/\s+/).slice(-1)[0]);
+    if (readySort === 'trapped') return String(a.trappedDate || '').localeCompare(String(b.trappedDate || ''));
+    return String(a.pickupExpirationDate || '').localeCompare(String(b.pickupExpirationDate || ''));
+  });
+  const filter = state.holdFilter;
+  const filteredPending = filter === 'all-pending' ? pending : pending;
+  const filteredReady = filter === 'ready-today' ? ready.filter((hold) => hold.readyForPickupDate === todayIso()) : filter === 'expiring-soon' ? ready.filter((hold) => (getReadyHoldDaysLeft(hold) ?? 99) <= 2) : ready;
+  const filteredClosed = filter === 'closed-recent' ? closed.filter((hold) => (isoDateFromTimestamp(hold.completedCancelledExpiredDate) || '') >= addDays(todayIso(), -14)) : closed;
+  if (els.holdsPendingCount) els.holdsPendingCount.textContent = `${pending.length} pending`;
+  if (els.holdsReadyCount) els.holdsReadyCount.textContent = `${ready.length} ready`;
+  if (els.holdsClosedCount) els.holdsClosedCount.textContent = `${closed.length} closed`;
+  renderHoldRows(els.holdsActiveBody, filteredPending, 'active', 'No pending hold requests right now.');
+  renderHoldRows(els.holdsReadyBody, filteredReady, 'ready', 'No items are currently waiting on the hold shelf.');
+  renderHoldRows(els.holdsClosedBody, filteredClosed, 'closed', 'No closed hold activity yet.');
 }
-
 function addSerialIssue(event) {
   event.preventDefault();
   const title = String(els.serialTitle?.value || "").trim();
@@ -4196,7 +4353,8 @@ function renderTable() {
   els.recordsBody.innerHTML = "";
   rows.forEach((r) => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td><input type="checkbox" ${state.selectedIds.has(r.id) ? "checked" : ""}></td><td>${r.title}</td><td>${r.creator}</td><td>${r.format}</td><td>${r.year || ""}</td><td>${r.curatedShelf || "—"}</td><td>${r.status || "Available"}</td><td><button class="button button-secondary" data-act="edit" type="button">Edit</button> <button class="button button-secondary" data-act="dup" type="button">Duplicate</button> <button class="button" data-act="del" type="button">Delete</button></td>`;
+    const holdSummary = getItemHoldSummary(r.materialNumbers?.[0] || '');
+    tr.innerHTML = `<td><input type="checkbox" ${state.selectedIds.has(r.id) ? "checked" : ""}></td><td>${r.title}<div class="muted">${holdSummary.active ? `${holdSummary.active} waiting · ${holdSummary.trapped ? `Hold shelf for ${holdSummary.trapped.patronName}` : 'Queue active'}` : 'No active holds'}</div></td><td>${r.creator}</td><td>${r.format}</td><td>${r.year || ""}</td><td>${r.curatedShelf || "—"}</td><td>${r.status || "Available"}</td><td><button class="button button-secondary" data-act="edit" type="button">Edit</button> <button class="button button-secondary" data-act="dup" type="button">Duplicate</button> <button class="button" data-act="del" type="button">Delete</button></td>`;
 
     tr.querySelector('input[type="checkbox"]').addEventListener("change", (event) => {
       if (event.target.checked) state.selectedIds.add(r.id);
@@ -5117,6 +5275,16 @@ function bindEvents() {
   if (els.checkOutMaterialNumber) els.checkOutMaterialNumber.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); queueCheckoutItem(); } });
   if (els.checkInForm) els.checkInForm.addEventListener("submit", checkInByMaterialNumber);
   if (els.holdForm) els.holdForm.addEventListener("submit", placeHold);
+  if (els.holdCardNumber) els.holdCardNumber.addEventListener('input', buildHoldPlacementPreview);
+  if (els.holdMaterialNumber) els.holdMaterialNumber.addEventListener('input', buildHoldPlacementPreview);
+  if (els.holdType) els.holdType.addEventListener('change', buildHoldPlacementPreview);
+  if (els.holdPatronSelect) els.holdPatronSelect.addEventListener('change', () => { if (!els.holdCardNumber.value.trim()) els.holdCardNumber.value = els.holdPatronSelect.value; buildHoldPlacementPreview(); });
+  if (els.holdShelfDays) els.holdShelfDays.addEventListener('change', () => { state.settings.holdShelfDays = Number(els.holdShelfDays.value || 7); saveSettings(state.settings); renderHoldsTable(); });
+  if (els.runHoldExpirationBtn) els.runHoldExpirationBtn.addEventListener('click', () => expireReadyHolds());
+  if (els.holdsReadySort) els.holdsReadySort.addEventListener('change', renderHoldsTable);
+  if (els.closeHoldQueueModalBtn) els.closeHoldQueueModalBtn.addEventListener('click', closeHoldQueueModal);
+  if (els.holdQueueModal) els.holdQueueModal.addEventListener('click', (event) => { if (event.target === els.holdQueueModal) closeHoldQueueModal(); });
+  els.holdQuickFilters.forEach((button) => button.addEventListener('click', () => { state.holdFilter = button.dataset.holdFilter; els.holdQuickFilters.forEach((entry) => entry.classList.toggle('is-active', entry === button)); renderHoldsTable(); }));
   els.circulationTabButtons.forEach((button) => button.addEventListener("click", () => switchCirculationTab(button.dataset.circulationTab)));
   els.ilsSectionButtons.forEach((btn) => btn.addEventListener("click", () => switchIlsSection(btn.dataset.ilsSection)));
   window.addEventListener("beforeunload", (event) => {

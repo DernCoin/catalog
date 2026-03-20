@@ -261,40 +261,71 @@
                 <span class="circulation-mode-icon" aria-hidden="true">⧗</span>
               </div>
               <div class="circulation-holds-layout">
-                <section class="card-like circulation-workflow-card">
+                <section class="card-like circulation-workflow-card holds-placement-card">
                   <div class="panel-header compact">
                     <div>
                       <h4>Place hold or reserve</h4>
-                      <p class="muted">Create a new patron request without interrupting checkout or check-in workflows.</p>
+                      <p class="muted">Use holds for the waiting list. Use reserves only when you need a distinct request type for staff to explain to patrons.</p>
                     </div>
+                    <span id="holdShelfDurationBadge" class="badge badge-status">7-day shelf</span>
                   </div>
-                  <form id="holdForm" class="simple-form circulation-form">
+                  <form id="holdForm" class="simple-form circulation-form holds-form-grid">
                     <label><span>Patron card number</span>
                       <input id="holdCardNumber" required placeholder="Scan patron card number" />
+                    </label>
+                    <label><span>Patron picker fallback</span>
+                      <select id="holdPatronSelect"><option value="">Choose a patron</option></select>
                     </label>
                     <label><span>Item material number</span>
                       <input id="holdMaterialNumber" required placeholder="Scan item material number" />
                     </label>
-                    <label><span>Type</span>
+                    <label><span>Request type</span>
                       <select id="holdType">
                         <option value="Hold">Hold</option>
                         <option value="Reserve">Reserve</option>
                       </select>
                     </label>
-                    <button class="button button-primary" type="submit">Place Request</button>
+                    <label><span>Hold shelf days</span>
+                      <input id="holdShelfDays" type="number" min="1" max="30" value="7" />
+                    </label>
+                    <label class="form-grid-span"><span>Staff note</span>
+                      <textarea id="holdStaffNote" rows="2" placeholder="Optional note for staff"></textarea>
+                    </label>
+                    <div id="holdRequestSummary" class="holds-request-summary empty-state form-grid-span">Scan a patron and item to preview the request and queue position.</div>
+                    <div class="row-actions form-grid-span">
+                      <button class="button button-primary" type="submit">Place Request</button>
+                      <button id="runHoldExpirationBtn" class="button button-secondary" type="button">Run Hold Expiration Cleanup</button>
+                    </div>
                   </form>
                 </section>
-                <section class="card-like holds-list-card">
-                  <div class="panel-header compact"><div><h4>Active holds</h4><p class="muted">Requests still waiting on an item.</p></div></div>
-                  <table class="serials-table holds-table"><thead><tr><th>Item</th><th>Patron</th><th>Type</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="holdsActiveBody"></tbody></table>
+                <section class="card-like holds-toolbar-card">
+                  <div class="panel-header compact">
+                    <div>
+                      <h4>Workflow filters</h4>
+                      <p class="muted">Quickly focus on the items staff need to act on now.</p>
+                    </div>
+                  </div>
+                  <div id="holdQuickFilters" class="holds-filter-row">
+                    <button class="button button-secondary is-active" type="button" data-hold-filter="all-pending">All Pending</button>
+                    <button class="button button-secondary" type="button" data-hold-filter="ready-today">Ready Today</button>
+                    <button class="button button-secondary" type="button" data-hold-filter="expiring-soon">Expiring Soon</button>
+                    <button class="button button-secondary" type="button" data-hold-filter="closed-recent">Closed Recently</button>
+                  </div>
                 </section>
-                <section class="card-like holds-list-card">
-                  <div class="panel-header compact"><div><h4>Ready for pickup</h4><p class="muted">Items waiting on the holds shelf or ready to notify patrons.</p></div></div>
-                  <table class="serials-table holds-table"><thead><tr><th>Item</th><th>Patron</th><th>Type</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="holdsReadyBody"></tbody></table>
+                <section class="card-like holds-list-card holds-list-card-pending">
+                  <div class="panel-header compact"><div><h4>Pending Queue</h4><p class="muted">Requests still waiting in line for an available item.</p></div><span id="holdsPendingCount" class="badge badge-status">0 pending</span></div>
+                  <table class="serials-table holds-table"><thead><tr><th>Item</th><th>Patron</th><th>Type</th><th>Queue</th><th>Date placed</th><th>Status</th><th>Actions</th></tr></thead><tbody id="holdsActiveBody"></tbody></table>
                 </section>
-                <section class="card-like holds-list-card">
-                  <div class="panel-header compact"><div><h4>Expired / Cancelled</h4><p class="muted">Closed or expired hold activity.</p></div></div>
-                  <table class="serials-table holds-table"><thead><tr><th>Item</th><th>Patron</th><th>Type</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="holdsClosedBody"></tbody></table>
+                <section class="card-like holds-list-card holds-list-card-ready">
+                  <div class="panel-header compact"><div><h4>Ready for Pickup / Hold Shelf</h4><p class="muted">Items already trapped and waiting for patrons on the hold shelf.</p></div><span id="holdsReadyCount" class="badge badge-status">0 ready</span></div>
+                  <div class="holds-shelf-toolbar">
+                    <label><span>Sort shelf</span><select id="holdsReadySort"><option value="expiration">Pickup expiration</option><option value="patron">Patron last name</option><option value="trapped">Date trapped</option></select></label>
+                  </div>
+                  <table class="serials-table holds-table"><thead><tr><th>Item</th><th>Patron</th><th>Trapped</th><th>Pickup expiration</th><th>Days left</th><th>Status</th><th>Actions</th></tr></thead><tbody id="holdsReadyBody"></tbody></table>
+                </section>
+                <section class="card-like holds-list-card holds-list-card-closed">
+                  <div class="panel-header compact"><div><h4>Closed Issues</h4><p class="muted">Picked up, cancelled, and expired requests with recent history.</p></div><span id="holdsClosedCount" class="badge badge-status">0 closed</span></div>
+                  <table class="serials-table holds-table"><thead><tr><th>Item</th><th>Patron</th><th>Type</th><th>Closed status</th><th>Closed date</th><th>Actions / History</th></tr></thead><tbody id="holdsClosedBody"></tbody></table>
                 </section>
               </div>
             </div>
@@ -1182,6 +1213,20 @@
             </section>
           </div>
         </section>
+
+
+        <div id="holdQueueModal" class="modal hidden" aria-hidden="true">
+          <div class="modal-content hold-queue-modal-content">
+            <div class="panel-header compact">
+              <div>
+                <h3 id="holdQueueModalTitle">Item queue</h3>
+                <p id="holdQueueModalSubtitle" class="muted">See every patron waiting for this item and any staff override options.</p>
+              </div>
+              <button id="closeHoldQueueModalBtn" class="button button-secondary" type="button">Close</button>
+            </div>
+            <div id="holdQueueModalBody" class="hold-queue-modal-body empty-state">Select an item queue to view details.</div>
+          </div>
+        </div>
 
         <div id="authorityEntryModal" class="modal hidden" aria-hidden="true">
           <div class="modal-content authority-modal-content">
