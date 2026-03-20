@@ -274,6 +274,9 @@ th, td { border-bottom: 1px solid var(--border); padding: .5rem; text-align: lef
   .site-header, .search-shell, .arrivals, #adminSection, .record-detail-actions { display: none !important; }
   .modal { position: static; background: none; }
   .modal-content { box-shadow: none; border: 1px solid #999; }
+  body.notice-print-window .row-actions,
+  body.notice-print-window textarea,
+  body.notice-print-window label span { display:none !important; }
 }
 
 .catalog-tab-bar {
@@ -421,6 +424,28 @@ mark { background:#ffe8f6; color:inherit; padding:0 .15em; border-radius:3px; }
 .text-button { background:none; border:0; padding:0; color:#5d2fd6; font:inherit; font-weight:700; cursor:pointer; }
 .is-selected-row { background:#faf4ff; }
 .patron-form-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:.7rem; }
+.patron-notices-shell,
+.patron-notices-results-card,
+.patron-notices-preview-card,
+.patron-notices-history-card,
+.patron-notices-templates-card { display:grid; gap:1rem; }
+.patron-notices-filter-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:.75rem; align-items:end; }
+.patron-notices-main-grid,
+.patron-notices-bottom-grid { display:grid; grid-template-columns:minmax(0,1.45fr) minmax(320px,.95fr); gap:1rem; align-items:start; }
+.patron-notice-results { display:grid; gap:.85rem; }
+.patron-notice-group { border:1px solid var(--border); border-radius:16px; padding:1rem; background:#fff; display:grid; gap:.75rem; }
+.patron-notice-group.is-attention { background:#fff5f5; border-color:#f1c1c1; }
+.patron-notice-group-header, .patron-notice-group-meta { display:flex; justify-content:space-between; gap:.75rem; flex-wrap:wrap; align-items:flex-start; }
+.patron-notice-template-list { display:grid; gap:.85rem; }
+.patron-notice-template-card { border:1px solid var(--border); border-radius:16px; padding:.9rem; background:#fcf9ff; display:grid; gap:.65rem; }
+.notice-print-sheet { display:grid; gap:1rem; }
+.notice-print-header, .notice-print-address { display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+.notice-print-meta { display:grid; justify-items:end; gap:.15rem; }
+.notice-history-row-pending { background:#fff8eb; }
+.summary-card-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:.75rem; }
+.summary-card { border:1px solid var(--border); border-radius:14px; padding:.85rem; background:#fcf9ff; display:grid; gap:.2rem; }
+.summary-card-label { color:var(--muted); font-size:.85rem; }
+.table-wrap { overflow:auto; }
 .form-grid-span { grid-column: 1 / -1; }
 .card-like { border:1px solid var(--border); border-radius:16px; background:linear-gradient(180deg, #fff, #fbf7ff); padding:.85rem; }
 
@@ -440,6 +465,7 @@ mark { background:#ffe8f6; color:inherit; padding:0 .15em; border-radius:3px; }
 @media (max-width: 720px) {
   .patron-search-toolbar, .patron-account-top, .patron-account-actions, .patron-account-contact-row { display:grid; }
   .patron-account-actions .button { width:100%; }
+  .patron-notices-main-grid, .patron-notices-bottom-grid { grid-template-columns:1fr; }
 }
 .admin-tab-panel { margin-top:.2rem; }
 
