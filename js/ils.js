@@ -33,8 +33,7 @@ const state = {
   activeDonationBatchId: "",
   donationFilter: "incoming",
   illFilter: "active",
-  authorityView: "home",
-  authorityListKey: "genres",
+  authorityListKey: "creators",
   authoritySearch: "",
   authorityEntrySearch: "",
   authorityStatusFilter: "all",
@@ -90,18 +89,15 @@ const els = {
   ilsSectionDescription: $("#ilsSectionDescription"),
   materialTypeSelect: $("#materialType"),
   authorityHomeView: $("#authorityHomeView"),
-  authorityWorkspaceView: $("#authorityWorkspaceView"),
-  authoritySummaryStrip: $("#authoritySummaryStrip"),
   authoritySearchInput: $("#authoritySearchInput"),
   authorityClearSearchBtn: $("#authorityClearSearchBtn"),
-  authorityCategoryGrid: $("#authorityCategoryGrid"),
-  authorityPinnedLists: $("#authorityPinnedLists"),
-  authorityRecentUpdates: $("#authorityRecentUpdates"),
+  authorityCategoryGroups: $("#authorityCategoryGroups"),
   authorityAddEntryBtn: $("#authorityAddEntryBtn"),
-  authorityBackBtn: $("#authorityBackBtn"),
-  authorityWorkspaceTitle: $("#authorityWorkspaceTitle"),
-  authorityWorkspaceDescription: $("#authorityWorkspaceDescription"),
-  authorityWorkspaceAddBtn: $("#authorityWorkspaceAddBtn"),
+  authorityCategoryModal: $("#authorityCategoryModal"),
+  closeAuthorityCategoryModalBtn: $("#closeAuthorityCategoryModalBtn"),
+  authorityCategoryModalTitle: $("#authorityCategoryModalTitle"),
+  authorityCategoryModalSubtitle: $("#authorityCategoryModalSubtitle"),
+  authorityCategoryStatusLine: $("#authorityCategoryStatusLine"),
   authorityEntrySearchInput: $("#authorityEntrySearchInput"),
   authorityStatusFilter: $("#authorityStatusFilter"),
   authoritySortSelect: $("#authoritySortSelect"),
@@ -432,16 +428,26 @@ const TAB_TO_SECTION = Object.fromEntries(
 );
 
 const AUTHORITY_LIST_CONFIG = {
-  genres: { key: "genres", label: "Genres", singular: "genre", description: "Standard genre terms used in catalog records.", legacyKey: "genres", recordKey: "genre", rich: true, pinned: true },
-  locations: { key: "locations", label: "Shelf Locations", singular: "shelf location", description: "Physical shelving locations and collections.", legacyKey: "locations", recordKey: "location", rich: true, pinned: true },
-  formats: { key: "formats", label: "Formats", singular: "format", description: "Public-facing format labels shown in records.", legacyKey: "formats", recordKey: "format", rich: false, pinned: true },
-  materialTypes: { key: "materialTypes", label: "Material Types", singular: "material type", description: "Loan rule categories and item-type labels.", legacyKey: "materialTypes", recordKey: "materialType", rich: false, pinned: false },
-  bindings: { key: "bindings", label: "Bindings", singular: "binding", description: "Physical binding and carrier details for holdings.", legacyKey: "bindings", recordKey: "binding", rich: false, pinned: false },
-  curatedShelves: { key: "curatedShelves", label: "Curated Shelves", singular: "curated shelf", description: "Featured shelves and local collection names.", legacyKey: "curatedShelves", recordKey: "curatedShelf", rich: true, pinned: true },
-  audience: { key: "audience", label: "Audience", singular: "audience term", description: "Standard audience labels used for reader guidance.", legacyKey: "audience", recordKey: "targetAudience", rich: false, pinned: false },
-  languages: { key: "languages", label: "Languages", singular: "language", description: "Preferred language labels and alternate forms.", legacyKey: "languages", recordKey: "languageCode", rich: true, pinned: false },
-  noteTemplates: { key: "noteTemplates", label: "Note Templates", singular: "note template", description: "Reusable cataloging notes and staff text snippets.", legacyKey: "noteTemplates", recordKey: "", rich: true, pinned: false },
-  statusPresets: { key: "statusPresets", label: "Status Presets", singular: "status preset", description: "Reusable item status labels for holdings and circulation.", legacyKey: "statusPresets", recordKey: "status", rich: true, pinned: false },
+  creators: { key: "creators", label: "Authors / Creators", singular: "creator", description: "Preferred creator names and alternate local forms used in records.", legacyKey: "creators", recordKey: "creator", rich: true, group: "access" },
+  subjects: { key: "subjects", label: "Subjects", singular: "subject heading", description: "Browse and maintain topical terms without needing to know the exact list first.", legacyKey: "subjects", recordKey: "subjects", rich: true, group: "access" },
+  genres: { key: "genres", label: "Genres", singular: "genre", description: "Standard genre terms used in catalog records.", legacyKey: "genres", recordKey: "genre", rich: true, group: "access" },
+  series: { key: "series", label: "Series", singular: "series", description: "Series names and sequence-friendly labels used across records.", legacyKey: "series", recordKey: "seriesName", rich: true, group: "access" },
+  publishers: { key: "publishers", label: "Publishers", singular: "publisher", description: "Normalized publisher names and local display wording.", legacyKey: "publishers", recordKey: "publisher", rich: true, group: "access" },
+  locations: { key: "locations", label: "Shelf Locations", singular: "shelf location", description: "Physical shelving locations and collections.", legacyKey: "locations", recordKey: "location", rich: true, group: "local" },
+  curatedShelves: { key: "curatedShelves", label: "Curated Shelves", singular: "curated shelf", description: "Featured shelves and local collection names.", legacyKey: "curatedShelves", recordKey: "curatedShelf", rich: true, group: "local" },
+  formats: { key: "formats", label: "Formats", singular: "format", description: "Public-facing format labels shown in records.", legacyKey: "formats", recordKey: "format", rich: false, group: "local" },
+  materialTypes: { key: "materialTypes", label: "Formats / Material Types", singular: "material type", description: "Loan rule categories and item-type labels.", legacyKey: "materialTypes", recordKey: "materialType", rich: false, group: "local" },
+  audience: { key: "audience", label: "Audience", singular: "audience term", description: "Standard audience labels used for reader guidance.", legacyKey: "audience", recordKey: "targetAudience", rich: false, group: "local" },
+  bindings: { key: "bindings", label: "Bindings", singular: "binding", description: "Physical binding and carrier details for holdings.", legacyKey: "bindings", recordKey: "binding", rich: false, group: "local" },
+  languages: { key: "languages", label: "Languages", singular: "language", description: "Preferred language labels and alternate forms.", legacyKey: "languages", recordKey: "languageCode", rich: true, group: "local" },
+  noteTemplates: { key: "noteTemplates", label: "Standard Notes / Reusable Phrases", singular: "note template", description: "Reusable cataloging notes and staff text snippets.", legacyKey: "noteTemplates", recordKey: "", rich: true, group: "admin" },
+  statusPresets: { key: "statusPresets", label: "Status Presets", singular: "status preset", description: "Reusable item status labels for holdings and circulation.", legacyKey: "statusPresets", recordKey: "status", rich: true, group: "admin" },
+};
+
+const AUTHORITY_GROUPS = {
+  access: { label: "Bibliographic Access", description: "Names, subjects, and descriptive access points staff browse most often." },
+  local: { label: "Local Cataloging", description: "Shelving, formats, and other house standards for local workflows." },
+  admin: { label: "Administrative / Reusable Text", description: "Reusable text, presets, and supporting administrative standards." },
 };
 
 
@@ -4410,10 +4416,11 @@ function saveAuthorityStore() {
 
 function getRecordValuesForAuthority(key) {
   if (key === "genres") return state.records.flatMap((record) => asArray(record.genres?.length ? record.genres : record.genre));
+  if (key === "subjects") return state.records.flatMap((record) => asArray(record.subjects));
   if (key === "locations") return state.records.flatMap((record) => [record.location, ...(record.holdings || []).map((holding) => holding.location)]).filter(Boolean);
   const recordKey = AUTHORITY_LIST_CONFIG[key]?.recordKey;
   if (!recordKey) return [];
-  return state.records.map((record) => record[recordKey]).filter(Boolean);
+  return state.records.flatMap((record) => asArray(record[recordKey]));
 }
 
 function getAuthorityEntries(key) {
@@ -4453,12 +4460,16 @@ function getAuthorityUsageDetails(key, label) {
     const records = state.records.filter((record) => asArray(record.genres?.length ? record.genres : record.genre).includes(label));
     return { count: records.length, records: records.slice(0, 5).map((record) => `${record.title} — ${record.creator || "Unknown creator"}`) };
   }
+  if (key === "subjects") {
+    const records = state.records.filter((record) => asArray(record.subjects).includes(label));
+    return { count: records.length, records: records.slice(0, 5).map((record) => `${record.title} — ${record.creator || "Unknown creator"}`) };
+  }
   if (key === "locations") {
     const records = state.records.filter((record) => record.location === label || (record.holdings || []).some((holding) => holding.location === label));
     return { count: records.length, records: records.slice(0, 5).map((record) => `${record.title} — ${record.callNumber || record.location || "No call number"}`) };
   }
   const recordKey = AUTHORITY_LIST_CONFIG[key]?.recordKey;
-  const records = recordKey ? state.records.filter((record) => record[recordKey] === label) : [];
+  const records = recordKey ? state.records.filter((record) => asArray(record[recordKey]).includes(label)) : [];
   return { count: records.length, records: records.slice(0, 5).map((record) => `${record.title} — ${record.creator || "Unknown creator"}`) };
 }
 
@@ -4533,74 +4544,46 @@ function fillCuratedShelves() {
   }
 }
 
-function openAuthorityHome() {
-  state.authorityView = "home";
-  if (els.authorityHomeView) els.authorityHomeView.classList.remove("hidden");
-  if (els.authorityWorkspaceView) els.authorityWorkspaceView.classList.add("hidden");
-}
-
-function openAuthorityWorkspace(key) {
-  if (!AUTHORITY_LIST_CONFIG[key]) return;
-  state.authorityListKey = key;
-  state.authorityView = "workspace";
-  if (els.authorityHomeView) els.authorityHomeView.classList.add("hidden");
-  if (els.authorityWorkspaceView) els.authorityWorkspaceView.classList.remove("hidden");
-  renderAuthorityWorkspace();
-}
-
 function renderAuthorityHome() {
-  if (!els.authorityCategoryGrid) return;
+  if (!els.authorityCategoryGroups) return;
   const query = state.authoritySearch.trim().toLowerCase();
-  const keys = Object.keys(AUTHORITY_LIST_CONFIG).filter((key) => {
+  const matchingKeys = Object.keys(AUTHORITY_LIST_CONFIG).filter((key) => {
     const config = AUTHORITY_LIST_CONFIG[key];
     if (!query) return true;
     const haystack = `${config.label} ${config.description} ${getAuthorityEntries(key).map((entry) => `${entry.preferredLabel} ${entry.alternateLabels.join(" ")}`).join(" ")}`.toLowerCase();
     return haystack.includes(query);
   });
-  els.authorityCategoryGrid.innerHTML = keys.map((key) => {
-    const config = AUTHORITY_LIST_CONFIG[key];
-    const summary = getAuthorityListSummary(key);
-    return `<article class="authority-category-card ${config.rich ? "is-rich" : "is-simple"}" data-authority-open="${key}">
-      <div class="authority-card-topline"><span class="badge badge-status">${config.rich ? "Rich list" : "Simple list"}</span>${config.pinned ? '<span class="badge badge-status">Pinned</span>' : ''}</div>
-      <h3>${config.label}</h3>
-      <p class="muted">${config.description}</p>
-      <div class="authority-card-metrics">
-        <span>${summary.total} entries</span>
-        <span>${summary.active} active</span>
-        <span>${summary.retired} retired</span>
-      </div>
-      <div class="authority-card-footer">
-        <span class="muted">${summary.inUse} currently in use</span>
-        <div class="row-actions"><button class="button button-secondary" type="button" data-authority-view="${key}">View</button><button class="button button-secondary" type="button" data-authority-add="${key}">Add New</button></div>
-      </div>
-    </article>`;
-  }).join("") || '<div class="managed-empty">No authority lists matched that search.</div>';
-  els.authorityCategoryGrid.querySelectorAll("[data-authority-view], [data-authority-open]").forEach((button) => button.addEventListener("click", (event) => openAuthorityWorkspace(event.currentTarget.dataset.authorityView || event.currentTarget.dataset.authorityOpen)));
-  els.authorityCategoryGrid.querySelectorAll("[data-authority-add]").forEach((button) => button.addEventListener("click", (event) => {
-    const key = event.currentTarget.dataset.authorityAdd;
-    openAuthorityWorkspace(key);
-    openAuthorityModal(key);
-  }));
+  els.authorityCategoryGroups.innerHTML = Object.entries(AUTHORITY_GROUPS).map(([groupKey, group]) => {
+    const keys = matchingKeys.filter((key) => (AUTHORITY_LIST_CONFIG[key].group || "local") === groupKey);
+    if (!keys.length) return "";
+    return `<section class="authority-group"><div class="panel-header compact"><div><h3>${group.label}</h3><p class="muted">${group.description}</p></div></div><div class="authority-category-grid">${keys.map((key) => {
+      const config = AUTHORITY_LIST_CONFIG[key];
+      const summary = getAuthorityListSummary(key);
+      return `<button class="authority-category-card" type="button" data-authority-open="${key}"><div class="authority-card-main"><div><h4>${config.label}</h4><p class="muted">${config.description}</p></div><span class="authority-count-pill">${summary.total} entries</span></div><div class="authority-card-meta"><span>${summary.active} active</span><span>${summary.retired} retired</span><span>${summary.inUse} in use</span></div></button>`;
+    }).join("")}</div></section>`;
+  }).join("") || '<div class="managed-empty">No authority categories matched that search.</div>';
+  els.authorityCategoryGroups.querySelectorAll("[data-authority-open]").forEach((button) => button.addEventListener("click", () => openAuthorityCategoryModal(button.dataset.authorityOpen)));
+}
 
-  const summaries = Object.keys(AUTHORITY_LIST_CONFIG).map((key) => ({ key, ...getAuthorityListSummary(key) }));
-  if (els.authoritySummaryStrip) {
-    const totals = summaries.reduce((acc, item) => ({ total: acc.total + item.total, active: acc.active + item.active, retired: acc.retired + item.retired }), { total: 0, active: 0, retired: 0 });
-    els.authoritySummaryStrip.innerHTML = [`<div class="authority-summary-chip"><strong>${totals.total}</strong><span>Total entries</span></div>`,`<div class="authority-summary-chip"><strong>${totals.active}</strong><span>Active</span></div>`,`<div class="authority-summary-chip"><strong>${totals.retired}</strong><span>Retired</span></div>`].join("");
-  }
-  if (els.authorityPinnedLists) {
-    els.authorityPinnedLists.innerHTML = Object.values(AUTHORITY_LIST_CONFIG).filter((config) => config.pinned).map((config) => `<button class="authority-mini-item" type="button" data-authority-view="${config.key}"><strong>${config.label}</strong><span>${getAuthorityListSummary(config.key).active} active terms</span></button>`).join("");
-    els.authorityPinnedLists.querySelectorAll("[data-authority-view]").forEach((button) => button.addEventListener("click", () => openAuthorityWorkspace(button.dataset.authorityView)));
-  }
-  if (els.authorityRecentUpdates) {
-    const recent = Object.keys(AUTHORITY_LIST_CONFIG).flatMap((key) => getAuthorityEntries(key).map((entry) => ({ key, entry }))).sort((a, b) => Number(b.entry.updatedAt || 0) - Number(a.entry.updatedAt || 0)).slice(0, 5);
-    els.authorityRecentUpdates.innerHTML = recent.map(({ key, entry }) => `<button class="authority-mini-item" type="button" data-authority-open-entry="${entry.id}" data-authority-key="${key}"><strong>${entry.preferredLabel}</strong><span>${AUTHORITY_LIST_CONFIG[key].label} · ${formatDateTime(entry.updatedAt)}</span></button>`).join("") || '<div class="managed-empty">No recent authority edits yet.</div>';
-    els.authorityRecentUpdates.querySelectorAll("[data-authority-open-entry]").forEach((button) => button.addEventListener("click", () => { openAuthorityWorkspace(button.dataset.authorityKey); openAuthorityModal(button.dataset.authorityKey, button.dataset.authorityOpenEntry); }));
-  }
+function openAuthorityCategoryModal(key) {
+  if (!AUTHORITY_LIST_CONFIG[key]) return;
+  state.authorityListKey = key;
+  if (els.authorityEntrySearchInput) els.authorityEntrySearchInput.value = state.authorityEntrySearch || "";
+  if (els.authorityStatusFilter) els.authorityStatusFilter.value = state.authorityStatusFilter || "all";
+  if (els.authoritySortSelect) els.authoritySortSelect.value = state.authoritySort || "alpha";
+  renderAuthorityCategoryModal();
+  els.authorityCategoryModal?.classList.remove("hidden");
+  els.authorityCategoryModal?.setAttribute("aria-hidden", "false");
+}
+
+function closeAuthorityCategoryModal() {
+  els.authorityCategoryModal?.classList.add("hidden");
+  els.authorityCategoryModal?.setAttribute("aria-hidden", "true");
 }
 
 function getFilteredAuthorityEntries(key = state.authorityListKey) {
   const query = state.authorityEntrySearch.trim().toLowerCase();
-  const entries = getAuthorityEntries(key).filter((entry) => {
+  return getAuthorityEntries(key).filter((entry) => {
     const usage = getAuthorityUsageDetails(key, entry.preferredLabel).count;
     if (state.authorityStatusFilter === "active" && entry.status === "retired") return false;
     if (state.authorityStatusFilter === "retired" && entry.status !== "retired") return false;
@@ -4608,39 +4591,31 @@ function getFilteredAuthorityEntries(key = state.authorityListKey) {
     if (state.authorityStatusFilter === "unused" && usage > 0) return false;
     if (!query) return true;
     return `${entry.preferredLabel} ${entry.displayLabel} ${entry.alternateLabels.join(" ")} ${entry.notes}`.toLowerCase().includes(query);
-  });
-  return entries.sort((a, b) => {
+  }).sort((a, b) => {
     if (state.authoritySort === "usage") return getAuthorityUsageDetails(key, b.preferredLabel).count - getAuthorityUsageDetails(key, a.preferredLabel).count || a.preferredLabel.localeCompare(b.preferredLabel);
     if (state.authoritySort === "updated") return Number(b.updatedAt || 0) - Number(a.updatedAt || 0);
     return a.preferredLabel.localeCompare(b.preferredLabel);
   });
 }
 
-function renderAuthorityWorkspace() {
+function renderAuthorityCategoryModal() {
   const key = state.authorityListKey;
   const config = AUTHORITY_LIST_CONFIG[key];
   if (!config || !els.authorityEntriesBody) return;
-  if (els.authorityWorkspaceTitle) els.authorityWorkspaceTitle.textContent = config.label;
-  if (els.authorityWorkspaceDescription) els.authorityWorkspaceDescription.textContent = `${config.description} ${config.rich ? "Preferred terms, alternate terms, retirement, and merge tools are available here." : "This simple list keeps standard labels consistent across the ILS."}`;
   const entries = getFilteredAuthorityEntries(key);
+  if (els.authorityCategoryModalTitle) els.authorityCategoryModalTitle.textContent = config.label;
+  if (els.authorityCategoryModalSubtitle) els.authorityCategoryModalSubtitle.textContent = config.description;
+  const summary = getAuthorityListSummary(key);
+  if (els.authorityCategoryStatusLine) els.authorityCategoryStatusLine.textContent = `${summary.total} entries · ${summary.active} active · ${summary.retired} retired · ${summary.inUse} currently in use`;
   els.authorityEntriesBody.innerHTML = entries.map((entry) => {
     const usage = getAuthorityUsageDetails(key, entry.preferredLabel);
-    return `<tr>
-      <td><div class="authority-term-cell"><strong>${entry.preferredLabel}</strong>${entry.displayLabel ? `<span class="muted">Display: ${entry.displayLabel}</span>` : ""}${entry.notes ? `<span class="muted">${entry.notes}</span>` : ""}</div></td>
-      <td>${entry.alternateLabels.length ? `<span class="badge badge-status">${entry.alternateLabels.length} alternate</span><div class="authority-alt-list">${entry.alternateLabels.join(", ")}</div>` : '<span class="badge badge-status">Preferred only</span>'}</td>
-      <td><button class="text-button" type="button" data-authority-used-in="${entry.id}">${usage.count} record${usage.count === 1 ? "" : "s"}</button></td>
-      <td><span class="badge badge-status">${entry.status === "retired" ? "Retired" : usage.count ? "Active · In Use" : "Active · Unused"}</span></td>
-      <td>${formatDateTime(entry.updatedAt)}</td>
-      <td><div class="row-actions"><button class="button button-secondary" type="button" data-authority-edit="${entry.id}">Edit</button>${config.rich ? `<button class="button button-secondary" type="button" data-authority-retire="${entry.id}">${entry.status === "retired" ? "Restore" : "Retire"}</button>` : ""}</div></td>
-    </tr>`;
-  }).join("") || `<tr><td colspan="6"><div class="managed-empty">No ${config.singular}s matched these filters.</div></td></tr>`;
-  if (els.authorityWorkspaceStatus) {
-    const summary = getAuthorityListSummary(key);
-    els.authorityWorkspaceStatus.textContent = `${summary.total} entries · ${summary.active} active · ${summary.retired} retired.`;
-  }
-  els.authorityEntriesBody.querySelectorAll("[data-authority-edit]").forEach((button) => button.addEventListener("click", () => openAuthorityModal(key, button.dataset.authorityEdit)));
-  els.authorityEntriesBody.querySelectorAll("[data-authority-retire]").forEach((button) => button.addEventListener("click", () => toggleAuthorityRetirement(key, button.dataset.authorityRetire)));
-  els.authorityEntriesBody.querySelectorAll("[data-authority-used-in]").forEach((button) => button.addEventListener("click", () => showAuthorityUsagePreview(key, button.dataset.authorityUsedIn, true)));
+    return `<tr class="authority-entry-row" data-authority-edit="${entry.id}"><td><div class="authority-term-cell"><strong>${entry.preferredLabel}</strong>${entry.displayLabel ? `<span class="muted">Public label: ${entry.displayLabel}</span>` : ""}${entry.notes ? `<span class="muted">${entry.notes}</span>` : ""}</div></td><td>${entry.alternateLabels.length ? `<span class="badge badge-status">${entry.alternateLabels.length} alternate</span><div class="authority-alt-list">${entry.alternateLabels.join(", ")}</div>` : '<span class="muted">—</span>'}</td><td>${usage.count}</td><td>${entry.status === "retired" ? '<span class="badge badge-status">Retired</span>' : '<span class="badge badge-status">Active</span>'}</td><td>${formatDateTime(entry.updatedAt)}</td><td><button class="button button-secondary" type="button" data-authority-inline-edit="${entry.id}">Edit</button></td></tr>`;
+  }).join("") || `<tr><td colspan="6" class="muted">No entries matched the current filters.</td></tr>`;
+  els.authorityEntriesBody.querySelectorAll("[data-authority-edit], [data-authority-inline-edit]").forEach((button) => button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openAuthorityModal(key, event.currentTarget.dataset.authorityEdit || event.currentTarget.dataset.authorityInlineEdit);
+  }));
+  els.authorityEntriesBody.querySelectorAll("tr[data-authority-edit]").forEach((row) => row.addEventListener("click", () => openAuthorityModal(key, row.dataset.authorityEdit)));
 }
 
 function findAuthorityEntry(key, entryId) {
@@ -4676,6 +4651,8 @@ function replaceAuthorityLabelInRecords(key, prev, next = "") {
       const unique = [...new Set(genres)];
       return { ...record, genres: unique, genre: unique.join(", ") };
     });
+  } else if (key === "subjects") {
+    state.records = state.records.map((record) => ({ ...record, subjects: [...new Set(asArray(record.subjects).map((subject) => subject === prev ? next : subject).filter(Boolean))].join(", ") }));
   } else if (key === "locations") {
     state.records = state.records.map((record) => ({
       ...record,
@@ -4702,7 +4679,7 @@ function showAuthorityUsagePreview(key, entryId, openModal = false) {
 function populateAuthorityCategorySelect(selectedKey = state.authorityListKey) {
   if (!els.authorityCategorySelect) return;
   els.authorityCategorySelect.innerHTML = Object.values(AUTHORITY_LIST_CONFIG).map((config) => `<option value="${config.key}">${config.label}</option>`).join("");
-  els.authorityCategorySelect.value = AUTHORITY_LIST_CONFIG[selectedKey] ? selectedKey : "genres";
+  els.authorityCategorySelect.value = AUTHORITY_LIST_CONFIG[selectedKey] ? selectedKey : "creators";
 }
 
 function populateAuthorityMergeTargets(key, currentId = "") {
@@ -4750,7 +4727,7 @@ function toggleAuthorityRetirement(key, entryId, forcedStatus = "") {
   const nextStatus = forcedStatus || (entry.status === "retired" ? "active" : "retired");
   updateAuthorityEntry(key, { ...entry, status: nextStatus, retiredAt: nextStatus === "retired" ? Date.now() : 0, updatedAt: Date.now() });
   renderAuthorityHome();
-  renderAuthorityWorkspace();
+  renderAuthorityCategoryModal();
   fillMaterialTypes(); fillGenres(); fillFormats(); fillBindings(); fillLocations(); fillCuratedShelves();
 }
 
@@ -4766,7 +4743,7 @@ function deleteAuthorityEntry(key, entryId) {
   removeAuthorityEntry(key, entryId);
   closeAuthorityModal();
   renderAuthorityHome();
-  renderAuthorityWorkspace();
+  renderAuthorityCategoryModal();
 }
 
 function saveAuthorityEntry(event) {
@@ -4823,7 +4800,7 @@ function saveAuthorityEntry(event) {
 function renderAuthorityControl() {
   syncAllLegacyAuthorityLists();
   renderAuthorityHome();
-  if (state.authorityView === "workspace") openAuthorityWorkspace(state.authorityListKey); else openAuthorityHome();
+  renderAuthorityCategoryModal();
 }
 
 function resetForm() {
@@ -5944,12 +5921,12 @@ function bindEvents() {
 
   if (els.authoritySearchInput) els.authoritySearchInput.addEventListener("input", (event) => { state.authoritySearch = event.target.value || ""; renderAuthorityHome(); });
   if (els.authorityClearSearchBtn) els.authorityClearSearchBtn.addEventListener("click", () => { state.authoritySearch = ""; if (els.authoritySearchInput) els.authoritySearchInput.value = ""; renderAuthorityHome(); });
-  if (els.authorityAddEntryBtn) els.authorityAddEntryBtn.addEventListener("click", () => openAuthorityModal(state.authorityListKey || "genres"));
-  if (els.authorityBackBtn) els.authorityBackBtn.addEventListener("click", openAuthorityHome);
+  if (els.authorityAddEntryBtn) els.authorityAddEntryBtn.addEventListener("click", () => openAuthorityModal(state.authorityListKey || "creators"));
+  if (els.closeAuthorityCategoryModalBtn) els.closeAuthorityCategoryModalBtn.addEventListener("click", closeAuthorityCategoryModal);
   if (els.authorityWorkspaceAddBtn) els.authorityWorkspaceAddBtn.addEventListener("click", () => openAuthorityModal(state.authorityListKey));
-  if (els.authorityEntrySearchInput) els.authorityEntrySearchInput.addEventListener("input", (event) => { state.authorityEntrySearch = event.target.value || ""; renderAuthorityWorkspace(); });
-  if (els.authorityStatusFilter) els.authorityStatusFilter.addEventListener("change", (event) => { state.authorityStatusFilter = event.target.value || "all"; renderAuthorityWorkspace(); });
-  if (els.authoritySortSelect) els.authoritySortSelect.addEventListener("change", (event) => { state.authoritySort = event.target.value || "alpha"; renderAuthorityWorkspace(); });
+  if (els.authorityEntrySearchInput) els.authorityEntrySearchInput.addEventListener("input", (event) => { state.authorityEntrySearch = event.target.value || ""; renderAuthorityCategoryModal(); });
+  if (els.authorityStatusFilter) els.authorityStatusFilter.addEventListener("change", (event) => { state.authorityStatusFilter = event.target.value || "all"; renderAuthorityCategoryModal(); });
+  if (els.authoritySortSelect) els.authoritySortSelect.addEventListener("change", (event) => { state.authoritySort = event.target.value || "alpha"; renderAuthorityCategoryModal(); });
   if (els.authorityCategorySelect) els.authorityCategorySelect.addEventListener("change", (event) => populateAuthorityMergeTargets(event.target.value, els.authorityEntryId?.value || ""));
   if (els.authorityEntryForm) els.authorityEntryForm.addEventListener("submit", saveAuthorityEntry);
   if (els.closeAuthorityModalBtn) els.closeAuthorityModalBtn.addEventListener("click", closeAuthorityModal);
@@ -5961,6 +5938,7 @@ function bindEvents() {
     render();
   });
   if (els.authorityDeleteBtn) els.authorityDeleteBtn.addEventListener("click", () => deleteAuthorityEntry(els.authorityCategorySelect?.value || state.authorityListKey, els.authorityEntryId?.value || ""));
+  if (els.authorityCategoryModal) els.authorityCategoryModal.addEventListener("click", (event) => { if (event.target === els.authorityCategoryModal) closeAuthorityCategoryModal(); });
   if (els.authorityEntryModal) els.authorityEntryModal.addEventListener("click", (event) => { if (event.target === els.authorityEntryModal) closeAuthorityModal(); });
 }
 

@@ -995,98 +995,81 @@
                 <div>
                   <p class="eyebrow">Cataloging standards</p>
                   <h2>Authority Control</h2>
-                  <p class="muted">Maintain standard entries, preferred terms, and reusable cataloging values without crowding the rest of the ILS.</p>
+                  <p class="muted">Browse authority categories first, then drill into entries in focused modals instead of a separate lower-page workspace.</p>
                 </div>
-                <div class="authority-summary-strip" id="authoritySummaryStrip" aria-label="Authority control summary"></div>
+                <div class="authority-quick-actions">
+                  <button id="authorityAddEntryBtn" class="button" type="button">Add Authority Entry</button>
+                </div>
               </div>
               <div class="authority-home-tools">
                 <label class="authority-search-field">
-                  <span class="sr-only">Search authority lists</span>
-                  <input id="authoritySearchInput" type="search" placeholder="Search authority lists or standard entries" />
+                  <span class="sr-only">Search authority categories</span>
+                  <input id="authoritySearchInput" type="search" placeholder="Search all authority categories and entries" />
                 </label>
                 <div class="authority-quick-actions">
-                  <button id="authorityAddEntryBtn" class="button" type="button">Add Authority Entry</button>
                   <button id="authorityClearSearchBtn" class="button button-secondary" type="button">Clear Search</button>
                 </div>
               </div>
-              <div class="authority-home-sections">
-                <section>
-                  <div class="panel-header compact">
-                    <div>
-                      <h3>Authority Lists</h3>
-                      <p class="muted">Open one list at a time for focused browsing and editing.</p>
-                    </div>
-                  </div>
-                  <div id="authorityCategoryGrid" class="authority-category-grid" aria-label="Authority categories"></div>
-                </section>
-                <section class="authority-activity-grid">
-                  <article class="card-like authority-side-card">
-                    <div class="panel-header compact"><div><h3>Pinned Lists</h3><p class="muted">Fast access to the lists staff touch most often.</p></div></div>
-                    <div id="authorityPinnedLists" class="authority-mini-list"></div>
-                  </article>
-                  <article class="card-like authority-side-card">
-                    <div class="panel-header compact"><div><h3>Recently Updated</h3><p class="muted">Recent changes to preferred terms and standard entries.</p></div></div>
-                    <div id="authorityRecentUpdates" class="authority-mini-list"></div>
-                  </article>
-                </section>
-              </div>
-            </section>
-
-            <section class="authority-workspace card-like hidden" id="authorityWorkspaceView">
-              <div class="panel-header authority-workspace-header">
-                <div>
-                  <button id="authorityBackBtn" class="text-button authority-back-btn" type="button">← Back to Authority Lists</button>
-                  <h3 id="authorityWorkspaceTitle">Authority List</h3>
-                  <p id="authorityWorkspaceDescription" class="muted">Focused management workspace for one authority list.</p>
-                </div>
-                <div class="authority-workspace-actions">
-                  <button id="authorityWorkspaceAddBtn" class="button" type="button">Add New Entry</button>
-                </div>
-              </div>
-              <div class="authority-workspace-tools">
-                <label>
-                  <span class="sr-only">Search authority entries</span>
-                  <input id="authorityEntrySearchInput" type="search" placeholder="Search preferred terms, alternate terms, or notes" />
-                </label>
-                <label>
-                  <span class="sr-only">Filter authority entries</span>
-                  <select id="authorityStatusFilter">
-                    <option value="all">All entries</option>
-                    <option value="active">Active only</option>
-                    <option value="retired">Retired only</option>
-                    <option value="in-use">In use</option>
-                    <option value="unused">Unused</option>
-                  </select>
-                </label>
-                <label>
-                  <span class="sr-only">Sort authority entries</span>
-                  <select id="authoritySortSelect">
-                    <option value="alpha">Alphabetical</option>
-                    <option value="usage">Most used</option>
-                    <option value="updated">Recently updated</option>
-                  </select>
-                </label>
-              </div>
-              <p id="authorityWorkspaceStatus" class="managed-message muted" aria-live="polite"></p>
-              <div class="authority-table-wrap">
-                <table class="authority-table">
-                  <thead>
-                    <tr>
-                      <th>Preferred Term</th>
-                      <th>Alternate Terms</th>
-                      <th>In Use By</th>
-                      <th>Status</th>
-                      <th>Updated</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="authorityEntriesBody"></tbody>
-                </table>
-              </div>
+              <div id="authorityCategoryGroups" class="authority-home-sections" aria-label="Authority categories"></div>
             </section>
           </div>
         </section>
 
+        <div id="authorityCategoryModal" class="modal hidden" aria-hidden="true">
+          <div class="modal-content authority-category-modal-content">
+            <div class="record-details-header">
+              <div>
+                <p class="eyebrow">Authority category</p>
+                <h3 id="authorityCategoryModalTitle">Authority Category</h3>
+                <p id="authorityCategoryModalSubtitle" class="muted">Browse entries in this category.</p>
+              </div>
+              <button id="closeAuthorityCategoryModalBtn" class="button button-secondary" type="button">Close</button>
+            </div>
+            <div class="authority-workspace-tools">
+              <label>
+                <span class="sr-only">Search authority entries</span>
+                <input id="authorityEntrySearchInput" type="search" placeholder="Search this category" />
+              </label>
+              <label>
+                <span class="sr-only">Filter authority entries</span>
+                <select id="authorityStatusFilter">
+                  <option value="all">All</option>
+                  <option value="active">Active</option>
+                  <option value="retired">Retired</option>
+                  <option value="in-use">In Use</option>
+                  <option value="unused">Unused</option>
+                </select>
+              </label>
+              <label>
+                <span class="sr-only">Sort authority entries</span>
+                <select id="authoritySortSelect">
+                  <option value="alpha">Alphabetical</option>
+                  <option value="usage">Most Used</option>
+                  <option value="updated">Recently Updated</option>
+                </select>
+              </label>
+              <div class="authority-quick-actions">
+                <button id="authorityWorkspaceAddBtn" class="button" type="button">Add New Entry</button>
+              </div>
+            </div>
+            <p id="authorityCategoryStatusLine" class="managed-message muted" aria-live="polite"></p>
+            <div class="authority-table-wrap">
+              <table class="authority-table">
+                <thead>
+                  <tr>
+                    <th>Preferred Term</th>
+                    <th>Alternate Terms</th>
+                    <th>In Use</th>
+                    <th>Status</th>
+                    <th>Updated</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="authorityEntriesBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
 
         <div id="holdQueueModal" class="modal hidden" aria-hidden="true">
           <div class="modal-content hold-queue-modal-content">
