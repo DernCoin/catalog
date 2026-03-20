@@ -501,131 +501,34 @@
           </div>
         </section>
         <section class="admin-tab-panel hidden" data-ils-panel="patrons">
-          <div class="patrons-workspace">
-            <section class="admin-block patron-list-block">
-              <div class="panel-header compact">
+          <div class="patrons-shell">
+            <section class="admin-block patron-search-card">
+              <div class="panel-header compact patron-search-header">
                 <div>
-                  <h3>Patron list</h3>
-                  <p class="muted">Select a patron to open the account detail panel.</p>
+                  <h3>Find patron account</h3>
+                  <p class="muted">Search by name or card number to open an account.</p>
                 </div>
                 <div id="patronListSummary" class="status-message"></div>
               </div>
-              <table id="patronsTable">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Card #</th>
-                    <th>Status</th>
-                    <th>Items Out</th>
-                    <th>Holds</th>
-                    <th>Balance</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="patronsBody"></tbody>
-              </table>
+              <div class="patron-search-toolbar">
+                <div class="patron-search-field">
+                  <input id="patronSearchInput" class="patron-search-input" type="search" placeholder="Search by name or card number..." autocomplete="off" aria-label="Search patrons" />
+                  <div id="patronSearchResults" class="patron-search-results hidden" role="listbox" aria-label="Patron search results"></div>
+                </div>
+                <button id="openPatronCreateModalBtn" class="button" type="button">Add New Patron</button>
+              </div>
             </section>
 
-            <aside class="patron-detail-stack">
-              <section class="admin-block patron-detail-card">
-                <div class="panel-header compact">
-                  <div>
-                    <h3>Patron account</h3>
-                    <p class="muted">Detailed circulation and contact context for the selected patron.</p>
-                  </div>
-                  <span id="patronDetailBadge" class="badge badge-status">No patron selected</span>
+            <section class="admin-block patron-detail-card">
+              <div class="panel-header compact">
+                <div>
+                  <h3>Patron account</h3>
+                  <p class="muted">Only the selected patron appears here. Open account work in modals.</p>
                 </div>
-                <div id="patronDetailPanel" class="patron-detail-panel empty-state">Select a patron from the list to view account details.</div>
-              </section>
-
-              <section class="admin-block card-like">
-                <div class="panel-header compact">
-                  <div>
-                    <h3>Fines and fees</h3>
-                    <p class="muted">Assess charges and track payments, waivers, and outstanding patron balances.</p>
-                  </div>
-                </div>
-                <form id="patronFeeForm" class="simple-form patron-form-grid">
-                  <label>Fee category
-                    <select id="feeCategory">
-                      <option>Fine</option>
-                      <option>Replacement Cost</option>
-                      <option>Card Replacement</option>
-                      <option>Fee</option>
-                      <option>Other</option>
-                    </select>
-                  </label>
-                  <label>Date assessed
-                    <input id="feeDateAssessed" type="date" />
-                  </label>
-                  <label>Amount
-                    <input id="feeAmount" type="number" min="0" step="0.01" required />
-                  </label>
-                  <label>Status
-                    <select id="feeStatus">
-                      <option>Unpaid</option>
-                      <option>Partially Paid</option>
-                      <option>Paid</option>
-                      <option>Waived</option>
-                    </select>
-                  </label>
-                  <label class="form-grid-span">Description / reason
-                    <textarea id="feeDescription" rows="2" placeholder="Overdue fine, replacement copy, card replacement, etc."></textarea>
-                  </label>
-                  <button id="addFeeBtn" class="button" type="submit">Add fine / fee</button>
-                </form>
-                <p id="patronFeeMessage" class="status-message" aria-live="polite"></p>
-              </section>
-
-              <section class="admin-block">
-                <h3>Add or update patron</h3>
-                <form id="patronForm" class="simple-form patron-form-grid">
-                  <label>Full name
-                    <input id="patronName" required />
-                  </label>
-                  <label>Middle name
-                    <input id="patronMiddleName" />
-                  </label>
-                  <label>Card number
-                    <input id="patronCardNumber" required />
-                  </label>
-                  <label>Email
-                    <input id="patronEmail" type="email" placeholder="optional@example.com" />
-                  </label>
-                  <label>Address
-                    <input id="patronAddress" />
-                  </label>
-                  <label>Phone number
-                    <input id="patronPhone" placeholder="(555) 555-5555" />
-                  </label>
-                  <label>Birth day
-                    <input id="patronBirthDay" type="date" />
-                  </label>
-                  <label>Account status
-                    <select id="patronStatus">
-                      <option>Active</option>
-                      <option>Expired</option>
-                      <option>Blocked</option>
-                      <option>Inactive</option>
-                    </select>
-                  </label>
-                  <label>Expiration date
-                    <input id="patronExpirationDate" type="date" />
-                  </label>
-                  <label class="form-grid-span">Account notes
-                    <textarea id="patronNotes" rows="3" placeholder="Optional notes about the account"></textarea>
-                  </label>
-                  <label>Account blocks
-                    <input id="patronBlocks" placeholder="Lost card, fees due, etc." />
-                  </label>
-                  <label>Account alerts
-                    <input id="patronAlerts" placeholder="Staff-only alert message" />
-                  </label>
-                  <input id="patronId" type="hidden" />
-                  <button id="patronSubmitBtn" class="button" type="submit">Add Patron</button>
-                </form>
-              </section>
-            </aside>
+                <span id="patronDetailBadge" class="badge badge-status">No patron selected</span>
+              </div>
+              <div id="patronDetailPanel" class="patron-detail-panel empty-state">Search for a patron to view account details.</div>
+            </section>
           </div>
         </section>
 
@@ -1287,8 +1190,80 @@
             </form>
           </div>
         </div>
+
+        <div id="patronAccountModal" class="modal hidden" aria-hidden="true">
+          <div class="modal-content patron-account-modal-content">
+            <div class="panel-header compact">
+              <div>
+                <h3 id="patronModalTitle">Patron account</h3>
+                <p id="patronModalSubtitle" class="muted">View patron account details.</p>
+              </div>
+              <button id="closePatronModalBtn" class="button button-secondary" type="button">Close</button>
+            </div>
+            <div id="patronModalBody" class="patron-modal-body empty-state">Select a patron action to view details.</div>
+          </div>
         </div>
-      </section>
+
+        <div id="patronEditorModal" class="modal hidden" aria-hidden="true">
+          <div class="modal-content patron-editor-modal-content">
+            <div class="panel-header compact">
+              <div>
+                <h3 id="patronEditorTitle">Add Patron</h3>
+                <p id="patronEditorSubtitle" class="muted">Create a new patron account or update an existing one.</p>
+              </div>
+              <button id="closePatronEditorModalBtn" class="button button-secondary" type="button">Close</button>
+            </div>
+            <form id="patronForm" class="simple-form patron-form-grid">
+              <label>Full name
+                <input id="patronName" required />
+              </label>
+              <label>Middle name
+                <input id="patronMiddleName" />
+              </label>
+              <label>Card number
+                <input id="patronCardNumber" required />
+              </label>
+              <label>Email
+                <input id="patronEmail" type="email" placeholder="optional@example.com" />
+              </label>
+              <label>Address
+                <input id="patronAddress" />
+              </label>
+              <label>Phone number
+                <input id="patronPhone" placeholder="(555) 555-5555" />
+              </label>
+              <label>Birth day
+                <input id="patronBirthDay" type="date" />
+              </label>
+              <label>Account status
+                <select id="patronStatus">
+                  <option>Active</option>
+                  <option>Expired</option>
+                  <option>Blocked</option>
+                  <option>Inactive</option>
+                </select>
+              </label>
+              <label>Expiration date
+                <input id="patronExpirationDate" type="date" />
+              </label>
+              <label class="form-grid-span">Account notes
+                <textarea id="patronNotes" rows="3" placeholder="Optional notes about the account"></textarea>
+              </label>
+              <label>Account blocks
+                <input id="patronBlocks" placeholder="Lost card, fees due, etc." />
+              </label>
+              <label>Account alerts
+                <input id="patronAlerts" placeholder="Staff-only alert message" />
+              </label>
+              <input id="patronId" type="hidden" />
+              <div class="actions form-grid-span patron-editor-actions">
+                <button id="patronSubmitBtn" class="button" type="submit">Add Patron</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
     </main>
 
     <script type="module" src="./js/ils.js"></script>
