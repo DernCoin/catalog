@@ -49,6 +49,10 @@ async function loadFirebaseModule() {
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
+const on = (element, eventName, handler, options) => {
+  if (!element) return;
+  element.addEventListener(eventName, handler, options);
+};
 
 const els = {
   ilsCard: $("#ilsCard"),
@@ -5350,41 +5354,46 @@ function renderOverdueReport() {
 
 function bindEvents() {
 
-  els.recordForm.addEventListener("submit", saveFormRecord);
-  els.recordForm.addEventListener("input", () => {
+  on(els.recordForm, "submit", saveFormRecord);
+  on(els.recordForm, "input", () => {
     setFormDirty(true);
     setRecordSaveMessage("");
-    if (document.activeElement?.id === "marcText") $("#marcText").dataset.edited = "true";
+    if (document.activeElement?.id === "marcText") {
+      const marcText = $("#marcText");
+      if (marcText) marcText.dataset.edited = "true";
+    }
     if (["callNumber", "location", "recordStatus", "primaryMaterialNumber"].includes(document.activeElement?.id || "")) syncHoldingDraftFromPrimary();
     updateMarcPreview();
     checkDuplicateDraft();
   });
-  els.cancelEditBtn.addEventListener("click", () => {
+  on(els.cancelEditBtn, "click", () => {
     if (state.formDirty && !window.confirm("Discard unsaved changes?")) return;
     resetForm();
     setFormDirty(false);
     setRecordSaveMessage("");
   });
-  els.fetchMetadataBtn.addEventListener("click", fetchMetadata);
+  on(els.fetchMetadataBtn, "click", fetchMetadata);
   if (els.createBlankRecordBtn) els.createBlankRecordBtn.addEventListener("click", () => {
     resetForm();
-    $("#identifier").focus();
+    const identifierInput = $("#identifier");
+    if (identifierInput) identifierInput.focus();
     setActiveWorkspaceRecord("");
     setRecordSaveMessage("Blank record ready. Complete the form and save when finished.", "success");
   });
   if (els.saveAndNewBtn) els.saveAndNewBtn.addEventListener("click", saveAndNewRecord);
   if (els.copyRecordBtn) els.copyRecordBtn.addEventListener("click", copyActiveRecord);
-  els.coverUpload.addEventListener("change", handleCoverUpload);
+  on(els.coverUpload, "change", handleCoverUpload);
   if (els.serialCoverUpload) els.serialCoverUpload.addEventListener("change", handleSerialCoverUpload);
   if (els.acqCoverUpload) els.acqCoverUpload.addEventListener("change", handleAcquisitionCoverUpload);
 
-  els.searchInput.addEventListener("input", () => {
+  on(els.searchInput, "input", () => {
     state.query = els.searchInput.value;
     renderSearchPopover();
   });
 
-  els.searchInput.addEventListener("focus", renderSearchPopover);
-  els.searchInput.addEventListener("keydown", (event) => {
+  on(els.searchInput, "focus", renderSearchPopover);
+  on(els.searchInput, "keydown", (event) => {
+    if (!els.searchResultsPopover) return;
     const items = [...els.searchResultsPopover.querySelectorAll(".search-result-item")];
     if (!items.length || els.searchResultsPopover.classList.contains("hidden")) return;
 
@@ -5409,17 +5418,17 @@ function bindEvents() {
   });
 
   document.addEventListener("click", (event) => {
-    if (event.target === els.searchInput || els.searchResultsPopover.contains(event.target)) return;
+    if (event.target === els.searchInput || (els.searchResultsPopover && els.searchResultsPopover.contains(event.target))) return;
     hideSearchPopover();
   });
 
-  els.selectAllRows.addEventListener("change", (event) => {
+  on(els.selectAllRows, "change", (event) => {
     state.selectedIds.clear();
     if (event.target.checked) state.records.forEach((record) => state.selectedIds.add(record.id));
     renderTable();
   });
 
-  els.applyBulkBtn.addEventListener("click", applyBulkStatus);
+  on(els.applyBulkBtn, "click", applyBulkStatus);
   if (els.bulkMarcExportBtn) els.bulkMarcExportBtn.addEventListener("click", exportSelectedMarc);
   if (els.workspaceLookupBtn) els.workspaceLookupBtn.addEventListener("click", lookupWorkspaceRecord);
   if (els.workspaceLookupInput) els.workspaceLookupInput.addEventListener("keydown", (event) => {
@@ -5561,4 +5570,8 @@ function init() {
   hydrateRemoteRecords();
 }
 
-init();
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init, { once: true });
+} else {
+  init();
+}
