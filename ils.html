@@ -376,82 +376,52 @@
         </section>
 
         <section class="admin-tab-panel hidden" data-ils-panel="ill-outgoing">
-          <div class="ill-workspace-grid">
-            <section class="admin-block card-like">
-              <h3>Create outgoing ILL</h3>
-              <form id="illOutgoingForm" class="simple-form ill-form-grid">
-                <label>Title<input id="illOutgoingTitle" required /></label>
-                <label>Author<input id="illOutgoingAuthor" /></label>
-                <label>Owning item / material #<input id="illOutgoingItemRef" placeholder="Optional material number" /></label>
-                <label>Borrowing library<input id="illOutgoingLibrary" required /></label>
-                <label>Library contact<input id="illOutgoingContact" placeholder="Email or phone" /></label>
-                <label>Date requested<input id="illOutgoingRequestedDate" type="date" /></label>
-                <label>Date sent<input id="illOutgoingSentDate" type="date" /></label>
-                <label>Due date<input id="illOutgoingDueDate" type="date" /></label>
-                <label>Status
-                  <select id="illOutgoingStatus"></select>
-                </label>
-                <label class="form-grid-span">Notes<textarea id="illOutgoingNotes" rows="3"></textarea></label>
-                <button class="button" type="submit">Save outgoing ILL</button>
-              </form>
-              <p id="illOutgoingMessage" class="status-message" aria-live="polite"></p>
+          <div class="ill-dashboard-shell">
+            <section class="admin-block card-like ill-dashboard-hero">
+              <div class="panel-header compact ill-dashboard-header">
+                <div>
+                  <h3>ILL workflow dashboard</h3>
+                  <p class="muted">Launch new requests in modals, then use the workflow tiles to review and update work by queue.</p>
+                </div>
+                <div class="ill-dashboard-actions">
+                  <button id="openIncomingIllModalBtn" class="button" type="button">Add New Incoming ILL Request</button>
+                  <button id="openOutgoingIllModalBtn" class="button button-secondary" type="button">Add New Outgoing ILL</button>
+                </div>
+              </div>
+              <div id="illDashboardStatus" class="status-message" aria-live="polite"></div>
             </section>
             <section class="admin-block card-like">
               <div class="panel-header compact">
                 <div>
-                  <h3>Active outgoing ILL</h3>
-                  <p class="muted">Requested, in transit, and returning transactions from this library.</p>
+                  <h3>Workflow overview</h3>
+                  <p class="muted">Counts update automatically as incoming and outgoing ILL requests move between statuses.</p>
                 </div>
-                <span id="illOutgoingSummary" class="badge badge-status">0 active</span>
               </div>
-              <div id="illOutgoingList" class="stack-list"></div>
+              <div id="illWorkflowTiles" class="dashboard-tile-grid ill-dashboard-grid" aria-label="ILL workflow status tiles"></div>
+            </section>
+            <section class="admin-block card-like ill-filter-panel">
+              <div class="panel-header compact ill-filter-panel-header">
+                <div>
+                  <h3 id="illFilteredViewTitle">Select a workflow tile</h3>
+                  <p id="illFilteredViewSubtitle" class="muted">Choose a dashboard tile to open a clean, filtered transaction view.</p>
+                </div>
+                <button id="clearIllFilterBtn" class="button button-secondary hidden" type="button">Clear Filter</button>
+              </div>
+              <div id="illFilteredSummaryCards" class="summary-card-grid"></div>
+              <div id="illFilteredResults" class="ill-filtered-results empty-state">Select a workflow tile to review matching interlibrary loan requests.</div>
             </section>
           </div>
         </section>
 
         <section class="admin-tab-panel hidden" data-ils-panel="ill-incoming">
-          <div class="ill-workspace-grid">
-            <section class="admin-block card-like">
-              <h3>Create incoming / patron ILL</h3>
-              <form id="illIncomingForm" class="simple-form ill-form-grid">
-                <label>Patron name<input id="illIncomingPatronName" required /></label>
-                <label>Patron card number<input id="illIncomingPatronCard" placeholder="Optional linked card #" /></label>
-                <label>Requested title<input id="illIncomingTitle" required /></label>
-                <label>Author<input id="illIncomingAuthor" /></label>
-                <label>Format / material type<input id="illIncomingFormat" placeholder="Book, DVD, etc." /></label>
-                <label>Lending library<input id="illIncomingLibrary" required /></label>
-                <label>Request date<input id="illIncomingRequestDate" type="date" /></label>
-                <label>Date received<input id="illIncomingReceivedDate" type="date" /></label>
-                <label>Due date<input id="illIncomingDueDate" type="date" /></label>
-                <label>Status
-                  <select id="illIncomingStatus"></select>
-                </label>
-                <label>Pickup status<input id="illIncomingPickupStatus" placeholder="Awaiting notice, picked up, etc." /></label>
-                <label class="form-grid-span">Notes<textarea id="illIncomingNotes" rows="3"></textarea></label>
-                <button class="button" type="submit">Save incoming ILL</button>
-              </form>
-              <p id="illIncomingMessage" class="status-message" aria-live="polite"></p>
-            </section>
-            <section class="admin-block card-like">
-              <div class="panel-header compact">
-                <div>
-                  <h3>Active incoming ILL</h3>
-                  <p class="muted">Patron requests, temporary inbound items, and holds awaiting pickup or return.</p>
-                </div>
-                <span id="illIncomingSummary" class="badge badge-status">0 active</span>
-              </div>
-              <div id="illIncomingList" class="stack-list"></div>
-            </section>
-          </div>
-          <section class="admin-block card-like">
+          <section class="admin-block card-like ill-secondary-panel">
             <div class="panel-header compact">
               <div>
-                <h3>Completed and past due ILL</h3>
-                <p class="muted">Quick view of recently finished or overdue interlibrary loan activity.</p>
+                <h3>Incoming and outgoing queues use the dashboard workflow</h3>
+                <p class="muted">Use the ILL Dashboard tab to add requests, open filtered queues, and edit transactions in clean modal popups.</p>
               </div>
+              <button class="button button-secondary" type="button" data-dashboard-target="ill-outgoing">Open ILL Dashboard</button>
             </div>
-            <div class="ill-summary-grid" id="illStatusCards"></div>
-            <div id="illCompletedList" class="stack-list"></div>
           </section>
         </section>
 
@@ -1191,6 +1161,118 @@
           </div>
         </div>
 
+
+        <div id="illRecordModal" class="modal hidden" aria-hidden="true">
+          <div class="modal-content patron-editor-modal-content ill-modal-content">
+            <div class="panel-header compact">
+              <div>
+                <h3 id="illModalTitle">New ILL Request</h3>
+                <p id="illModalSubtitle" class="muted">Create or update an interlibrary loan transaction.</p>
+              </div>
+              <button id="closeIllModalBtn" class="button button-secondary" type="button">Close</button>
+            </div>
+            <form id="illRecordForm" class="simple-form ill-modal-form">
+              <input id="illRecordType" type="hidden" />
+              <input id="illRecordId" type="hidden" />
+              <label class="form-grid-span ill-patron-search-label" id="illPatronLookupLabel">
+                <span>Patron lookup</span>
+                <div class="patron-search-field ill-patron-search-field">
+                  <input id="illPatronLookup" class="patron-search-input" type="search" placeholder="Search patron by name or card number..." autocomplete="off" />
+                  <div id="illPatronLookupResults" class="patron-search-results hidden" role="listbox" aria-label="ILL patron search results"></div>
+                </div>
+                <input id="illIncomingPatronId" type="hidden" />
+              </label>
+              <label id="illIncomingPatronNameLabel">
+                <span>Patron name</span>
+                <input id="illIncomingPatronName" required />
+              </label>
+              <label id="illOutgoingItemRefLabel">
+                <span>Item barcode / material number</span>
+                <input id="illOutgoingItemRef" placeholder="Scan or enter a material number" />
+              </label>
+              <label id="illIncomingTitleLabel">
+                <span>Title</span>
+                <input id="illIncomingTitle" />
+              </label>
+              <label id="illOutgoingTitleLabel">
+                <span>Title</span>
+                <input id="illOutgoingTitle" />
+              </label>
+              <label id="illIncomingAuthorLabel">
+                <span>Author</span>
+                <input id="illIncomingAuthor" />
+              </label>
+              <label id="illOutgoingAuthorLabel">
+                <span>Author</span>
+                <input id="illOutgoingAuthor" />
+              </label>
+              <label id="illIncomingFormatLabel">
+                <span>Format</span>
+                <input id="illIncomingFormat" placeholder="Book, DVD, article, etc." />
+              </label>
+              <label id="illIncomingLibraryLabel">
+                <span>Lending library</span>
+                <input id="illIncomingLibrary" />
+              </label>
+              <label id="illOutgoingLibraryLabel">
+                <span>Borrowing library</span>
+                <input id="illOutgoingLibrary" />
+              </label>
+              <label id="illOutgoingContactLabel">
+                <span>Library contact</span>
+                <input id="illOutgoingContact" placeholder="Email or phone" />
+              </label>
+              <label id="illIncomingRequestDateLabel">
+                <span>Request date</span>
+                <input id="illIncomingRequestDate" type="date" />
+              </label>
+              <label id="illOutgoingRequestedDateLabel">
+                <span>Requested date</span>
+                <input id="illOutgoingRequestedDate" type="date" />
+              </label>
+              <label id="illIncomingReceivedDateLabel">
+                <span>Date received</span>
+                <input id="illIncomingReceivedDate" type="date" />
+              </label>
+              <label id="illOutgoingSentDateLabel">
+                <span>Date sent</span>
+                <input id="illOutgoingSentDate" type="date" />
+              </label>
+              <label id="illIncomingDueDateLabel">
+                <span>Due date</span>
+                <input id="illIncomingDueDate" type="date" />
+              </label>
+              <label id="illOutgoingDueDateLabel">
+                <span>Due date</span>
+                <input id="illOutgoingDueDate" type="date" />
+              </label>
+              <label id="illIncomingStatusLabel">
+                <span>Status</span>
+                <select id="illIncomingStatus"></select>
+              </label>
+              <label id="illOutgoingStatusLabel">
+                <span>Status</span>
+                <select id="illOutgoingStatus"></select>
+              </label>
+              <label id="illIncomingPickupStatusLabel">
+                <span>Pickup status</span>
+                <input id="illIncomingPickupStatus" placeholder="Awaiting notice, ready, picked up" />
+              </label>
+              <label class="form-grid-span" id="illIncomingNotesLabel">
+                <span>Notes</span>
+                <textarea id="illIncomingNotes" rows="3"></textarea>
+              </label>
+              <label class="form-grid-span" id="illOutgoingNotesLabel">
+                <span>Notes</span>
+                <textarea id="illOutgoingNotes" rows="3"></textarea>
+              </label>
+              <div class="actions form-grid-span">
+                <button id="illRecordSubmitBtn" class="button" type="submit">Save ILL Request</button>
+              </div>
+              <p id="illRecordMessage" class="status-message form-grid-span" aria-live="polite"></p>
+            </form>
+          </div>
+        </div>
         <div id="patronAccountModal" class="modal hidden" aria-hidden="true">
           <div class="modal-content patron-account-modal-content">
             <div class="panel-header compact">

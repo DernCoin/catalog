@@ -1175,3 +1175,34 @@ label > span, .status-label { display:block; font-size:.83rem; font-weight:700; 
   .holds-form-grid { grid-template-columns: 1fr; }
   .holds-shelf-toolbar { justify-content:stretch; }
 }
+
+.ill-dashboard-shell { display:grid; gap:1rem; }
+.ill-dashboard-header { align-items:flex-start; }
+.ill-dashboard-actions { display:flex; flex-wrap:wrap; gap:.75rem; }
+.ill-dashboard-grid { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.ill-filter-panel { display:grid; gap:1rem; }
+.ill-filter-panel-header { align-items:flex-start; }
+.ill-filtered-results { display:grid; gap:1rem; }
+.ill-filter-results-grid { display:grid; gap:1rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.ill-queue-card { border:1px solid var(--border); border-radius:18px; padding:1rem; background:linear-gradient(180deg,#fff,#fcf9ff); display:grid; gap:.85rem; }
+.ill-queue-card-meta { display:grid; gap:.5rem; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.ill-queue-card-notes { margin:0; }
+.ill-dashboard-tile { text-align:left; width:100%; }
+.ill-dashboard-tile.is-active { border-color: var(--accent); box-shadow:0 0 0 2px rgba(117, 45, 188, .14), 0 12px 28px rgba(36,18,58,.12); }
+.ill-dashboard-tile .dashboard-tile-footer { display:flex; justify-content:space-between; align-items:center; gap:.5rem; }
+.ill-secondary-panel { min-height: 180px; display:grid; align-items:center; }
+.ill-modal-content { width:min(960px, 100%); }
+.ill-modal-form { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:1rem; }
+.ill-modal-form .form-grid-span { grid-column:1 / -1; }
+.ill-patron-search-label { gap:.5rem; }
+.ill-patron-search-field { width:100%; }
+.ill-patron-chip { display:inline-flex; align-items:center; gap:.4rem; padding:.45rem .7rem; border-radius:999px; background:#f5ecff; color:var(--accent); font-weight:700; }
+.ill-patron-result { padding:.75rem .85rem; border-bottom:1px solid var(--border); cursor:pointer; display:grid; gap:.15rem; }
+.ill-patron-result:last-child { border-bottom:none; }
+.ill-patron-result:hover, .ill-patron-result:focus-visible { background:#f8f2ff; }
+.ill-filter-summary { display:grid; gap:1rem; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+@media (max-width: 700px) {
+  .ill-modal-form { grid-template-columns: 1fr; }
+  .ill-dashboard-actions { width:100%; }
+  .ill-dashboard-actions .button { width:100%; }
+}

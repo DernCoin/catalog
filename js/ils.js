@@ -23,6 +23,10 @@ const state = {
   patronSearchQuery: "",
   patronSearchIndex: -1,
   activePatronModal: "",
+  illModalMode: "create",
+  illModalType: "incoming",
+  activeIllFilter: "",
+  illPatronSearchQuery: "",
   draftHoldings: [],
   formDirty: false,
   acquisitionsStage: "orders",
@@ -308,38 +312,70 @@ const els = {
   feeReportStartDate: $("#feeReportStartDate"),
   feeReportEndDate: $("#feeReportEndDate"),
   finesFeesReports: $("#finesFeesReports"),
-  illOutgoingForm: $("#illOutgoingForm"),
+  openIncomingIllModalBtn: $("#openIncomingIllModalBtn"),
+  openOutgoingIllModalBtn: $("#openOutgoingIllModalBtn"),
+  illDashboardStatus: $("#illDashboardStatus"),
+  illWorkflowTiles: $("#illWorkflowTiles"),
+  illFilteredViewTitle: $("#illFilteredViewTitle"),
+  illFilteredViewSubtitle: $("#illFilteredViewSubtitle"),
+  illFilteredSummaryCards: $("#illFilteredSummaryCards"),
+  illFilteredResults: $("#illFilteredResults"),
+  clearIllFilterBtn: $("#clearIllFilterBtn"),
+  illRecordModal: $("#illRecordModal"),
+  closeIllModalBtn: $("#closeIllModalBtn"),
+  illRecordForm: $("#illRecordForm"),
+  illRecordType: $("#illRecordType"),
+  illRecordId: $("#illRecordId"),
+  illModalTitle: $("#illModalTitle"),
+  illModalSubtitle: $("#illModalSubtitle"),
+  illRecordSubmitBtn: $("#illRecordSubmitBtn"),
+  illRecordMessage: $("#illRecordMessage"),
+  illPatronLookupLabel: $("#illPatronLookupLabel"),
+  illPatronLookup: $("#illPatronLookup"),
+  illPatronLookupResults: $("#illPatronLookupResults"),
+  illIncomingPatronId: $("#illIncomingPatronId"),
+  illIncomingPatronName: $("#illIncomingPatronName"),
+  illIncomingTitle: $("#illIncomingTitle"),
   illOutgoingTitle: $("#illOutgoingTitle"),
+  illIncomingAuthor: $("#illIncomingAuthor"),
   illOutgoingAuthor: $("#illOutgoingAuthor"),
+  illIncomingFormat: $("#illIncomingFormat"),
   illOutgoingItemRef: $("#illOutgoingItemRef"),
+  illIncomingLibrary: $("#illIncomingLibrary"),
   illOutgoingLibrary: $("#illOutgoingLibrary"),
   illOutgoingContact: $("#illOutgoingContact"),
-  illOutgoingRequestedDate: $("#illOutgoingRequestedDate"),
-  illOutgoingSentDate: $("#illOutgoingSentDate"),
-  illOutgoingDueDate: $("#illOutgoingDueDate"),
-  illOutgoingStatus: $("#illOutgoingStatus"),
-  illOutgoingNotes: $("#illOutgoingNotes"),
-  illOutgoingMessage: $("#illOutgoingMessage"),
-  illOutgoingList: $("#illOutgoingList"),
-  illOutgoingSummary: $("#illOutgoingSummary"),
-  illIncomingForm: $("#illIncomingForm"),
-  illIncomingPatronName: $("#illIncomingPatronName"),
-  illIncomingPatronCard: $("#illIncomingPatronCard"),
-  illIncomingTitle: $("#illIncomingTitle"),
-  illIncomingAuthor: $("#illIncomingAuthor"),
-  illIncomingFormat: $("#illIncomingFormat"),
-  illIncomingLibrary: $("#illIncomingLibrary"),
   illIncomingRequestDate: $("#illIncomingRequestDate"),
+  illOutgoingRequestedDate: $("#illOutgoingRequestedDate"),
   illIncomingReceivedDate: $("#illIncomingReceivedDate"),
+  illOutgoingSentDate: $("#illOutgoingSentDate"),
   illIncomingDueDate: $("#illIncomingDueDate"),
+  illOutgoingDueDate: $("#illOutgoingDueDate"),
   illIncomingStatus: $("#illIncomingStatus"),
+  illOutgoingStatus: $("#illOutgoingStatus"),
   illIncomingPickupStatus: $("#illIncomingPickupStatus"),
   illIncomingNotes: $("#illIncomingNotes"),
-  illIncomingMessage: $("#illIncomingMessage"),
-  illIncomingList: $("#illIncomingList"),
-  illIncomingSummary: $("#illIncomingSummary"),
-  illStatusCards: $("#illStatusCards"),
-  illCompletedList: $("#illCompletedList"),
+  illOutgoingNotes: $("#illOutgoingNotes"),
+  illIncomingPatronNameLabel: $("#illIncomingPatronNameLabel"),
+  illOutgoingItemRefLabel: $("#illOutgoingItemRefLabel"),
+  illIncomingTitleLabel: $("#illIncomingTitleLabel"),
+  illOutgoingTitleLabel: $("#illOutgoingTitleLabel"),
+  illIncomingAuthorLabel: $("#illIncomingAuthorLabel"),
+  illOutgoingAuthorLabel: $("#illOutgoingAuthorLabel"),
+  illIncomingFormatLabel: $("#illIncomingFormatLabel"),
+  illIncomingLibraryLabel: $("#illIncomingLibraryLabel"),
+  illOutgoingLibraryLabel: $("#illOutgoingLibraryLabel"),
+  illOutgoingContactLabel: $("#illOutgoingContactLabel"),
+  illIncomingRequestDateLabel: $("#illIncomingRequestDateLabel"),
+  illOutgoingRequestedDateLabel: $("#illOutgoingRequestedDateLabel"),
+  illIncomingReceivedDateLabel: $("#illIncomingReceivedDateLabel"),
+  illOutgoingSentDateLabel: $("#illOutgoingSentDateLabel"),
+  illIncomingDueDateLabel: $("#illIncomingDueDateLabel"),
+  illOutgoingDueDateLabel: $("#illOutgoingDueDateLabel"),
+  illIncomingStatusLabel: $("#illIncomingStatusLabel"),
+  illOutgoingStatusLabel: $("#illOutgoingStatusLabel"),
+  illIncomingPickupStatusLabel: $("#illIncomingPickupStatusLabel"),
+  illIncomingNotesLabel: $("#illIncomingNotesLabel"),
+  illOutgoingNotesLabel: $("#illOutgoingNotesLabel"),
   illReportsSummary: $("#illReportsSummary"),
   illReportsTableWrap: $("#illReportsTableWrap"),
   registerForm: $("#registerForm"),
@@ -725,6 +761,17 @@ const COUNTER_LABELS = {
 const ILL_OUTGOING_STATUSES = ["Requested", "Pulled", "In Transit", "Received by Borrowing Library", "Checked Out to Borrowing Library Patron", "Returning", "Returned", "Completed", "Cancelled"];
 const ILL_INCOMING_STATUSES = ["Requested", "Submitted", "Located", "In Transit", "Received", "On Hold for Patron", "Checked Out to Patron", "Returned by Patron", "Returned to Lending Library", "Completed", "Cancelled"];
 const ILL_COMPLETED_STATUSES = new Set(["Completed", "Cancelled"]);
+const ILL_OUTGOING_SENT_STATUSES = new Set(["In Transit", "Received by Borrowing Library", "Checked Out to Borrowing Library Patron", "Returning", "Returned", "Completed"]);
+const ILL_WORKFLOW_TILES = [
+  { key: "incoming-requested", label: "Incoming Requested", type: "incoming", filter: (entry) => ["Requested", "Submitted", "Located"].includes(entry.status), copy: "New patron requests awaiting lender work." },
+  { key: "incoming-progress", label: "Incoming In Progress", type: "incoming", filter: (entry) => ["In Transit", "Received"].includes(entry.status), copy: "Requests already located or moving between libraries." },
+  { key: "incoming-ready", label: "Incoming Ready for Pickup", type: "incoming", filter: (entry) => entry.status === "On Hold for Patron" || /ready/i.test(String(entry.pickupStatus || "")), copy: "Items ready to contact patrons and stage for pickup." },
+  { key: "incoming-return", label: "Incoming Return / Overdue", type: "incoming", filter: (entry) => ["Checked Out to Patron", "Returned by Patron", "Returned to Lending Library"].includes(entry.status) || (entry.dueDate && !ILL_COMPLETED_STATUSES.has(entry.status) && new Date(entry.dueDate) < new Date(todayIso())), copy: "Checked out, returning, or overdue inbound requests." },
+  { key: "outgoing-requested", label: "Outgoing Requested", type: "outgoing", filter: (entry) => ["Requested", "Pulled"].includes(entry.status), copy: "Items requested by partner libraries and not yet sent." },
+  { key: "outgoing-sent", label: "Outgoing Sent", type: "outgoing", filter: (entry) => ["In Transit", "Received by Borrowing Library", "Checked Out to Borrowing Library Patron"].includes(entry.status), copy: "Materials shipped and still in borrowing workflow." },
+  { key: "outgoing-awaiting-return", label: "Outgoing Awaiting Return", type: "outgoing", filter: (entry) => ["Returning", "Returned"].includes(entry.status) || (entry.dueDate && !ILL_COMPLETED_STATUSES.has(entry.status) && new Date(entry.dueDate) < new Date(todayIso())), copy: "Items due back, returning, or overdue from borrowers." },
+  { key: "outgoing-completed", label: "Outgoing Completed", type: "outgoing", filter: (entry) => ILL_COMPLETED_STATUSES.has(entry.status), copy: "Closed outbound ILL work for recent shipments." },
+];
 const REGISTER_CATEGORIES = ["Copies", "Faxing", "New Cards", "Cash Donations", "Replacement Costs", "Fines / Fees"];
 const DONATION_PURPOSES = ["Memorial", "Adopted Author", "State Funding", "General Donation", "Other"];
 
@@ -1202,11 +1249,17 @@ function renderQuickCounters() {
   if (els.referenceCounterTotal) els.referenceCounterTotal.textContent = `Today: ${getDailyCounterTotal("reference")}`;
 }
 
-function setIllMessage(type, message, isError = false) {
-  const target = type === "incoming" ? els.illIncomingMessage : els.illOutgoingMessage;
+function setIllMessage(_type, message, isError = false) {
+  const target = els.illDashboardStatus;
   if (!target) return;
   target.textContent = message;
   target.classList.toggle("warning", isError);
+}
+
+function setIllRecordMessage(message, isError = false) {
+  if (!els.illRecordMessage) return;
+  els.illRecordMessage.textContent = message;
+  els.illRecordMessage.classList.toggle('warning', isError);
 }
 
 function populateStaticSelects() {
@@ -1229,7 +1282,7 @@ function populateStaticSelects() {
 
 function normalizeIllTransaction(type, entry = {}) {
   const incoming = type === "incoming";
-  const status = String(entry.status || (incoming ? "Requested" : "Requested")).trim() || "Requested";
+  const status = String(entry.status || "Requested").trim() || "Requested";
   const base = {
     id: entry.id || `ILL-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     type,
@@ -1244,6 +1297,7 @@ function normalizeIllTransaction(type, entry = {}) {
     const receivedDate = String(entry.receivedDate || "").trim();
     return {
       ...base,
+      patronId: String(entry.patronId || "").trim(),
       patronName: String(entry.patronName || "").trim(),
       patronCardNumber: String(entry.patronCardNumber || "").trim(),
       format: String(entry.format || "").trim(),
@@ -1269,70 +1323,265 @@ function normalizeIllTransaction(type, entry = {}) {
     sentDate: String(entry.sentDate || "").trim(),
     dueDate: String(entry.dueDate || "").trim(),
     returnStatus: String(entry.returnStatus || "").trim(),
+    linkedRecordId: String(entry.linkedRecordId || "").trim(),
+    linkedHoldingId: String(entry.linkedHoldingId || "").trim(),
   };
 }
 
-function saveOutgoingIll(event) {
-  event.preventDefault();
-  const entry = normalizeIllTransaction("outgoing", {
-    title: els.illOutgoingTitle?.value,
-    author: els.illOutgoingAuthor?.value,
-    itemRef: els.illOutgoingItemRef?.value,
-    borrowingLibrary: els.illOutgoingLibrary?.value,
-    contactInfo: els.illOutgoingContact?.value,
-    requestDate: els.illOutgoingRequestedDate?.value,
-    sentDate: els.illOutgoingSentDate?.value,
-    dueDate: els.illOutgoingDueDate?.value,
-    status: els.illOutgoingStatus?.value,
-    notes: els.illOutgoingNotes?.value,
-  });
-  saveIllTransactions("outgoing", [entry, ...getIllTransactions("outgoing")]);
-  els.illOutgoingForm?.reset();
+function resetIllRecordForm() {
+  els.illRecordForm?.reset();
+  if (els.illRecordType) els.illRecordType.value = 'incoming';
+  if (els.illRecordId) els.illRecordId.value = '';
+  if (els.illIncomingPatronId) els.illIncomingPatronId.value = '';
+  state.illPatronSearchQuery = '';
+  setIllRecordMessage('');
   populateStaticSelects();
-  setIllMessage("outgoing", `Saved outgoing ILL ${entry.id}.`);
+}
+
+function toggleIllField(label, visible, required = false) {
+  if (!label) return;
+  label.classList.toggle('hidden', !visible);
+  const input = label.querySelector('input, select, textarea');
+  if (input) input.required = visible && required;
+}
+
+function configureIllModal(type, mode = 'create', entry = null) {
+  state.illModalType = type;
+  state.illModalMode = mode;
+  if (els.illRecordType) els.illRecordType.value = type;
+  if (els.illRecordId) els.illRecordId.value = entry?.id || '';
+  if (els.illModalTitle) els.illModalTitle.textContent = `${mode === 'edit' ? 'Edit' : 'Add New'} ${type === 'incoming' ? 'Incoming ILL Request' : 'Outgoing ILL'}`;
+  if (els.illModalSubtitle) els.illModalSubtitle.textContent = type === 'incoming'
+    ? (mode === 'edit' ? 'Update the patron-linked incoming request and workflow fields.' : 'Create a patron-linked incoming request without assigning a lending library yet.')
+    : (mode === 'edit' ? 'Update borrowing library workflow details and shipment status.' : 'Create an outgoing loan request for another library.');
+  if (els.illRecordSubmitBtn) els.illRecordSubmitBtn.textContent = mode === 'edit' ? 'Save Changes' : 'Create ILL Request';
+
+  const incoming = type === 'incoming';
+  toggleIllField(els.illPatronLookupLabel, incoming, incoming);
+  toggleIllField(els.illIncomingPatronNameLabel, incoming, incoming);
+  toggleIllField(els.illIncomingTitleLabel, incoming, true);
+  toggleIllField(els.illOutgoingTitleLabel, !incoming && mode === 'create', false);
+  toggleIllField(els.illIncomingAuthorLabel, incoming, false);
+  toggleIllField(els.illOutgoingAuthorLabel, !incoming && mode === 'create', false);
+  toggleIllField(els.illIncomingFormatLabel, incoming, false);
+  toggleIllField(els.illOutgoingItemRefLabel, !incoming && mode === 'create', true);
+  toggleIllField(els.illIncomingLibraryLabel, incoming && mode === 'edit', false);
+  toggleIllField(els.illOutgoingLibraryLabel, !incoming, true);
+  toggleIllField(els.illOutgoingContactLabel, !incoming, false);
+  toggleIllField(els.illIncomingRequestDateLabel, incoming && mode === 'create', false);
+  toggleIllField(els.illOutgoingRequestedDateLabel, !incoming && mode === 'create', false);
+  toggleIllField(els.illIncomingReceivedDateLabel, false, false);
+  toggleIllField(els.illOutgoingSentDateLabel, !incoming && mode === 'create', false);
+  toggleIllField(els.illIncomingDueDateLabel, false, false);
+  toggleIllField(els.illOutgoingDueDateLabel, !incoming, false);
+  toggleIllField(els.illIncomingStatusLabel, incoming, true);
+  toggleIllField(els.illOutgoingStatusLabel, !incoming, true);
+  toggleIllField(els.illIncomingPickupStatusLabel, incoming && mode === 'edit', false);
+  toggleIllField(els.illIncomingNotesLabel, incoming, false);
+  toggleIllField(els.illOutgoingNotesLabel, !incoming, false);
+
+  if (incoming) {
+    const patron = entry?.patronId ? getPatrons().find((item) => item.id === entry.patronId) : null;
+    if (els.illIncomingPatronId) els.illIncomingPatronId.value = entry?.patronId || '';
+    if (els.illPatronLookup) els.illPatronLookup.value = patron ? `${patron.name} (${patron.cardNumber || 'No card'})` : (entry?.patronName || '');
+    if (els.illIncomingPatronName) els.illIncomingPatronName.value = entry?.patronName || '';
+    if (els.illIncomingTitle) els.illIncomingTitle.value = entry?.title || '';
+    if (els.illIncomingAuthor) els.illIncomingAuthor.value = entry?.author || '';
+    if (els.illIncomingFormat) els.illIncomingFormat.value = entry?.format || '';
+    if (els.illIncomingLibrary) els.illIncomingLibrary.value = entry?.lendingLibrary || '';
+    if (els.illIncomingRequestDate) els.illIncomingRequestDate.value = entry?.requestDate || todayIso();
+    if (els.illIncomingReceivedDate) els.illIncomingReceivedDate.value = entry?.receivedDate || '';
+    if (els.illIncomingDueDate) els.illIncomingDueDate.value = entry?.dueDate || '';
+    if (els.illIncomingStatus) els.illIncomingStatus.value = entry?.status || 'Requested';
+    if (els.illIncomingPickupStatus) els.illIncomingPickupStatus.value = entry?.pickupStatus || 'Awaiting processing';
+    if (els.illIncomingNotes) els.illIncomingNotes.value = entry?.notes || '';
+  } else {
+    if (els.illOutgoingItemRef) els.illOutgoingItemRef.value = entry?.itemRef || '';
+    if (els.illOutgoingTitle) els.illOutgoingTitle.value = entry?.title || '';
+    if (els.illOutgoingAuthor) els.illOutgoingAuthor.value = entry?.author || '';
+    if (els.illOutgoingLibrary) els.illOutgoingLibrary.value = entry?.borrowingLibrary || '';
+    if (els.illOutgoingContact) els.illOutgoingContact.value = entry?.contactInfo || '';
+    if (els.illOutgoingRequestedDate) els.illOutgoingRequestedDate.value = entry?.requestDate || todayIso();
+    if (els.illOutgoingSentDate) els.illOutgoingSentDate.value = entry?.sentDate || '';
+    if (els.illOutgoingDueDate) els.illOutgoingDueDate.value = entry?.dueDate || '';
+    if (els.illOutgoingStatus) els.illOutgoingStatus.value = entry?.status || 'Requested';
+    if (els.illOutgoingNotes) els.illOutgoingNotes.value = entry?.notes || '';
+  }
+}
+
+function openIllRecordModal(type, mode = 'create', entry = null) {
+  resetIllRecordForm();
+  configureIllModal(type, mode, entry);
+  openModal(els.illRecordModal);
+  window.requestAnimationFrame(() => (type === 'incoming' ? els.illPatronLookup : els.illOutgoingItemRef)?.focus());
+}
+
+function closeIllRecordModal() {
+  closeModal(els.illRecordModal);
+  if (els.illPatronLookupResults) {
+    els.illPatronLookupResults.innerHTML = '';
+    els.illPatronLookupResults.classList.add('hidden');
+  }
+}
+
+function selectIllPatron(patron) {
+  if (!patron) return;
+  if (els.illIncomingPatronId) els.illIncomingPatronId.value = patron.id;
+  if (els.illIncomingPatronName) els.illIncomingPatronName.value = patron.name || '';
+  if (els.illPatronLookup) els.illPatronLookup.value = `${patron.name || 'Unnamed patron'} (${patron.cardNumber || 'No card'})`;
+  if (els.illPatronLookupResults) {
+    els.illPatronLookupResults.innerHTML = '';
+    els.illPatronLookupResults.classList.add('hidden');
+  }
+}
+
+function renderIllPatronLookupResults() {
+  if (!els.illPatronLookupResults) return;
+  const query = String(els.illPatronLookup?.value || '').trim().toLowerCase();
+  if (!query) {
+    els.illPatronLookupResults.innerHTML = '';
+    els.illPatronLookupResults.classList.add('hidden');
+    return;
+  }
+  const matches = getPatrons().filter((patron) => [patron.name, patron.cardNumber, patron.email].some((value) => String(value || '').toLowerCase().includes(query))).slice(0, 8);
+  if (!matches.length) {
+    els.illPatronLookupResults.innerHTML = '<div class="ill-patron-result muted">No matching patrons found.</div>';
+    els.illPatronLookupResults.classList.remove('hidden');
+    return;
+  }
+  els.illPatronLookupResults.innerHTML = matches.map((patron) => `<button class="ill-patron-result" type="button" data-ill-patron-id="${escapeHtml(patron.id)}"><strong>${escapeHtml(patron.name || 'Unnamed patron')}</strong><span>${escapeHtml(patron.cardNumber || 'No card number')}</span></button>`).join('');
+  els.illPatronLookupResults.classList.remove('hidden');
+  els.illPatronLookupResults.querySelectorAll('[data-ill-patron-id]').forEach((button) => button.addEventListener('click', () => selectIllPatron(getPatrons().find((patron) => patron.id === button.dataset.illPatronId))));
+}
+
+function ensureOutgoingIllCheckout(entry) {
+  if (!entry?.itemRef) return { ok: false, message: 'Item barcode / material number is required.' };
+  const match = getRecordByMaterialNumber(entry.itemRef);
+  if (!match) return { ok: false, message: `Material number ${entry.itemRef} was not found.` };
+  const { record, holding } = match;
+  const shouldCheckOut = entry.sentDate || ILL_OUTGOING_SENT_STATUSES.has(entry.status);
+  const alreadyLinked = entry.linkedHoldingId && entry.linkedHoldingId === holding.id;
+  if (!shouldCheckOut) return { ok: true, recordId: record.id, holdingId: holding.id, title: record.title || entry.title, author: record.creator || entry.author };
+  if (String(holding.status) === 'On Loan' && !alreadyLinked) {
+    return { ok: false, message: `${record.title || 'This item'} is already checked out.` };
+  }
+  state.records = state.records.map((current) => {
+    if (current.id !== record.id) return current;
+    const holdings = (current.holdings || []).map((candidate) => {
+      if (candidate.id !== holding.id) return candidate;
+      return {
+        ...candidate,
+        status: 'On Loan',
+        checkedOutTo: 'ill-outgoing',
+        checkedOutToName: entry.borrowingLibrary || 'Borrowing Library',
+        checkedOutAt: candidate.checkedOutAt || new Date().toISOString(),
+        dueDate: entry.dueDate || candidate.dueDate || '',
+      };
+    });
+    return normalizeRecord({
+      ...current,
+      holdings,
+      circulationHistory: appendCirculationHistory(current, `ILL outgoing sent to ${entry.borrowingLibrary || 'Borrowing Library'} (${entry.itemRef})`),
+    });
+  });
+  saveRecords(state.records);
+  return { ok: true, recordId: record.id, holdingId: holding.id, title: record.title || entry.title, author: record.creator || entry.author };
+}
+
+function saveIllRecord(event) {
+  event.preventDefault();
+  const type = els.illRecordType?.value || 'incoming';
+  const editingId = String(els.illRecordId?.value || '').trim();
+  const existing = editingId ? getIllTransactions(type).find((entry) => entry.id === editingId) : null;
+  if (type === 'incoming') {
+    const patronId = String(els.illIncomingPatronId?.value || '').trim();
+    const patron = getPatrons().find((entry) => entry.id === patronId) || null;
+    const patronName = String(els.illIncomingPatronName?.value || '').trim();
+    if (!patron || !patronName) {
+      setIllRecordMessage('Select a valid patron record for this incoming ILL request.', true);
+      return;
+    }
+    const entry = normalizeIllTransaction('incoming', {
+      ...existing,
+      id: editingId || undefined,
+      patronId: patron.id,
+      patronName,
+      patronCardNumber: patron.cardNumber || '',
+      title: els.illIncomingTitle?.value,
+      author: els.illIncomingAuthor?.value,
+      format: els.illIncomingFormat?.value,
+      lendingLibrary: els.illIncomingLibrary?.value,
+      requestDate: els.illIncomingRequestDate?.value,
+      receivedDate: els.illIncomingReceivedDate?.value,
+      dueDate: els.illIncomingDueDate?.value,
+      status: els.illIncomingStatus?.value || 'Requested',
+      pickupStatus: els.illIncomingPickupStatus?.value,
+      notes: els.illIncomingNotes?.value,
+      createdAt: existing?.createdAt,
+    });
+    const next = editingId ? getIllTransactions('incoming').map((item) => item.id === editingId ? entry : item) : [entry, ...getIllTransactions('incoming')];
+    saveIllTransactions('incoming', next);
+    setIllMessage('incoming', `${editingId ? 'Updated' : 'Created'} incoming ILL ${entry.id}.`);
+  } else {
+    const provisional = normalizeIllTransaction('outgoing', {
+      ...existing,
+      id: editingId || undefined,
+      itemRef: els.illOutgoingItemRef?.value,
+      title: els.illOutgoingTitle?.value,
+      author: els.illOutgoingAuthor?.value,
+      borrowingLibrary: els.illOutgoingLibrary?.value,
+      contactInfo: els.illOutgoingContact?.value,
+      requestDate: els.illOutgoingRequestedDate?.value,
+      sentDate: els.illOutgoingSentDate?.value,
+      dueDate: els.illOutgoingDueDate?.value,
+      status: els.illOutgoingStatus?.value,
+      notes: els.illOutgoingNotes?.value,
+      createdAt: existing?.createdAt,
+    });
+    const linkResult = ensureOutgoingIllCheckout(provisional);
+    if (!linkResult.ok) {
+      setIllRecordMessage(linkResult.message, true);
+      return;
+    }
+    const entry = normalizeIllTransaction('outgoing', {
+      ...provisional,
+      linkedRecordId: linkResult.recordId || existing?.linkedRecordId,
+      linkedHoldingId: linkResult.holdingId || existing?.linkedHoldingId,
+      title: provisional.title || linkResult.title || '',
+      author: provisional.author || linkResult.author || '',
+    });
+    const next = editingId ? getIllTransactions('outgoing').map((item) => item.id === editingId ? entry : item) : [entry, ...getIllTransactions('outgoing')];
+    saveIllTransactions('outgoing', next);
+    setIllMessage('outgoing', `${editingId ? 'Updated' : 'Created'} outgoing ILL ${entry.id}.`);
+  }
+  closeIllRecordModal();
   renderIllWorkspace();
   renderStatsPanel();
   renderDashboard();
-  renderQuickCounters();
-  renderIllWorkspace();
   renderRegisterWorkspace();
 }
 
-function saveIncomingIll(event) {
-  event.preventDefault();
-  const entry = normalizeIllTransaction("incoming", {
-    patronName: els.illIncomingPatronName?.value,
-    patronCardNumber: els.illIncomingPatronCard?.value,
-    title: els.illIncomingTitle?.value,
-    author: els.illIncomingAuthor?.value,
-    format: els.illIncomingFormat?.value,
-    lendingLibrary: els.illIncomingLibrary?.value,
-    requestDate: els.illIncomingRequestDate?.value,
-    receivedDate: els.illIncomingReceivedDate?.value,
-    dueDate: els.illIncomingDueDate?.value,
-    status: els.illIncomingStatus?.value,
-    pickupStatus: els.illIncomingPickupStatus?.value,
-    notes: els.illIncomingNotes?.value,
+function getIllWorkflowCounts() {
+  const incoming = getIllTransactions('incoming');
+  const outgoing = getIllTransactions('outgoing');
+  return ILL_WORKFLOW_TILES.map((tile) => {
+    const source = tile.type === 'incoming' ? incoming : outgoing;
+    const entries = source.filter((entry) => tile.filter(entry));
+    return { ...tile, count: entries.length, entries };
   });
-  saveIllTransactions("incoming", [entry, ...getIllTransactions("incoming")]);
-  els.illIncomingForm?.reset();
-  populateStaticSelects();
-  setIllMessage("incoming", `Saved incoming ILL ${entry.id}.`);
-  renderIllWorkspace();
-  renderStatsPanel();
-  renderDashboard();
 }
 
 function updateIllStatus(type, id, status) {
   const updated = getIllTransactions(type).map((entry) => {
     if (entry.id !== id) return entry;
-    return normalizeIllTransaction(type, {
+    const next = normalizeIllTransaction(type, {
       ...entry,
       status,
-      receivedDate: type === "incoming" && (entry.receivedDate || status === "Received" || status === "On Hold for Patron" || status === "Checked Out to Patron")
-        ? (entry.receivedDate || todayIso())
-        : entry.receivedDate,
+      sentDate: type === 'outgoing' && (entry.sentDate || ILL_OUTGOING_SENT_STATUSES.has(status)) ? (entry.sentDate || todayIso()) : entry.sentDate,
+      receivedDate: type === 'incoming' && (entry.receivedDate || status === 'Received' || status === 'On Hold for Patron' || status === 'Checked Out to Patron') ? (entry.receivedDate || todayIso()) : entry.receivedDate,
     });
+    if (type === 'outgoing') ensureOutgoingIllCheckout(next);
+    return next;
   });
   saveIllTransactions(type, updated);
   renderIllWorkspace();
@@ -1340,54 +1589,71 @@ function updateIllStatus(type, id, status) {
   renderDashboard();
 }
 
-function renderIllCards(target, entries, type) {
-  if (!target) return;
-  if (!entries.length) {
-    target.innerHTML = `<div class="empty-state">${type === "incoming" ? "No active ILL requests yet. Incoming requests and temporary items will appear here." : "No active outgoing ILL transactions. Sent items and transit updates will appear here."}</div>`;
+function renderIllWorkflowTiles() {
+  if (!els.illWorkflowTiles) return;
+  const cards = getIllWorkflowCounts();
+  els.illWorkflowTiles.innerHTML = cards.map((tile) => `<button class="dashboard-tile ill-dashboard-tile is-shortcut ${state.activeIllFilter === tile.key ? 'is-active' : ''}" type="button" data-ill-filter="${tile.key}"><span class="dashboard-tile-label">${escapeHtml(tile.label)}</span><strong class="dashboard-tile-value">${tile.count}</strong><p class="dashboard-tile-copy">${escapeHtml(tile.copy)}</p><span class="dashboard-tile-footer"><span>Open queue</span><span>${tile.type === 'incoming' ? 'Incoming' : 'Outgoing'}</span></span></button>`).join('');
+  els.illWorkflowTiles.querySelectorAll('[data-ill-filter]').forEach((button) => button.addEventListener('click', () => {
+    state.activeIllFilter = button.dataset.illFilter;
+    renderIllWorkspace();
+  }));
+}
+
+function renderIllFilteredView() {
+  if (!els.illFilteredResults || !els.illFilteredViewTitle || !els.illFilteredViewSubtitle || !els.illFilteredSummaryCards) return;
+  const activeTile = ILL_WORKFLOW_TILES.find((tile) => tile.key === state.activeIllFilter);
+  if (!activeTile) {
+    els.illFilteredViewTitle.textContent = 'Select a workflow tile';
+    els.illFilteredViewSubtitle.textContent = 'Choose a dashboard tile to open a clean, filtered transaction view.';
+    els.illFilteredSummaryCards.innerHTML = '';
+    els.illFilteredResults.className = 'ill-filtered-results empty-state';
+    els.illFilteredResults.textContent = 'Select a workflow tile to review matching interlibrary loan requests.';
+    els.clearIllFilterBtn?.classList.add('hidden');
     return;
   }
-  const statuses = type === "incoming" ? ILL_INCOMING_STATUSES : ILL_OUTGOING_STATUSES;
-  target.innerHTML = entries.map((entry) => {
-    const selectOptions = statuses.map((status) => `<option value="${status}" ${entry.status === status ? "selected" : ""}>${status}</option>`).join("");
-    const meta = type === "incoming"
-      ? `<div class="item-grid"><span><strong>Patron:</strong> ${escapeHtml(entry.patronName || "Unknown")}</span><span><strong>Lending library:</strong> ${escapeHtml(entry.lendingLibrary || "Unknown")}</span><span><strong>Received:</strong> ${escapeHtml(entry.receivedDate || "Not yet received")}</span><span><strong>Due:</strong> ${escapeHtml(entry.dueDate || "Not set")}</span></div>${entry.temporaryItem ? `<p class="muted">Temporary item: <strong>${escapeHtml(entry.temporaryItem.label)}</strong> · ${escapeHtml(entry.temporaryItem.status)} · Not part of permanent holdings.</p>` : `<p class="muted">Temporary item will be created automatically when the request is received.</p>`}`
-      : `<div class="item-grid"><span><strong>Borrowing library:</strong> ${escapeHtml(entry.borrowingLibrary || "Unknown")}</span><span><strong>Sent:</strong> ${escapeHtml(entry.sentDate || "Not yet sent")}</span><span><strong>Due:</strong> ${escapeHtml(entry.dueDate || "Not set")}</span><span><strong>Item ref:</strong> ${escapeHtml(entry.itemRef || "Unlinked")}</span></div>`;
-    return `<article class="stack-card"><div class="panel-header compact"><div><h4>${escapeHtml(entry.title || "Untitled")}</h4><p class="muted">${escapeHtml(entry.id)}${entry.author ? ` · ${escapeHtml(entry.author)}` : ""}</p></div><span class="badge badge-status ill-status-badge" data-status="${escapeHtml(entry.status.toLowerCase().replace(/\s+/g, "-"))}">${escapeHtml(entry.status)}</span></div>${meta}<p class="muted">${escapeHtml(entry.notes || "No notes recorded.")}</p><div class="row-actions"><label class="inline-select">Update status<select data-ill-status="${escapeHtml(entry.id)}">${selectOptions}</select></label></div></article>`;
-  }).join("");
-  [...target.querySelectorAll("[data-ill-status]")].forEach((select) => select.addEventListener("change", () => updateIllStatus(type, select.dataset.illStatus, select.value)));
+  const entries = getIllTransactions(activeTile.type).filter((entry) => activeTile.filter(entry)).sort((a, b) => String(a.dueDate || '').localeCompare(String(b.dueDate || '')) || Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
+  els.illFilteredViewTitle.textContent = activeTile.label;
+  els.illFilteredViewSubtitle.textContent = `${entries.length} ${activeTile.type} transaction${entries.length === 1 ? '' : 's'} currently match this workflow category.`;
+  els.clearIllFilterBtn?.classList.remove('hidden');
+  const overdueCount = entries.filter((entry) => entry.dueDate && new Date(entry.dueDate) < new Date(todayIso()) && !ILL_COMPLETED_STATUSES.has(entry.status)).length;
+  els.illFilteredSummaryCards.innerHTML = [
+    { label: 'Queue count', value: entries.length },
+    { label: 'Overdue / urgent', value: overdueCount },
+    { label: 'With notes', value: entries.filter((entry) => entry.notes).length },
+  ].map((card) => `<article class="summary-card"><span class="summary-card-label">${card.label}</span><strong class="summary-card-value">${card.value}</strong></article>`).join('');
+  if (!entries.length) {
+    els.illFilteredResults.className = 'ill-filtered-results empty-state';
+    els.illFilteredResults.textContent = 'No ILL transactions are currently in this workflow category.';
+    return;
+  }
+  els.illFilteredResults.className = 'ill-filtered-results';
+  els.illFilteredResults.innerHTML = `<div class="ill-filter-results-grid">${entries.map((entry) => {
+    const selectOptions = (entry.type === 'incoming' ? ILL_INCOMING_STATUSES : ILL_OUTGOING_STATUSES).map((status) => `<option value="${status}" ${entry.status === status ? 'selected' : ''}>${status}</option>`).join('');
+    const meta = entry.type === 'incoming'
+      ? [
+        `<span><strong>Patron:</strong> ${escapeHtml(entry.patronName || 'Unknown')}</span>`,
+        `<span><strong>Library:</strong> ${escapeHtml(entry.lendingLibrary || 'Not assigned')}</span>`,
+        `<span><strong>Pickup:</strong> ${escapeHtml(entry.pickupStatus || 'Awaiting processing')}</span>`,
+        `<span><strong>Due:</strong> ${escapeHtml(entry.dueDate || 'Not set')}</span>`,
+      ].join('')
+      : [
+        `<span><strong>Borrower:</strong> ${escapeHtml(entry.borrowingLibrary || 'Unknown')}</span>`,
+        `<span><strong>Contact:</strong> ${escapeHtml(entry.contactInfo || 'Not provided')}</span>`,
+        `<span><strong>Sent:</strong> ${escapeHtml(entry.sentDate || 'Not sent')}</span>`,
+        `<span><strong>Item:</strong> ${escapeHtml(entry.itemRef || 'Unlinked')}</span>`,
+      ].join('');
+    return `<article class="ill-queue-card"><div class="panel-header compact"><div><h4>${escapeHtml(entry.title || 'Untitled')}</h4><p class="muted">${escapeHtml(entry.id)}${entry.author ? ` · ${escapeHtml(entry.author)}` : ''}</p></div><span class="badge badge-status ill-status-badge" data-status="${escapeHtml(entry.status.toLowerCase().replace(/\s+/g, '-'))}">${escapeHtml(entry.status)}</span></div><div class="ill-queue-card-meta">${meta}</div><p class="muted ill-queue-card-notes">${escapeHtml(entry.notes || 'No notes recorded.')}</p><div class="row-actions"><label class="inline-select">Update status<select data-ill-status="${escapeHtml(entry.id)}" data-ill-type="${entry.type}">${selectOptions}</select></label><button class="button button-secondary" type="button" data-edit-ill="${escapeHtml(entry.id)}" data-edit-type="${entry.type}">Edit</button></div></article>`;
+  }).join('')}</div>`;
+  els.illFilteredResults.querySelectorAll('[data-ill-status]').forEach((select) => select.addEventListener('change', () => updateIllStatus(select.dataset.illType, select.dataset.illStatus, select.value)));
+  els.illFilteredResults.querySelectorAll('[data-edit-ill]').forEach((button) => button.addEventListener('click', () => {
+    const entry = getIllTransactions(button.dataset.editType).find((item) => item.id === button.dataset.editIll);
+    if (entry) openIllRecordModal(button.dataset.editType, 'edit', entry);
+  }));
 }
 
 function renderIllWorkspace() {
-  const outgoing = getIllTransactions("outgoing").sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
-  const incoming = getIllTransactions("incoming").sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
-  const activeOutgoing = outgoing.filter((entry) => !ILL_COMPLETED_STATUSES.has(entry.status));
-  const activeIncoming = incoming.filter((entry) => !ILL_COMPLETED_STATUSES.has(entry.status));
-  const completed = [...outgoing, ...incoming].filter((entry) => ILL_COMPLETED_STATUSES.has(entry.status)).sort((a, b) => Number(b.updatedAt || b.createdAt || 0) - Number(a.updatedAt || 0));
-  const overdue = [...outgoing, ...incoming].filter((entry) => entry.dueDate && !ILL_COMPLETED_STATUSES.has(entry.status) && new Date(entry.dueDate) < new Date(todayIso()));
-
-  if (els.illOutgoingSummary) els.illOutgoingSummary.textContent = `${activeOutgoing.length} active`;
-  if (els.illIncomingSummary) els.illIncomingSummary.textContent = `${activeIncoming.length} active`;
-  renderIllCards(els.illOutgoingList, activeOutgoing, "outgoing");
-  renderIllCards(els.illIncomingList, activeIncoming, "incoming");
-
-  if (els.illStatusCards) {
-    els.illStatusCards.innerHTML = [
-      { label: "Active outgoing", value: activeOutgoing.length },
-      { label: "Active incoming", value: activeIncoming.length },
-      { label: "Completed", value: completed.length },
-      { label: "Past due", value: overdue.length },
-    ].map((card) => `<article class="summary-card"><span class="summary-card-label">${card.label}</span><strong class="summary-card-value">${card.value}</strong></article>`).join("");
-  }
-
-  if (els.illCompletedList) {
-    if (!completed.length && !overdue.length) {
-      els.illCompletedList.innerHTML = '<div class="empty-state">No completed or past due ILL activity yet.</div>';
-    } else {
-      const rows = [...overdue.map((entry) => ({ ...entry, flag: "Past due" })), ...completed.slice(0, 8).map((entry) => ({ ...entry, flag: "Completed" }))];
-      els.illCompletedList.innerHTML = rows.map((entry) => `<article class="stack-card"><div class="panel-header compact"><div><h4>${escapeHtml(entry.title || "Untitled")}</h4><p class="muted">${escapeHtml(entry.id)} · ${escapeHtml(entry.flag)}</p></div><span class="badge badge-status">${escapeHtml(entry.status)}</span></div><p class="muted">${escapeHtml(entry.type === "incoming" ? `${entry.patronName} · ${entry.lendingLibrary}` : `${entry.borrowingLibrary}`)}</p></article>`).join("");
-    }
-  }
-
+  renderIllWorkflowTiles();
+  renderIllFilteredView();
   renderIllReports();
   renderOperationalReports();
 }
@@ -5612,8 +5878,13 @@ function bindEvents() {
   if (els.patronEditorModal) els.patronEditorModal.addEventListener("click", (event) => { if (event.target === els.patronEditorModal) closePatronEditorModal(); });
   if (els.serialIssueForm) els.serialIssueForm.addEventListener("submit", addSerialIssue);
   if (els.serialSubscriptionForm) els.serialSubscriptionForm.addEventListener("submit", saveSubscription);
-  if (els.illOutgoingForm) els.illOutgoingForm.addEventListener("submit", saveOutgoingIll);
-  if (els.illIncomingForm) els.illIncomingForm.addEventListener("submit", saveIncomingIll);
+  if (els.openIncomingIllModalBtn) els.openIncomingIllModalBtn.addEventListener("click", () => openIllRecordModal('incoming', 'create'));
+  if (els.openOutgoingIllModalBtn) els.openOutgoingIllModalBtn.addEventListener("click", () => openIllRecordModal('outgoing', 'create'));
+  if (els.closeIllModalBtn) els.closeIllModalBtn.addEventListener("click", closeIllRecordModal);
+  if (els.illRecordModal) els.illRecordModal.addEventListener("click", (event) => { if (event.target === els.illRecordModal) closeIllRecordModal(); });
+  if (els.illRecordForm) els.illRecordForm.addEventListener("submit", saveIllRecord);
+  if (els.illPatronLookup) els.illPatronLookup.addEventListener("input", renderIllPatronLookupResults);
+  if (els.clearIllFilterBtn) els.clearIllFilterBtn.addEventListener("click", () => { state.activeIllFilter = ''; renderIllWorkspace(); });
   if (els.registerForm) els.registerForm.addEventListener("submit", saveRegisterEntry);
   if (els.registerCategory) els.registerCategory.addEventListener("change", toggleDonationFields);
   if (els.registerDonationPurpose) els.registerDonationPurpose.addEventListener("change", toggleDonationFields);
