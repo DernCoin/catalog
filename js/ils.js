@@ -1204,7 +1204,16 @@ function saveIncomingIll(event) {
 }
 
 function updateIllStatus(type, id, status) {
-  const updated = getIllTransactions(type).map((entry) => entry.id === id ? normalizeIllTransaction(type, { ...entry, status, receivedDate: type === "incoming" && (entry.receivedDate || status === "Received" || status === "On Hold for Patron" || status === "Checked Out to Patron") ? (entry.receivedDate || todayIso()) : entry.receivedDate }) : entry);
+  const updated = getIllTransactions(type).map((entry) => {
+    if (entry.id !== id) return entry;
+    return normalizeIllTransaction(type, {
+      ...entry,
+      status,
+      receivedDate: type === "incoming" && (entry.receivedDate || status === "Received" || status === "On Hold for Patron" || status === "Checked Out to Patron")
+        ? (entry.receivedDate || todayIso())
+        : entry.receivedDate,
+    });
+  });
   saveIllTransactions(type, updated);
   renderIllWorkspace();
   renderStatsPanel();
