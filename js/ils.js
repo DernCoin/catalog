@@ -23,6 +23,8 @@ const state = {
   patronSearchQuery: "",
   patronSearchIndex: -1,
   activePatronModal: "",
+  activeNoticePatronId: "",
+  activeNoticeRecordId: "",
   illModalMode: "create",
   illModalType: "incoming",
   activeIllFilter: "",
@@ -180,6 +182,19 @@ const els = {
   closePatronEditorModalBtn: $("#closePatronEditorModalBtn"),
   patronEditorTitle: $("#patronEditorTitle"),
   patronEditorSubtitle: $("#patronEditorSubtitle"),
+  noticeSummaryCards: $("#noticeSummaryCards"),
+  noticeAgeFilter: $("#noticeAgeFilter"),
+  noticePatronFilter: $("#noticePatronFilter"),
+  noticeCardFilter: $("#noticeCardFilter"),
+  noticeMaterialTypeFilter: $("#noticeMaterialTypeFilter"),
+  noticeAccountStatusFilter: $("#noticeAccountStatusFilter"),
+  clearNoticeFiltersBtn: $("#clearNoticeFiltersBtn"),
+  noticeResultsSummary: $("#noticeResultsSummary"),
+  noticePatronResults: $("#noticePatronResults"),
+  noticePreviewPanel: $("#noticePreviewPanel"),
+  noticeHistorySummary: $("#noticeHistorySummary"),
+  noticeHistoryBody: $("#noticeHistoryBody"),
+  noticeTemplateList: $("#noticeTemplateList"),
   serialIssueForm: $("#serialIssueForm"),
   serialTitle: $("#serialTitle"),
   serialIssueLabel: $("#serialIssueLabel"),
@@ -406,7 +421,7 @@ const ILS_SECTIONS = {
   circulation: { label: "Circulation", description: "Check out, check in, and manage holds from one circulation workspace.", tabs: [{ id: "circulation", label: "Desk" }] },
   cataloging: { label: "Cataloging", description: "Catalog maintenance and serials work grouped together for easier navigation.", tabs: [{ id: "records", label: "Edit Records" }, { id: "serials", label: "Serials" }] },
   acquisitions: { label: "Acquisitions", description: "Manage orders, receive incoming materials, and move items through pending processing into the catalog.", tabs: [{ id: "acquisitions", label: "Acquisitions Workspace" }] },
-  patrons: { label: "Patrons", description: "Review patron accounts, contact data, and circulation activity.", tabs: [{ id: "patrons", label: "Accounts" }] },
+  patrons: { label: "Patrons", description: "Review patron accounts, contact data, circulation activity, and overdue notice follow-up.", tabs: [{ id: "patrons", label: "Accounts" }, { id: "patron-notices", label: "Notices" }] },
   ill: { label: "Interlibrary Loan", description: "Manage outgoing loans, incoming patron requests, temporary ILL items, and monthly ILL activity.", tabs: [{ id: "ill-outgoing", label: "Outgoing ILL" }, { id: "ill-incoming", label: "Incoming Requests" }, { id: "ill-reports", label: "ILL Reports" }] },
   register: { label: "Daily Register", description: "Log staff-side cash intake, service transactions, and daily drawer totals.", tabs: [{ id: "register", label: "Register" }] },
   administration: { label: "Administration", description: "System settings, circulation rules, and authority control for staff administration.", tabs: [{ id: "circulation-rules", label: "Circulation Rules" }, { id: "receipt-settings", label: "Receipt Settings" }, { id: "utilities", label: "Authority Control" }] },
@@ -518,6 +533,9 @@ function switchIlsTab(tab) {
   if (tab !== "records") hideSearchPopover();
   if (tab === "patrons") {
     window.requestAnimationFrame(() => els.patronSearchInput?.focus());
+  }
+  if (tab === "patron-notices") {
+    window.requestAnimationFrame(() => els.noticePatronFilter?.focus());
   }
 }
 
@@ -867,6 +885,70 @@ function getFeeEntries() {
 
 function saveFeeEntries(entries) {
   state.settings.patronFees = entries;
+  saveSettings(state.settings);
+}
+
+const DEFAULT_NOTICE_TEMPLATES = [
+  {
+    id: "notice-template-first",
+    name: "First Overdue Notice",
+    subject: "First overdue reminder",
+    body: "Our records show the following library items are now overdue. Please return or renew them as soon as possible.",
+    closing: "Please contact the library if you need help renewing or discussing your account.",
+  },
+  {
+    id: "notice-template-second",
+    name: "Second Overdue Notice",
+    subject: "Second overdue reminder",
+    body: "This is a second reminder that the following items remain overdue on your account.",
+    closing: "Please contact staff promptly to avoid additional account issues.",
+  },
+  {
+    id: "notice-template-final",
+    name: "Final Notice",
+    subject: "Final overdue notice",
+    body: "This is a final overdue notice for materials still charged to your account.",
+    closing: "Please return these items or speak with staff immediately regarding next steps.",
+  },
+];
+
+function getNoticeTemplates() {
+  const stored = Array.isArray(state.settings.noticeTemplates) ? state.settings.noticeTemplates : [];
+  if (stored.length) return stored;
+  return DEFAULT_NOTICE_TEMPLATES.map((template) => ({ ...template }));
+}
+
+function saveNoticeTemplates(templates) {
+  state.settings.noticeTemplates = templates;
+  saveSettings(state.settings);
+}
+
+function ensureNoticeTemplatesSeeded() {
+  if (!Array.isArray(state.settings.noticeTemplates) || !state.settings.noticeTemplates.length) {
+    saveNoticeTemplates(DEFAULT_NOTICE_TEMPLATES.map((template) => ({ ...template })));
+  }
+}
+
+function getNoticeHistory() {
+  return Array.isArray(state.settings.noticeHistory) ? state.settings.noticeHistory : [];
+}
+
+function saveNoticeHistory(entries) {
+  state.settings.noticeHistory = entries;
+  saveSettings(state.settings);
+}
+
+function getNoticeSettings() {
+  return {
+    closingMessage: String(state.settings.noticeSettings?.closingMessage || "").trim(),
+  };
+}
+
+function saveNoticeSettings(settings = {}) {
+  state.settings.noticeSettings = {
+    ...getNoticeSettings(),
+    ...settings,
+  };
   saveSettings(state.settings);
 }
 
@@ -2197,6 +2279,58 @@ function getOverdueLoans(minDays = 1) {
   }));
 }
 
+function getPatronAccountStanding(patron) {
+  const status = String(patron?.status || "Active");
+  const expirationDate = String(patron?.expirationDate || "").trim();
+  if (expirationDate && expirationDate < todayIso()) return "Expired";
+  return status || "Active";
+}
+
+function getOverduePatronGroups(minDays = 1) {
+  const patronsById = new Map(getPatrons().map((patron) => [patron.id, patron]));
+  const groups = new Map();
+  getOverdueLoans(minDays).forEach((entry) => {
+    const patronId = entry.holding.checkedOutTo || "";
+    const patron = patronsById.get(patronId) || null;
+    const groupKey = patronId || `unknown-${entry.holding.checkedOutToName || entry.record.id}`;
+    const existing = groups.get(groupKey) || {
+      patronId,
+      patron,
+      patronName: patron?.name || entry.holding.checkedOutToName || "Unknown patron",
+      cardNumber: patron?.cardNumber || "",
+      accountStatus: getPatronAccountStanding(patron),
+      items: [],
+      totalFees: 0,
+      lastNotice: null,
+    };
+    const balance = patron ? calculatePatronBalance(patron.id) : { unpaidAmount: 0 };
+    existing.items.push({
+      recordId: entry.record.id,
+      holdingId: entry.holding.id,
+      title: entry.record.title || "Untitled",
+      materialType: entry.record.materialType || entry.record.format || "Other",
+      materialNumber: entry.holding.materialNumbers?.[0] || "",
+      dueDate: entry.holding.dueDate || "",
+      overdueDays: entry.overdueDays,
+    });
+    existing.totalFees = balance.unpaidAmount;
+    groups.set(groupKey, existing);
+  });
+  const history = getNoticeHistory();
+  return [...groups.values()].map((group) => {
+    const relevantHistory = history
+      .filter((entry) => entry.patronId && entry.patronId === group.patronId)
+      .sort((a, b) => String(b.dateGenerated || "").localeCompare(String(a.dateGenerated || "")));
+    return {
+      ...group,
+      itemCount: group.items.length,
+      maxOverdueDays: Math.max(...group.items.map((item) => item.overdueDays), 0),
+      materialTypes: [...new Set(group.items.map((item) => item.materialType).filter(Boolean))],
+      lastNotice: relevantHistory[0] || null,
+    };
+  }).sort((a, b) => b.maxOverdueDays - a.maxOverdueDays || a.patronName.localeCompare(b.patronName));
+}
+
 function getItemsCheckedOutTodayCount() {
   const today = new Date().toISOString().slice(0, 10);
   return state.records.reduce((count, record) => count + (record.holdings || []).filter((holding) => String(holding.checkedOutAt || "").slice(0, 10) === today).length, 0);
@@ -3079,6 +3213,233 @@ function renderPatronSearchResults() {
   [...els.patronSearchResults.querySelectorAll("[data-patron-result]")].forEach((button) => button.addEventListener("click", () => selectPatron(button.dataset.patronResult)));
 }
 
+function getFilteredNoticeGroups() {
+  const age = Number(els.noticeAgeFilter?.value || 1);
+  const patronQuery = String(els.noticePatronFilter?.value || "").trim().toLowerCase();
+  const cardQuery = String(els.noticeCardFilter?.value || "").trim().toLowerCase();
+  const materialTypeFilter = String(els.noticeMaterialTypeFilter?.value || "all");
+  const statusFilter = String(els.noticeAccountStatusFilter?.value || "all");
+  return getOverduePatronGroups(age).filter((group) => {
+    if (patronQuery && !String(group.patronName || "").toLowerCase().includes(patronQuery)) return false;
+    if (cardQuery && !String(group.cardNumber || "").toLowerCase().includes(cardQuery)) return false;
+    if (materialTypeFilter !== "all" && !group.materialTypes.includes(materialTypeFilter)) return false;
+    if (statusFilter !== "all" && group.accountStatus !== statusFilter) return false;
+    return true;
+  });
+}
+
+function populateNoticeMaterialTypeFilter() {
+  if (!els.noticeMaterialTypeFilter) return;
+  const types = [...new Set(getOverduePatronGroups(1).flatMap((group) => group.materialTypes))].sort((a, b) => a.localeCompare(b));
+  const current = els.noticeMaterialTypeFilter.value || "all";
+  els.noticeMaterialTypeFilter.innerHTML = `<option value="all">All material types</option>${types.map((type) => `<option value="${escapeHtml(type)}">${escapeHtml(type)}</option>`).join("")}`;
+  els.noticeMaterialTypeFilter.value = types.includes(current) || current === "all" ? current : "all";
+}
+
+function openNoticesForPatron(patronId = "") {
+  state.activeNoticePatronId = patronId;
+  switchIlsSection("patrons", "patron-notices");
+  if (patronId) {
+    const patron = getPatrons().find((entry) => entry.id === patronId);
+    if (els.noticePatronFilter) els.noticePatronFilter.value = patron?.name || "";
+  }
+  renderNoticesWorkspace();
+}
+
+function generateNoticeRecord(patronId, templateId) {
+  const group = getOverduePatronGroups(1).find((entry) => entry.patronId === patronId);
+  const template = getNoticeTemplates().find((entry) => entry.id === templateId) || getNoticeTemplates()[0];
+  if (!group || !template) return null;
+  const settings = getNoticeSettings();
+  const record = {
+    id: `notice-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    patronId: group.patronId,
+    patronName: group.patronName,
+    cardNumber: group.cardNumber,
+    noticeType: template.name,
+    templateId: template.id,
+    dateGenerated: new Date().toISOString(),
+    dateSent: "",
+    deliveryMethod: "Print",
+    staffUser: "STAFF",
+    accountStatus: group.accountStatus,
+    closingMessage: settings.closingMessage || template.closing || "",
+    snapshotItems: group.items.map((item) => ({ ...item })),
+    balanceSummary: group.totalFees,
+    subject: template.subject,
+    body: template.body,
+  };
+  const history = [record, ...getNoticeHistory()];
+  saveNoticeHistory(history);
+  state.activeNoticeRecordId = record.id;
+  state.activeNoticePatronId = patronId;
+  renderNoticesWorkspace();
+  renderDashboard();
+  return record;
+}
+
+function updateNoticeRecord(noticeId, updates = {}) {
+  const next = getNoticeHistory().map((entry) => entry.id === noticeId ? { ...entry, ...updates } : entry);
+  saveNoticeHistory(next);
+  renderNoticesWorkspace();
+}
+
+function buildNoticePreviewMarkup(notice) {
+  if (!notice) return '<div class="empty-state">Select a patron and generate a notice to preview it here.</div>';
+  const libraryHeader = (getReceiptSettings().contactInfo || "Catalog Staff Workspace").split("\n").filter(Boolean);
+  return `
+    <article class="notice-print-sheet" data-notice-id="${escapeHtml(notice.id)}">
+      <header class="notice-print-header">
+        <div><h4>${escapeHtml(libraryHeader[0] || "Library")}</h4><p>${escapeHtml(libraryHeader.slice(1).join(" · ") || "Overdue notice")}</p></div>
+        <div class="notice-print-meta"><strong>${escapeHtml(notice.noticeType)}</strong><span>${formatDisplayDate(notice.dateGenerated)}</span></div>
+      </header>
+      <div class="notice-print-address">
+        <p><strong>${escapeHtml(notice.patronName)}</strong></p>
+        <p>Card #: ${escapeHtml(notice.cardNumber || "Not assigned")}</p>
+        <p>Date: ${formatDisplayDate(notice.dateGenerated)}</p>
+      </div>
+      <p>${escapeHtml(notice.body || "")}</p>
+      <table class="serials-table notice-print-table"><thead><tr><th>Title</th><th>Due date</th><th>Days overdue</th><th>Material type</th></tr></thead><tbody>${notice.snapshotItems.map((item) => `<tr><td>${escapeHtml(item.title)}</td><td>${escapeHtml(item.dueDate || "—")}</td><td>${escapeHtml(String(item.overdueDays || 0))}</td><td>${escapeHtml(item.materialType || "—")}</td></tr>`).join("")}</tbody></table>
+      <p><strong>Balance / fines:</strong> ${formatCurrency(notice.balanceSummary || 0)}</p>
+      <label><span>Closing message</span><textarea id="noticeClosingMessageInput" rows="3">${escapeHtml(notice.closingMessage || "")}</textarea></label>
+      <p>${escapeHtml(notice.closingMessage || "")}</p>
+      <div class="row-actions">
+        <label><span>Delivery method</span><select id="noticeDeliveryMethodSelect"><option ${notice.deliveryMethod === "Print" ? "selected" : ""}>Print</option><option ${notice.deliveryMethod === "Email" ? "selected" : ""}>Email</option><option ${notice.deliveryMethod === "SMS" ? "selected" : ""}>SMS</option><option ${notice.deliveryMethod === "Manual" ? "selected" : ""}>Manual</option></select></label>
+        <button class="button" type="button" data-notice-mark-sent="${escapeHtml(notice.id)}">Mark as Sent</button>
+        <button class="button button-secondary" type="button" data-notice-print="${escapeHtml(notice.id)}">Print Notice</button>
+      </div>
+      <p class="muted">Email and SMS are placeholders only for a future communications center. No messages are sent from this screen.</p>
+    </article>
+  `;
+}
+
+function printNotice(noticeId) {
+  const notice = getNoticeHistory().find((entry) => entry.id === noticeId);
+  if (!notice) return;
+  const popup = window.open("", "_blank", "width=900,height=700");
+  if (!popup) return;
+  popup.document.write(`<!doctype html><html><head><title>${notice.noticeType}</title><link rel="stylesheet" href="styles.css"></head><body class="notice-print-window">${buildNoticePreviewMarkup(notice)}</body></html>`);
+  popup.document.close();
+  popup.focus();
+  popup.print();
+}
+
+function renderNoticePreview() {
+  if (!els.noticePreviewPanel) return;
+  const notice = getNoticeHistory().find((entry) => entry.id === state.activeNoticeRecordId) || null;
+  els.noticePreviewPanel.className = notice ? "" : "empty-state";
+  els.noticePreviewPanel.innerHTML = buildNoticePreviewMarkup(notice);
+  const closingMessageInput = $("#noticeClosingMessageInput");
+  closingMessageInput?.addEventListener("change", (event) => {
+    const nextMessage = String(event.target.value || "");
+    saveNoticeSettings({ closingMessage: nextMessage });
+    updateNoticeRecord(notice.id, { closingMessage: nextMessage, deliveryMethod: $("#noticeDeliveryMethodSelect")?.value || notice.deliveryMethod });
+  });
+  $("#noticeDeliveryMethodSelect")?.addEventListener("change", (event) => updateNoticeRecord(notice.id, { deliveryMethod: event.target.value }));
+  els.noticePreviewPanel.querySelector("[data-notice-mark-sent]")?.addEventListener("click", () => updateNoticeRecord(notice.id, { dateSent: new Date().toISOString() }));
+  els.noticePreviewPanel.querySelector("[data-notice-print]")?.addEventListener("click", () => printNotice(notice.id));
+}
+
+function renderNoticeHistory() {
+  if (!els.noticeHistoryBody || !els.noticeHistorySummary) return;
+  const history = getNoticeHistory().slice().sort((a, b) => String(b.dateGenerated || "").localeCompare(String(a.dateGenerated || "")));
+  els.noticeHistorySummary.textContent = history.length ? `${history.length} stored notice record${history.length === 1 ? "" : "s"}.` : "No notice history yet.";
+  if (!history.length) {
+    els.noticeHistoryBody.innerHTML = '<tr><td colspan="8">No overdue notices have been generated yet.</td></tr>';
+    return;
+  }
+  els.noticeHistoryBody.innerHTML = history.map((entry) => `<tr class="${entry.dateSent ? "" : "notice-history-row-pending"}"><td>${escapeHtml(entry.patronName)}</td><td>${escapeHtml(entry.noticeType)}</td><td>${formatDisplayDate(entry.dateGenerated)}</td><td>${entry.dateSent ? formatDisplayDate(entry.dateSent) : "Not sent"}</td><td>${escapeHtml(entry.deliveryMethod || "Print")}</td><td>${escapeHtml(entry.staffUser || "STAFF")}</td><td>${entry.dateSent ? "Sent" : "Pending"}</td><td><div class="row-actions"><button class="button button-secondary" type="button" data-notice-history-view="${escapeHtml(entry.id)}">View</button>${entry.dateSent ? "" : `<button class="button button-secondary" type="button" data-notice-history-send="${escapeHtml(entry.id)}">Mark Sent</button>`}</div></td></tr>`).join("");
+  els.noticeHistoryBody.querySelectorAll("[data-notice-history-view]").forEach((button) => button.addEventListener("click", () => {
+    state.activeNoticeRecordId = button.dataset.noticeHistoryView;
+    renderNoticePreview();
+  }));
+  els.noticeHistoryBody.querySelectorAll("[data-notice-history-send]").forEach((button) => button.addEventListener("click", () => updateNoticeRecord(button.dataset.noticeHistorySend, { dateSent: new Date().toISOString() })));
+}
+
+function renderNoticeTemplates() {
+  if (!els.noticeTemplateList) return;
+  const templates = getNoticeTemplates();
+  els.noticeTemplateList.innerHTML = templates.map((template) => `<form class="patron-notice-template-card" data-notice-template-form="${escapeHtml(template.id)}">
+      <label><span>Template name</span><input name="name" value="${escapeHtml(template.name)}" /></label>
+      <label><span>Subject</span><input name="subject" value="${escapeHtml(template.subject || "")}" /></label>
+      <label><span>Body</span><textarea name="body" rows="4">${escapeHtml(template.body || "")}</textarea></label>
+      <label><span>Closing</span><textarea name="closing" rows="3">${escapeHtml(template.closing || "")}</textarea></label>
+      <div class="row-actions"><button class="button button-secondary" type="submit">Save Template</button></div>
+    </form>`).join("");
+  els.noticeTemplateList.querySelectorAll("[data-notice-template-form]").forEach((form) => form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const formData = new FormData(form);
+    saveNoticeTemplates(getNoticeTemplates().map((template) => template.id === form.dataset.noticeTemplateForm ? {
+      ...template,
+      name: String(formData.get("name") || "").trim(),
+      subject: String(formData.get("subject") || "").trim(),
+      body: String(formData.get("body") || "").trim(),
+      closing: String(formData.get("closing") || "").trim(),
+    } : template));
+    renderNoticeTemplates();
+    renderNoticesWorkspace();
+  }));
+}
+
+function renderNoticesWorkspace() {
+  if (!els.noticePatronResults) return;
+  populateNoticeMaterialTypeFilter();
+  const groups = getFilteredNoticeGroups();
+  const allGroups = getOverduePatronGroups(1);
+  const history = getNoticeHistory();
+  const today = todayIso();
+  const finalPending = history.filter((entry) => entry.noticeType === "Final Notice" && !entry.dateSent).length;
+  if (els.noticeSummaryCards) {
+    els.noticeSummaryCards.innerHTML = [
+      { label: "Patrons with overdues", value: allGroups.length },
+      { label: "Items overdue", value: getOverdueLoans(1).length },
+      { label: "Notices generated today", value: history.filter((entry) => String(entry.dateGenerated || "").slice(0, 10) === today).length },
+      { label: "Final notices pending", value: finalPending },
+    ].map((card) => `<article class="summary-card"><span class="summary-card-label">${card.label}</span><strong>${card.value}</strong></article>`).join("");
+  }
+  if (els.noticeResultsSummary) els.noticeResultsSummary.textContent = groups.length ? `${groups.length} patron account${groups.length === 1 ? "" : "s"} match the current overdue filters.` : "No overdue patrons match the current filters.";
+  if (!groups.length) {
+    els.noticePatronResults.className = "patron-notice-results empty-state";
+    els.noticePatronResults.innerHTML = "No overdue patrons match the current filters.";
+  } else {
+    els.noticePatronResults.className = "patron-notice-results";
+    els.noticePatronResults.innerHTML = groups.map((group) => `
+      <article class="patron-notice-group ${["Blocked", "Expired"].includes(group.accountStatus) ? "is-attention" : ""}">
+        <div class="patron-notice-group-header">
+          <div><h4>${escapeHtml(group.patronName)}</h4><p class="muted">Card #${escapeHtml(group.cardNumber || "Not assigned")} · ${escapeHtml(group.accountStatus)} · ${group.itemCount} overdue item${group.itemCount === 1 ? "" : "s"} · max ${group.maxOverdueDays} days</p></div>
+          <div class="row-actions">
+            <select data-notice-template-pick="${escapeHtml(group.patronId)}">${getNoticeTemplates().map((template) => `<option value="${escapeHtml(template.id)}">${escapeHtml(template.name)}</option>`).join("")}</select>
+            <button class="button" type="button" data-notice-generate="${escapeHtml(group.patronId)}">Generate Notice</button>
+            <button class="button button-secondary" type="button" data-notice-open-history="${escapeHtml(group.patronId)}">View Notice History</button>
+          </div>
+        </div>
+        <div class="patron-notice-group-meta">
+          <span class="badge badge-status">${escapeHtml(group.materialTypes.join(", ") || "Mixed materials")}</span>
+          <span class="badge badge-status">${formatCurrency(group.totalFees)} balance</span>
+          <span class="badge badge-status">${group.lastNotice ? `Last notice: ${escapeHtml(group.lastNotice.noticeType)} on ${formatDisplayDate(group.lastNotice.dateGenerated)}` : "No prior notices"}</span>
+        </div>
+        <details ${state.activeNoticePatronId === group.patronId ? "open" : ""}>
+          <summary>Expand overdue items</summary>
+          <table class="serials-table"><thead><tr><th>Title</th><th>Due date</th><th>Days overdue</th><th>Material type</th><th>Barcode</th></tr></thead><tbody>${group.items.map((item) => `<tr><td>${escapeHtml(item.title)}</td><td>${escapeHtml(item.dueDate)}</td><td>${item.overdueDays}</td><td>${escapeHtml(item.materialType)}</td><td>${escapeHtml(item.materialNumber || "—")}</td></tr>`).join("")}</tbody></table>
+        </details>
+      </article>
+    `).join("");
+    els.noticePatronResults.querySelectorAll("[data-notice-generate]").forEach((button) => button.addEventListener("click", () => {
+      const templateId = els.noticePatronResults.querySelector(`[data-notice-template-pick="${button.dataset.noticeGenerate}"]`)?.value;
+      generateNoticeRecord(button.dataset.noticeGenerate, templateId);
+    }));
+    els.noticePatronResults.querySelectorAll("[data-notice-open-history]").forEach((button) => button.addEventListener("click", () => {
+      const latest = getNoticeHistory().find((entry) => entry.patronId === button.dataset.noticeOpenHistory);
+      if (latest) state.activeNoticeRecordId = latest.id;
+      state.activeNoticePatronId = button.dataset.noticeOpenHistory;
+      renderNoticePreview();
+    }));
+  }
+  renderNoticePreview();
+  renderNoticeHistory();
+  renderNoticeTemplates();
+}
+
 function renderPatronDetail() {
   if (!els.patronDetailPanel || !els.patronDetailBadge) return;
   const patron = getPatrons().find((entry) => entry.id === state.selectedPatronId);
@@ -3125,11 +3486,13 @@ function renderPatronDetail() {
       <button class="button button-secondary" type="button" data-patron-modal="fines">Fines / Fees</button>
       <button class="button button-secondary" type="button" data-patron-modal="history">History</button>
       <button class="button button-secondary" type="button" data-patron-modal="notes">Notes / Alerts</button>
+      <button class="button button-secondary" type="button" data-patron-open-notices="${escapeHtml(patron.id)}">Open in Notices</button>
       <button class="button" type="button" data-patron-edit="${escapeHtml(patron.id)}">Edit Info</button>
     </div>
     ${(blocks.length || alerts.length || holdHistory.length) ? `<div class="detail-card"><span class="detail-label">At a glance</span><strong>${escapeHtml(blocks.join(", ") || alerts.join(", ") || "Recent account notes available")}</strong></div>` : ""}
   `;
   [...els.patronDetailPanel.querySelectorAll("[data-patron-modal]")].forEach((button) => button.addEventListener("click", () => openPatronAccountModal(button.dataset.patronModal, patron)));
+  els.patronDetailPanel.querySelector("[data-patron-open-notices]")?.addEventListener("click", () => openNoticesForPatron(patron.id));
   els.patronDetailPanel.querySelector("[data-patron-edit]")?.addEventListener("click", () => editPatron(patron.id));
 }
 
@@ -5943,6 +6306,16 @@ function bindEvents() {
     });
   }
   if (els.openPatronCreateModalBtn) els.openPatronCreateModalBtn.addEventListener("click", () => { resetPatronForm(); openPatronEditorModal("add"); });
+  [els.noticeAgeFilter, els.noticePatronFilter, els.noticeCardFilter, els.noticeMaterialTypeFilter, els.noticeAccountStatusFilter].filter(Boolean).forEach((el) => el.addEventListener("input", renderNoticesWorkspace));
+  [els.noticeAgeFilter, els.noticeMaterialTypeFilter, els.noticeAccountStatusFilter].filter(Boolean).forEach((el) => el.addEventListener("change", renderNoticesWorkspace));
+  if (els.clearNoticeFiltersBtn) els.clearNoticeFiltersBtn.addEventListener("click", () => {
+    if (els.noticeAgeFilter) els.noticeAgeFilter.value = "1";
+    if (els.noticePatronFilter) els.noticePatronFilter.value = "";
+    if (els.noticeCardFilter) els.noticeCardFilter.value = "";
+    if (els.noticeMaterialTypeFilter) els.noticeMaterialTypeFilter.value = "all";
+    if (els.noticeAccountStatusFilter) els.noticeAccountStatusFilter.value = "all";
+    renderNoticesWorkspace();
+  });
   if (els.closePatronModalBtn) els.closePatronModalBtn.addEventListener("click", closePatronAccountModal);
   if (els.closePatronEditorModalBtn) els.closePatronEditorModalBtn.addEventListener("click", closePatronEditorModal);
   if (els.patronAccountModal) els.patronAccountModal.addEventListener("click", (event) => { if (event.target === els.patronAccountModal) closePatronAccountModal(); });
@@ -6042,6 +6415,7 @@ function bindEvents() {
 }
 
 function render() {
+  ensureNoticeTemplatesSeeded();
   fillMaterialTypes();
   fillGenres();
   fillFormats();
@@ -6052,6 +6426,7 @@ function render() {
   renderTable();
   renderPatronSearchResults();
   renderPatronDetail();
+  renderNoticesWorkspace();
   renderSubscriptionsTable();
   renderSerialIssuesTable();
   renderAcquisitionsWorkspace();
@@ -6073,6 +6448,7 @@ function render() {
 }
 
 function init() {
+  ensureNoticeTemplatesSeeded();
   populateStaticSelects();
   toggleDonationFields();
   bindEvents();
