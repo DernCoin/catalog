@@ -2536,8 +2536,7 @@ function getPatronAccountSummary(patron) {
   const holds = getPatronHolds(patron.id);
   const overdue = loans.filter(({ holding }) => holding.dueDate && holding.dueDate < todayIso());
   const history = state.records.flatMap((record) => String(record.circulationHistory || '')
-    .split('
-')
+    .split(/\n+/)
     .filter(Boolean)
     .filter((line) => line.includes(patron.name || '') || line.includes(patron.cardNumber || ''))
     .map((line) => ({ title: record.title || 'Untitled', line })));
