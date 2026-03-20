@@ -42,6 +42,7 @@ const state = {
   reportsView: "landing",
   reportsCategory: "collection",
   activeReportId: "monthly-circulation",
+  editingRegisterId: "",
 };
 
 function isFirebaseConfigured() {
@@ -380,6 +381,9 @@ const els = {
   registerCategory: $("#registerCategory"),
   registerPaymentType: $("#registerPaymentType"),
   registerStaffInitials: $("#registerStaffInitials"),
+  registerFormTitle: $("#registerFormTitle"),
+  registerSubmitBtn: $("#registerSubmitBtn"),
+  cancelRegisterEditBtn: $("#cancelRegisterEditBtn"),
   registerDonationPurposeLabel: $("#registerDonationPurposeLabel"),
   registerDonationPurpose: $("#registerDonationPurpose"),
   registerDonationOtherLabel: $("#registerDonationOtherLabel"),
@@ -389,6 +393,12 @@ const els = {
   registerSummaryCards: $("#registerSummaryCards"),
   registerReportDate: $("#registerReportDate"),
   registerDailyTableWrap: $("#registerDailyTableWrap"),
+  viewRegisterTransactionsBtn: $("#viewRegisterTransactionsBtn"),
+  registerTransactionsModal: $("#registerTransactionsModal"),
+  closeRegisterTransactionsModalBtn: $("#closeRegisterTransactionsModalBtn"),
+  registerTransactionsModalTitle: $("#registerTransactionsModalTitle"),
+  registerTransactionsModalSubtitle: $("#registerTransactionsModalSubtitle"),
+  registerTransactionsModalBody: $("#registerTransactionsModalBody"),
 };
 
 const ILS_SECTIONS = {
@@ -779,6 +789,7 @@ const ILL_WORKFLOW_TILES = [
   { key: "outgoing-completed", label: "Outgoing Completed", type: "outgoing", filter: (entry) => ILL_COMPLETED_STATUSES.has(entry.status), copy: "Closed outbound ILL work for recent shipments." },
 ];
 const REGISTER_CATEGORIES = ["Copies", "Faxing", "New Cards", "Cash Donations", "Replacement Costs", "Fines / Fees"];
+const REGISTER_PAYMENT_TYPES = ["Cash", "Card", "Check"];
 const DONATION_PURPOSES = ["Memorial", "Adopted Author", "State Funding", "General Donation", "Other"];
 
 function todayIso() {
@@ -1272,6 +1283,7 @@ function populateStaticSelects() {
   if (els.illOutgoingStatus) els.illOutgoingStatus.innerHTML = ILL_OUTGOING_STATUSES.map((status) => `<option value="${status}">${status}</option>`).join("");
   if (els.illIncomingStatus) els.illIncomingStatus.innerHTML = ILL_INCOMING_STATUSES.map((status) => `<option value="${status}">${status}</option>`).join("");
   if (els.registerCategory) els.registerCategory.innerHTML = REGISTER_CATEGORIES.map((category) => `<option value="${category}">${category}</option>`).join("");
+  if (els.registerPaymentType) els.registerPaymentType.innerHTML = REGISTER_PAYMENT_TYPES.map((type) => `<option value="${type}">${type}</option>`).join("");
   if (els.registerDonationPurpose) els.registerDonationPurpose.innerHTML = DONATION_PURPOSES.map((purpose) => `<option value="${purpose}">${purpose}</option>`).join("");
   if (els.registerDate && !els.registerDate.value) els.registerDate.value = todayIso();
   if (els.holdShelfDays && !els.holdShelfDays.value) els.holdShelfDays.value = String(getHoldShelfDuration());
@@ -1702,29 +1714,115 @@ function toggleDonationFields() {
   if (els.registerDonationOther) els.registerDonationOther.required = donationSelected && els.registerDonationPurpose?.value === "Other";
 }
 
+function resetRegisterForm() {
+  state.editingRegisterId = "";
+  els.registerForm?.reset();
+  populateStaticSelects();
+  if (els.registerDate) els.registerDate.value = els.registerReportDate?.value || todayIso();
+  if (els.registerFormTitle) els.registerFormTitle.textContent = "Add register transaction";
+  if (els.registerSubmitBtn) els.registerSubmitBtn.textContent = "Record transaction";
+  els.cancelRegisterEditBtn?.classList.add("hidden");
+  toggleDonationFields();
+}
+
+function prefillRegisterForm({ amount = "", category = REGISTER_CATEGORIES[0] } = {}) {
+  if (els.registerAmount && amount !== "") els.registerAmount.value = Number(amount).toFixed(2);
+  if (els.registerCategory) els.registerCategory.value = category;
+  if (els.registerDate) els.registerDate.value = els.registerReportDate?.value || els.registerDate.value || todayIso();
+  toggleDonationFields();
+}
+
+function editRegisterEntry(entryId) {
+  const entry = getRegisterTransactions().find((item) => item.id === entryId);
+  if (!entry) return;
+  state.editingRegisterId = entryId;
+  populateStaticSelects();
+  if (els.registerDate) els.registerDate.value = entry.date || todayIso();
+  if (els.registerAmount) els.registerAmount.value = Number(entry.amount || 0).toFixed(2);
+  if (els.registerCategory) els.registerCategory.value = entry.category || REGISTER_CATEGORIES[0];
+  if (els.registerPaymentType) els.registerPaymentType.value = REGISTER_PAYMENT_TYPES.includes(entry.paymentType) ? entry.paymentType : REGISTER_PAYMENT_TYPES[0];
+  if (els.registerStaffInitials) els.registerStaffInitials.value = entry.staffInitials || "";
+  if (els.registerNotes) els.registerNotes.value = entry.notes || "";
+  if (els.registerDonationPurpose) els.registerDonationPurpose.value = DONATION_PURPOSES.includes(entry.donationPurpose) ? entry.donationPurpose : "Other";
+  if (els.registerDonationOther) els.registerDonationOther.value = DONATION_PURPOSES.includes(entry.donationPurpose) ? "" : (entry.donationPurpose || "");
+  if (els.registerFormTitle) els.registerFormTitle.textContent = `Edit register transaction ${entry.id}`;
+  if (els.registerSubmitBtn) els.registerSubmitBtn.textContent = "Save changes";
+  els.cancelRegisterEditBtn?.classList.remove("hidden");
+  toggleDonationFields();
+  els.registerAmount?.focus();
+}
+
+function deleteRegisterEntry(entryId) {
+  const entry = getRegisterTransactions().find((item) => item.id === entryId);
+  if (!entry || entry.linkedFeeId) return;
+  saveRegisterTransactions(getRegisterTransactions().filter((item) => item.id !== entryId));
+  if (state.editingRegisterId === entryId) resetRegisterForm();
+  if (els.registerMessage) els.registerMessage.textContent = `Deleted register transaction ${entry.id}.`;
+  renderRegisterWorkspace();
+  renderStatsPanel();
+  renderDashboard();
+}
+
+function formatRegisterTimestamp(entry) {
+  const stamp = Number(entry.createdAt || 0);
+  if (!stamp) return formatDisplayDate(entry.date, entry.date || "—");
+  const date = new Date(stamp);
+  if (Number.isNaN(date.getTime())) return formatDisplayDate(entry.date, entry.date || "—");
+  return date.toLocaleString(undefined, { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function renderRegisterTransactionsModal() {
+  if (!els.registerTransactionsModalBody) return;
+  const date = els.registerReportDate?.value || todayIso();
+  const summary = summarizeRegisterDate(date);
+  if (els.registerTransactionsModalTitle) els.registerTransactionsModalTitle.textContent = `Transactions for ${date}`;
+  if (els.registerTransactionsModalSubtitle) els.registerTransactionsModalSubtitle.textContent = `${summary.entries.length} transaction${summary.entries.length === 1 ? "" : "s"} recorded for the selected day.`;
+  els.registerTransactionsModalBody.innerHTML = summary.entries.length
+    ? `<div class="report-table-wrap"><table class="serials-table"><thead><tr><th>Time / date</th><th>Amount</th><th>Category</th><th>Payment type</th><th>Staff initials</th><th>Notes</th><th>Actions</th></tr></thead><tbody>${summary.entries.map((entry) => `<tr><td>${escapeHtml(formatRegisterTimestamp(entry))}</td><td>${formatCurrency(entry.amount)}</td><td>${escapeHtml(entry.category)}</td><td>${escapeHtml(entry.paymentType || "—")}</td><td>${escapeHtml(entry.staffInitials || "—")}</td><td>${escapeHtml([entry.donationPurpose, entry.notes].filter(Boolean).join(" · ") || "—")}</td><td><div class="table-actions">${entry.linkedFeeId ? '<span class="muted">Managed with fees</span>' : `<button class="button button-secondary" type="button" data-register-edit="${entry.id}">Edit</button><button class="button button-secondary" type="button" data-register-delete="${entry.id}">Delete</button>`}</div></td></tr>`).join("")}</tbody></table></div>`
+    : '<div class="empty-state">No register transactions recorded for this date.</div>';
+  els.registerTransactionsModalBody.querySelectorAll('[data-register-edit]').forEach((button) => button.addEventListener('click', () => {
+    editRegisterEntry(button.dataset.registerEdit);
+    closeModal(els.registerTransactionsModal);
+  }));
+  els.registerTransactionsModalBody.querySelectorAll('[data-register-delete]').forEach((button) => button.addEventListener('click', () => deleteRegisterEntry(button.dataset.registerDelete)));
+}
+
+function openRegisterTransactionsModal() {
+  renderRegisterTransactionsModal();
+  openModal(els.registerTransactionsModal);
+}
+
+function closeRegisterTransactionsModal() {
+  closeModal(els.registerTransactionsModal);
+}
+
 function saveRegisterEntry(event) {
   event.preventDefault();
   const category = els.registerCategory?.value || REGISTER_CATEGORIES[0];
   const donationPurpose = category === "Cash Donations"
     ? (els.registerDonationPurpose?.value === "Other" ? els.registerDonationOther?.value : els.registerDonationPurpose?.value)
     : "";
+  const existingEntry = getRegisterTransactions().find((item) => item.id === state.editingRegisterId);
+  const paymentType = REGISTER_PAYMENT_TYPES.includes(els.registerPaymentType?.value || "") ? els.registerPaymentType.value : REGISTER_PAYMENT_TYPES[0];
   const entry = {
-    id: `REG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    id: existingEntry?.id || `REG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     date: els.registerDate?.value || todayIso(),
     amount: Number.parseFloat(els.registerAmount?.value || "0") || 0,
     category,
-    paymentType: String(els.registerPaymentType?.value || "").trim(),
+    paymentType,
     staffInitials: String(els.registerStaffInitials?.value || "").trim(),
     donationPurpose: String(donationPurpose || "").trim(),
     notes: String(els.registerNotes?.value || "").trim(),
-    createdAt: Date.now(),
+    createdAt: existingEntry?.createdAt || Date.now(),
+    linkedFeeId: existingEntry?.linkedFeeId || "",
   };
-  saveRegisterTransactions([entry, ...getRegisterTransactions()]);
-  els.registerForm?.reset();
-  populateStaticSelects();
-  toggleDonationFields();
-  if (els.registerReportDate && !els.registerReportDate.value) els.registerReportDate.value = entry.date;
-  if (els.registerMessage) els.registerMessage.textContent = `Recorded register transaction ${entry.id}.`;
+  const transactions = existingEntry
+    ? getRegisterTransactions().map((item) => (item.id === existingEntry.id ? entry : item))
+    : [entry, ...getRegisterTransactions()];
+  saveRegisterTransactions(transactions);
+  if (els.registerReportDate) els.registerReportDate.value = entry.date;
+  if (els.registerMessage) els.registerMessage.textContent = `${existingEntry ? "Updated" : "Recorded"} register transaction ${entry.id}.`;
+  resetRegisterForm();
   renderRegisterWorkspace();
   renderStatsPanel();
   renderDashboard();
@@ -1749,27 +1847,23 @@ function summarizeRegisterByMonth() {
 function renderRegisterWorkspace() {
   const date = els.registerReportDate?.value || todayIso();
   const summary = summarizeRegisterDate(date);
+  if (els.registerDate && !state.editingRegisterId) els.registerDate.value = date;
   if (els.registerSummaryCards) {
-    const today = summarizeRegisterDate(todayIso());
     els.registerSummaryCards.innerHTML = [
-      { label: "Today's total", value: formatCurrency(today.total) },
+      { label: "Selected day total", value: formatCurrency(summary.total) },
       { label: "Selected date", value: date },
       { label: "Transactions", value: summary.entries.length },
-      { label: "Cash donations today", value: formatCurrency(today.totalsByCategory["Cash Donations"]) },
+      { label: "Cash donations", value: formatCurrency(summary.totalsByCategory["Cash Donations"]) },
     ].map((card) => `<article class="summary-card"><span class="summary-card-label">${card.label}</span><strong class="summary-card-value">${card.value}</strong></article>`).join("");
   }
   if (els.registerDailyTableWrap) {
-    const monthly = summarizeRegisterByMonth();
-    const monthlyRows = Object.entries(monthly).sort((a, b) => b[0].localeCompare(a[0]));
-    const dailyTable = summary.entries.length
-      ? `<table class="serials-table"><thead><tr><th>Date</th><th>Category</th><th>Amount</th><th>Donation purpose</th><th>Notes</th></tr></thead><tbody>${summary.entries.map((entry) => `<tr><td>${entry.date}</td><td>${escapeHtml(entry.category)}</td><td>${formatCurrency(entry.amount)}</td><td>${escapeHtml(entry.donationPurpose || "—")}</td><td>${escapeHtml(entry.notes || "—")}</td></tr>`).join("")}</tbody></table>`
+    const recentList = summary.entries.length
+      ? `<ul class="register-transaction-preview">${summary.entries.slice(0, 5).map((entry) => `<li><span><strong>${formatCurrency(entry.amount)}</strong> · ${escapeHtml(entry.category)}</span><span class="muted">${escapeHtml(formatRegisterTimestamp(entry))}</span></li>`).join("")}</ul>`
       : '<div class="empty-state">No register transactions recorded for this date.</div>';
     const categoryList = Object.entries(summary.totalsByCategory).map(([category, total]) => `<li><span>${escapeHtml(category)}</span><strong>${formatCurrency(total)}</strong></li>`).join("");
-    const monthlyTable = monthlyRows.length
-      ? `<table class="serials-table"><thead><tr><th>Month</th>${REGISTER_CATEGORIES.map((category) => `<th>${escapeHtml(category)}</th>`).join("")}<th>Overall total</th></tr></thead><tbody>${monthlyRows.map(([month, row]) => `<tr><td>${formatMonthLabel(month)}</td>${REGISTER_CATEGORIES.map((category) => `<td>${formatCurrency(row.byCategory[category])}</td>`).join("")}<td>${formatCurrency(row.total)}</td></tr>`).join("")}</tbody></table>`
-      : '<div class="empty-state">No monthly register data available yet.</div>';
-    els.registerDailyTableWrap.innerHTML = `<div class="register-breakdown"><h4>Daily category totals</h4><ul class="totals-list">${categoryList}</ul></div><div class="register-table-stack"><h4>Transactions for ${date}</h4>${dailyTable}</div><div class="register-table-stack"><h4>Monthly totals</h4>${monthlyTable}</div>`;
+    els.registerDailyTableWrap.innerHTML = `<div class="register-breakdown"><h4>Daily category totals</h4><ul class="totals-list">${categoryList}</ul></div><div class="register-table-stack"><h4>Recent activity</h4><p class="muted">Use the transactions modal for the full daily list and edit/delete actions.</p>${recentList}</div>`;
   }
+  renderRegisterTransactionsModal();
   renderOperationalReports();
 }
 
@@ -5863,9 +5957,14 @@ function bindEvents() {
   if (els.illPatronLookup) els.illPatronLookup.addEventListener("input", renderIllPatronLookupResults);
   if (els.clearIllFilterBtn) els.clearIllFilterBtn.addEventListener("click", () => { state.activeIllFilter = ''; renderIllWorkspace(); });
   if (els.registerForm) els.registerForm.addEventListener("submit", saveRegisterEntry);
+  if (els.cancelRegisterEditBtn) els.cancelRegisterEditBtn.addEventListener("click", resetRegisterForm);
   if (els.registerCategory) els.registerCategory.addEventListener("change", toggleDonationFields);
   if (els.registerDonationPurpose) els.registerDonationPurpose.addEventListener("change", toggleDonationFields);
   if (els.registerReportDate) els.registerReportDate.addEventListener("change", renderRegisterWorkspace);
+  if (els.viewRegisterTransactionsBtn) els.viewRegisterTransactionsBtn.addEventListener("click", openRegisterTransactionsModal);
+  if (els.closeRegisterTransactionsModalBtn) els.closeRegisterTransactionsModalBtn.addEventListener("click", closeRegisterTransactionsModal);
+  if (els.registerTransactionsModal) els.registerTransactionsModal.addEventListener("click", (event) => { if (event.target === els.registerTransactionsModal) closeRegisterTransactionsModal(); });
+  $$('[data-register-quick-amount]').forEach((button) => button.addEventListener('click', () => prefillRegisterForm({ amount: button.dataset.registerQuickAmount, category: 'Copies' })));
   if (els.visitorCounterBtn) els.visitorCounterBtn.addEventListener("click", () => incrementDailyCounter("visitor"));
   if (els.referenceCounterBtn) els.referenceCounterBtn.addEventListener("click", () => incrementDailyCounter("reference"));
   if (els.checkOutForm) els.checkOutForm.addEventListener("submit", checkOutRecord);
