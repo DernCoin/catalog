@@ -2323,6 +2323,196 @@ function renderCheckoutPatronContext() {
   renderCheckoutGateState();
 }
 
+function setCirculationMessage(message = "", type = "info") {
+  if (!els.circulationMessage) return;
+  els.circulationMessage.textContent = message;
+  els.circulationMessage.className = "status-message circulation-message-panel";
+  els.circulationMessage.classList.toggle("warning", type === "error");
+  els.circulationMessage.classList.toggle("is-error", type === "error");
+}
+
+function appendCirculationHistory(record, message = "") {
+  const entry = String(message || "").trim();
+  if (!entry) return String(record?.circulationHistory || "").trim();
+  const stamped = `${new Date().toISOString()} — ${entry}`;
+  return [stamped, String(record?.circulationHistory || "").trim()].filter(Boolean).join("\n");
+}
+
+function getCheckoutDueDate(days = 14) {
+  const dueDate = new Date();
+  dueDate.setDate(dueDate.getDate() + days);
+  return dueDate.toISOString().slice(0, 10);
+}
+
+function clearCheckoutSession() {
+  state.checkoutPatronId = "";
+  state.queuedCheckoutItems = [];
+  if (els.checkOutForm) els.checkOutForm.reset();
+  renderCheckoutQueue();
+  renderCheckoutPatronPreview();
+  renderCheckoutPatronContext();
+  renderCheckoutGateState();
+  updateCheckoutStatus("Awaiting patron load.", "Items will display updated status here.");
+  setCirculationMessage("Checkout session cleared.", "info");
+}
+
+function loadCheckoutPatron() {
+  const cardNumber = String(els.checkOutCardNumber?.value || "").trim();
+  if (!cardNumber) {
+    setCirculationMessage("Scan or enter a patron card number first.", "error");
+    return null;
+  }
+  const patron = findPatronByCardNumber(cardNumber);
+  if (!patron) {
+    state.checkoutPatronId = "";
+    renderCheckoutPatronPreview(cardNumber);
+    renderCheckoutPatronContext();
+    renderCheckoutGateState();
+    setCirculationMessage("No patron found with that card number.", "error");
+    return null;
+  }
+  state.checkoutPatronId = patron.id;
+  renderCheckoutPatronPreview(cardNumber);
+  renderCheckoutPatronContext();
+  renderCheckoutGateState();
+  updateCheckoutStatus(`Ready to scan items for ${patron.name}.`, "Queue items, then submit checkout.");
+  setCirculationMessage(`Loaded ${patron.name} for checkout.`, "success");
+  return patron;
+}
+
+function queueCheckoutItem() {
+  const patron = getCheckoutPatron() || loadCheckoutPatron();
+  if (!patron) return null;
+  const materialNumber = String(els.checkOutMaterialNumber?.value || "").trim();
+  if (!materialNumber) {
+    setCirculationMessage("Scan an item material number first.", "error");
+    return null;
+  }
+  const match = getRecordByMaterialNumber(materialNumber);
+  if (!match) {
+    setCirculationMessage(`Material number ${materialNumber} was not found.`, "error");
+    return null;
+  }
+  const { record, holding } = match;
+  if (String(holding.status) === "On Loan") {
+    setCirculationMessage(`${record.title || "This item"} is already checked out.`, "error");
+    return null;
+  }
+  if (state.queuedCheckoutItems.some((entry) => entry.materialNumber === materialNumber)) {
+    setCirculationMessage(`${record.title || "This item"} is already in the checkout queue.`, "error");
+    return null;
+  }
+
+  state.queuedCheckoutItems.push({
+    recordId: record.id,
+    holdingId: holding.id,
+    materialNumber,
+    title: record.title || "Untitled",
+    author: record.creator || "",
+    materialType: record.materialType || record.format || "",
+    coverUrl: record.coverUrl || "",
+    autoDueDate: getCheckoutDueDate(),
+    overrideDueDate: "",
+  });
+
+  if (els.checkOutMaterialNumber) els.checkOutMaterialNumber.value = "";
+  renderCheckoutQueue();
+  renderCheckoutGateState();
+  updateCheckoutStatus(`Queued ${record.title || "item"}.`, `Queue now has ${state.queuedCheckoutItems.length} item${state.queuedCheckoutItems.length === 1 ? "" : "s"}.`);
+  setCirculationMessage(`Queued ${record.title || "item"} for checkout.`, "success");
+  return match;
+}
+
+function checkOutRecord(event) {
+  event?.preventDefault();
+  const patron = getCheckoutPatron() || loadCheckoutPatron();
+  if (!patron) return false;
+  if (!state.queuedCheckoutItems.length) {
+    setCirculationMessage("Queue at least one item before completing checkout.", "error");
+    return false;
+  }
+
+  const checkedOutItems = [];
+  state.records = state.records.map((record) => {
+    const queuedForRecord = state.queuedCheckoutItems.filter((entry) => entry.recordId === record.id);
+    if (!queuedForRecord.length) return record;
+    const holdings = (record.holdings || []).map((holding) => {
+      const queued = queuedForRecord.find((entry) => entry.holdingId === holding.id);
+      if (!queued) return holding;
+      const dueDate = queued.overrideDueDate || queued.autoDueDate || getCheckoutDueDate();
+      checkedOutItems.push({
+        title: record.title || "Untitled",
+        author: record.creator || "",
+        materialNumber: queued.materialNumber,
+        dueDateLabel: dueDate,
+      });
+      return {
+        ...holding,
+        status: "On Loan",
+        checkedOutTo: patron.id,
+        checkedOutToName: patron.name || "",
+        checkedOutAt: new Date().toISOString(),
+        dueDate,
+      };
+    });
+    return normalizeRecord({
+      ...record,
+      holdings,
+      circulationHistory: appendCirculationHistory(record, `Checked out to ${patron.name || "Unknown patron"} (${patron.cardNumber || "No card"})`),
+    });
+  });
+
+  saveRecords(state.records);
+  state.lastCheckoutReceipt = {
+    patron: patron.name || "Unnamed patron",
+    checkedOutAt: new Date().toLocaleString(),
+    items: checkedOutItems,
+    itemsCurrentlyOut: getPatronLoanEntries(patron.id).length,
+    dueHeadline: checkedOutItems.map((item) => item.dueDateLabel).filter(Boolean).sort()[0] || "See item list for due dates",
+  };
+  renderCheckoutReceipt(state.lastCheckoutReceipt);
+  state.queuedCheckoutItems = [];
+  if (els.checkOutMaterialNumber) els.checkOutMaterialNumber.value = "";
+  renderCheckoutQueue();
+  renderCheckoutPatronContext();
+  renderCheckoutGateState();
+  renderRecentTransactions(els.recentCheckoutTransactions, "checkout");
+  renderDashboard();
+  renderStatsPanel();
+  updateCheckoutStatus(`Checked out ${checkedOutItems.length} item${checkedOutItems.length === 1 ? "" : "s"}.`, "Checkout complete.");
+  setCirculationMessage(`Checked out ${checkedOutItems.length} item${checkedOutItems.length === 1 ? "" : "s"} to ${patron.name}.`, "success");
+  return true;
+}
+
+function checkInByMaterialNumber(event) {
+  event?.preventDefault();
+  const materialNumber = String(els.checkInMaterialNumber?.value || "").trim();
+  if (!materialNumber) {
+    setCirculationMessage("Scan an item material number first.", "error");
+    return null;
+  }
+  const match = getRecordByMaterialNumber(materialNumber);
+  if (!match) {
+    setCirculationMessage(`Material number ${materialNumber} was not found.`, "error");
+    return null;
+  }
+  if (els.checkInForm) els.checkInForm.reset();
+  return checkInRecord(match.record.id, match.holding.id);
+}
+
+async function hydrateRemoteRecords() {
+  if (!isFirebaseConfigured()) return;
+  try {
+    const remoteRecords = await loadRecordsFromRemote();
+    if (!remoteRecords.length) return;
+    state.records = remoteRecords.map(normalizeRecord);
+    saveRecords(state.records);
+    render();
+  } catch (error) {
+    console.error("Unable to hydrate remote records.", error);
+  }
+}
+
 function getPatronLoanEntries(patronId) {
   return state.records.flatMap((record) => (record.holdings || [])
     .filter((holding) => holding.checkedOutTo === patronId && String(holding.status) === 'On Loan')
