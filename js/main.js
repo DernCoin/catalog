@@ -25,6 +25,7 @@ const state = {
   recordModalHistory: [],
   carouselTimers: new Map(),
   carouselHoverState: new WeakMap(),
+  searchSubmitted: false,
 };
 
 const $ = (s) => document.querySelector(s);
@@ -68,13 +69,17 @@ function bindEvents() {
   els.closeLoginBtn.addEventListener("click", () => els.loginModal.classList.add("hidden"));
   els.loginForm.addEventListener("submit", (e) => { e.preventDefault(); const ok = login($("#username").value.trim(), $("#password").value); if (!ok) { els.loginError.textContent = "Login failed."; return; } els.loginError.textContent = ""; els.loginModal.classList.add("hidden"); els.loginForm.reset(); state.isAdmin = true; render(); if (location.hash === "#admin") switchView("admin"); });
 
-  [els.keywordSearch, els.sortFilter, $("#advTitle"), $("#advCreator"), $("#advSubject"), $("#advKeyword"), $("#advYear"), $("#advFormat")].forEach((el) => el.addEventListener("input", () => { state.shown = PAGE_SIZE; renderPublic(); }));
-  els.keywordSearch.addEventListener("input", () => { renderSuggestions(); if (els.keywordSearch.value.trim().length >= 2) openModal(els.searchResultsModal, els.keywordSearch); });
+  [els.keywordSearch, els.sortFilter, $("#advTitle"), $("#advCreator"), $("#advSubject"), $("#advKeyword"), $("#advYear"), $("#advFormat")].forEach((el) => el.addEventListener("input", () => {
+    state.shown = PAGE_SIZE;
+    if (!hasActiveSearch(q())) state.searchSubmitted = false;
+    renderPublic();
+  }));
+  els.keywordSearch.addEventListener("input", () => { renderSuggestions(); });
   els.keywordSearch.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); openSearchResultsModal(); } });
   els.runSearchBtn.addEventListener("click", openSearchResultsModal);
-  Object.values(els.facets).forEach((el) => el.addEventListener("change", () => { state.shown = PAGE_SIZE; openModal(els.searchResultsModal, els.closeSearchResultsBtn); renderPublic(); }));
+  Object.values(els.facets).forEach((el) => el.addEventListener("change", () => { state.shown = PAGE_SIZE; if (hasActiveSearch(q())) state.searchSubmitted = true; renderPublic(); }));
   els.toggleAdvancedBtn.addEventListener("click", () => { const hidden = els.advancedSearch.classList.toggle("hidden"); els.toggleAdvancedBtn.setAttribute("aria-expanded", String(!hidden)); });
-  els.clearFiltersBtn.addEventListener("click", () => { Object.values(els.facets).forEach((s) => { s.value = "all"; }); ["#advTitle", "#advCreator", "#advSubject", "#advKeyword", "#advYear"].forEach((id)=>$(id).value=""); $("#advFormat").value="all"; els.keywordSearch.value=""; renderPublic(); closeModal(els.searchResultsModal); });
+  els.clearFiltersBtn.addEventListener("click", () => { Object.values(els.facets).forEach((s) => { s.value = "all"; }); ["#advTitle", "#advCreator", "#advSubject", "#advKeyword", "#advYear"].forEach((id)=>$(id).value=""); $("#advFormat").value="all"; els.keywordSearch.value=""; state.searchSubmitted = false; renderPublic(); dismissSearchResultsModal(); });
   els.loadMoreBtn.addEventListener("click", () => { state.shown += PAGE_SIZE; renderPublic(); });
   els.arrivalsPrevBtn.addEventListener("click", () => scrollCarouselBy(els.newArrivals, -1));
   els.arrivalsNextBtn.addEventListener("click", () => scrollCarouselBy(els.newArrivals, 1));
@@ -103,11 +108,13 @@ function bindEvents() {
   els.adminTabButtons.forEach((btn) => btn.addEventListener("click", () => switchAdminTab(btn.dataset.adminTab)));
   els.exportBtn.addEventListener("click", () => exportRecords(state.records));
   els.importInput.addEventListener("change", async (e) => { if (!e.target.files?.[0]) return; state.records = await importRecords(e.target.files[0]); saveRecords(state.records); render(); });
-  els.closeSearchResultsBtn.addEventListener("click", () => closeModal(els.searchResultsModal));
-  els.openFullSearchBtn.addEventListener("click", () => { switchView("search"); closeModal(els.searchResultsModal); els.keywordSearch.focus(); });
+  els.closeSearchResultsBtn.addEventListener("click", dismissSearchResultsModal);
+  els.openFullSearchBtn.addEventListener("click", () => { switchView("search"); dismissSearchResultsModal(); els.keywordSearch.focus(); });
   els.closeRecordDetailsBtn.addEventListener("click", () => closeModal(els.recordDetailsModal));
   [els.recordDetailsModal, els.loginModal, els.searchResultsModal].forEach((modal) => modal.addEventListener("click", (event) => {
-    if (event.target === modal) closeModal(modal);
+    if (event.target !== modal) return;
+    if (modal === els.searchResultsModal) dismissSearchResultsModal();
+    else closeModal(modal);
   }));
   document.addEventListener("keydown", handleGlobalKeydown);
   document.addEventListener("focusin", maintainFocusTrap);
@@ -498,25 +505,26 @@ function renderPublic() {
   fillFacet(els.facets.format, ["all", ...facets.format]); fillFacet(els.facets.genre, ["all", ...facets.genre]); fillFacet(els.facets.year, ["all", ...facets.year]); fillFacet(els.facets.status, ["all", ...facets.status]); fillFacet(els.facets.location, ["all", ...facets.location]); fillFacet(els.facets.binding, ["all", ...facets.binding]);
   const criteria = q();
   const hasSearchInput = hasActiveSearch(criteria);
-  const results = hasSearchInput ? queryRecords(state.records, criteria) : [];
+  const shouldShowSearchResults = hasSearchInput && (state.searchSubmitted || !els.searchResultsModal.classList.contains("hidden"));
+  const results = shouldShowSearchResults ? queryRecords(state.records, criteria) : [];
   const visible = results.slice(0, state.shown);
   els.publicResults.innerHTML = "";
   visible.forEach((r) => els.publicResults.appendChild(renderCard(r, criteria.keyword || criteria.advKeyword)));
   const suggestion = didYouMean(state.records, criteria.keyword);
   els.didYouMean.innerHTML = suggestion && hasSearchInput ? `Did you mean <button class="subject-link" type="button" id="dymBtn">${suggestion}</button>?` : "";
   $("#dymBtn")?.addEventListener("click", ()=>{els.keywordSearch.value=suggestion; openSearchResultsModal();});
-  els.resultsSummary.textContent = hasSearchInput ? `${results.length} results` : "Use the search above to open results in a modal.";
-  els.emptyState.classList.toggle("hidden", results.length > 0 || !hasSearchInput);
-  els.loadMoreBtn.classList.toggle("hidden", !hasSearchInput || results.length <= visible.length);
-  syncSearchResultsModal(hasSearchInput);
+  els.resultsSummary.textContent = shouldShowSearchResults ? `${results.length} results` : "Use the search above to open results in a modal.";
+  els.emptyState.classList.toggle("hidden", results.length > 0 || !shouldShowSearchResults);
+  els.loadMoreBtn.classList.toggle("hidden", !shouldShowSearchResults || results.length <= visible.length);
+  syncSearchResultsModal(shouldShowSearchResults);
 }
 
-function syncSearchResultsModal(hasSearchInput) {
-  if (hasSearchInput) {
-    openModal(els.searchResultsModal, els.closeSearchResultsBtn);
-    return;
+function syncSearchResultsModal(hasVisibleResults) {
+  if (hasVisibleResults) return;
+  if (!hasActiveSearch(q())) {
+    state.searchSubmitted = false;
+    if (state.activeModal === els.searchResultsModal || !els.searchResultsModal.classList.contains('hidden')) closeModal(els.searchResultsModal);
   }
-  if (state.activeModal === els.searchResultsModal || !els.searchResultsModal.classList.contains('hidden')) closeModal(els.searchResultsModal);
 }
 
 function renderSuggestions() {
@@ -573,14 +581,26 @@ function renderPopularSection() {
   els.popularGrid.querySelectorAll('[data-record-id]').forEach((btn) => btn.addEventListener('click', () => openDetail(state.records.find((record) => record.id === btn.dataset.recordId))));
 }
 
+function dismissSearchResultsModal() {
+  state.searchSubmitted = false;
+  closeModal(els.searchResultsModal);
+}
+
 function openSearchResultsModal() {
+  const criteria = q();
+  if (!hasActiveSearch(criteria)) {
+    state.searchSubmitted = false;
+    renderPublic();
+    return;
+  }
+  state.searchSubmitted = true;
   state.shown = PAGE_SIZE;
   renderPublic();
-  if (hasActiveSearch(q())) openModal(els.searchResultsModal, els.closeSearchResultsBtn);
+  openModal(els.searchResultsModal, els.closeSearchResultsBtn);
 }
 
 function renderCarousel({ container, items, renderItem, onItemClick, autoScroll = false }) {
-  container.innerHTML = items.map(renderItem).join("");
+  container.innerHTML = `<div class="media-carousel-track" role="presentation">${items.map(renderItem).join("")}</div>`;
   container.dataset.empty = items.length ? 'false' : 'true';
   container.querySelectorAll('[data-record-id]').forEach((button) => button.addEventListener('click', () => onItemClick(button.dataset.recordId)));
   container.querySelectorAll('[data-shelf-name]').forEach((button) => button.addEventListener('click', () => onItemClick(button.dataset.shelfName)));
@@ -768,7 +788,8 @@ function closeModal(modal) {
 
 function handleGlobalKeydown(event) {
   if (event.key === 'Escape') {
-    if (state.activeModal) closeModal(state.activeModal);
+    if (state.activeModal === els.searchResultsModal) dismissSearchResultsModal();
+    else if (state.activeModal) closeModal(state.activeModal);
     return;
   }
   if (event.key !== 'Tab' || !state.activeModal) return;
