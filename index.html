@@ -12,14 +12,20 @@
         <div class="site-branding">
           <p class="eyebrow">Personal Collection Catalog</p>
           <h1>Jordan's Library</h1>
-          <p class="site-tagline">A compact, design-forward discovery layer for books, records, games, and everything in between.</p>
+          <p class="site-tagline">Public catalog for books, records, games, and adjacent materials.</p>
         </div>
         <div class="header-actions">
-          <button id="randomItemBtn" class="button button-secondary" type="button">Browse something unexpected</button>
+          <button id="randomItemBtn" class="button button-secondary header-utility" type="button">Browse something unexpected</button>
           <section class="search-main header-search-panel" aria-label="Search the catalog">
+            <div class="search-panel-heading">
+              <p class="search-panel-title">Search the catalog</p>
+              <p class="search-panel-copy">Title, creator, subject, notes, call number.</p>
+            </div>
             <label for="keywordSearch" class="sr-only">Global keyword search</label>
-            <input id="keywordSearch" type="search" placeholder="Search title, creator, subject, notes, call number…" />
-            <div id="searchSuggestions" class="suggestions hidden"></div>
+            <div class="search-input-wrap">
+              <input id="keywordSearch" type="search" placeholder="Search title, creator, subject, notes, call number…" />
+              <div id="searchSuggestions" class="suggestions hidden"></div>
+            </div>
             <p id="didYouMean" class="muted did-you-mean"></p>
             <div class="hero-search-actions">
               <button id="runSearchBtn" class="button" type="button">Search Catalog</button>
@@ -61,7 +67,7 @@
             <div class="arrivals-header">
               <div>
                 <h3 id="arrivalsTitle">Recently Added</h3>
-                <p class="muted">Fresh arrivals that quietly glide by until something catches your eye.</p>
+                <p class="muted">Recent additions to the catalog, arranged for quick inspection.</p>
               </div>
               <div class="arrivals-controls">
                 <button id="arrivalsPrevBtn" class="button button-secondary" type="button" aria-label="Scroll recently added left">←</button>
@@ -75,7 +81,7 @@
             <div class="arrivals-header">
               <div>
                 <h3 id="curatedShelvesTitle">Curated Shelves</h3>
-                <p class="muted">Staff-picks energy, organized into browseable themed groupings.</p>
+                <p class="muted">Shelf groupings drawn from recurring themes in the collection.</p>
               </div>
               <div class="arrivals-controls">
                 <button id="shelvesPrevBtn" class="button button-secondary" type="button" aria-label="Scroll curated shelves left">←</button>
@@ -89,7 +95,7 @@
             <div class="section-header">
               <div>
                 <h3 id="popularTitle">Most Popular</h3>
-                <p class="muted">A quick look at the creators and titles with the strongest presence in the collection.</p>
+                <p class="muted">Frequently represented creators and titles in the current catalog.</p>
               </div>
             </div>
             <div id="popularGrid" class="popular-grid"></div>
@@ -98,7 +104,7 @@
           <section class="cover-wall-panel section-panel" aria-labelledby="homeCoverWallTitle">
             <div class="section-header module-header">
               <div>
-                <p class="section-kicker">Gallery</p>
+                <p class="section-kicker">Browse</p>
                 <h3 id="homeCoverWallTitle">Cover Wall</h3>
               </div>
             </div>
@@ -107,7 +113,7 @@
           </section>
         </section>
 <section id="viewRecent" class="view-panel hidden"><div class="section-panel page-panel"><div class="section-header module-header"><div><p class="section-kicker">Browse</p><h3>Recently Added</h3></div></div><div id="recentBuckets"></div></div></section>
-        <section id="viewCovers" class="view-panel hidden"><div class="section-panel page-panel"><div class="section-header module-header"><div><p class="section-kicker">Gallery</p><h3>Cover Wall</h3></div></div><div id="coverWall" class="cover-wall"></div></div></section>
+        <section id="viewCovers" class="view-panel hidden"><div class="section-panel page-panel"><div class="section-header module-header"><div><p class="section-kicker">Browse</p><h3>Cover Wall</h3></div></div><div id="coverWall" class="cover-wall"></div></div></section>
         <section id="viewShelves" class="view-panel hidden"><div class="section-panel page-panel"><div class="section-header module-header"><div><p class="section-kicker">Shelves</p><h3>Curated Shelves</h3></div></div><div id="shelfPages"></div></div></section>
       </section>
 
