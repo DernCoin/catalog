@@ -17,9 +17,13 @@ const state = {
   settings: loadSettings(),
   shown: PAGE_SIZE,
   selectedIds: new Set(),
-  arrivalsPage: 0,
   view: "search",
   adminTab: "catalog",
+  activeModal: null,
+  lastFocused: null,
+  searchModalPinned: false,
+  recordModalHistory: [],
+  carouselTimers: new Map(),
 };
 
 const $ = (s) => document.querySelector(s);
@@ -27,12 +31,13 @@ const $$ = (s) => [...document.querySelectorAll(s)];
 const els = {
   adminToggleBtn: $("#adminToggleBtn"), adminPageBtn: $("#adminPageBtn"), adminSection: $("#adminSection"), loginModal: $("#loginModal"), closeLoginBtn: $("#closeLoginBtn"), loginForm: $("#loginForm"), loginError: $("#loginError"),
   keywordSearch: $("#keywordSearch"), searchSuggestions: $("#searchSuggestions"), didYouMean: $("#didYouMean"),
-  toggleAdvancedBtn: $("#toggleAdvancedBtn"), advancedSearch: $("#advancedSearch"), sortFilter: $("#sortFilter"), resultsSummary: $("#resultsSummary"), publicResults: $("#publicResults"), emptyState: $("#emptyState"),
-  loadMoreBtn: $("#loadMoreBtn"), template: $("#recordTemplate"), newArrivals: $("#newArrivals"), arrivalsPrevBtn: $("#arrivalsPrevBtn"), arrivalsNextBtn: $("#arrivalsNextBtn"), randomItemBtn: $("#randomItemBtn"),
+  toggleAdvancedBtn: $("#toggleAdvancedBtn"), advancedSearch: $("#advancedSearch"), runSearchBtn: $("#runSearchBtn"), sortFilter: $("#sortFilter"), resultsSummary: $("#resultsSummary"), publicResults: $("#publicResults"), emptyState: $("#emptyState"),
+  loadMoreBtn: $("#loadMoreBtn"), template: $("#recordTemplate"), newArrivals: $("#newArrivals"), arrivalsPrevBtn: $("#arrivalsPrevBtn"), arrivalsNextBtn: $("#arrivalsNextBtn"), curatedShelfScroller: $("#curatedShelfScroller"), shelvesPrevBtn: $("#shelvesPrevBtn"), shelvesNextBtn: $("#shelvesNextBtn"), popularGrid: $("#popularGrid"), randomItemBtn: $("#randomItemBtn"),
   facets: { format: $("#facetFormat"), genre: $("#facetGenre"), year: $("#facetYear"), status: $("#facetStatus"), location: $("#facetLocation"), binding: $("#facetBinding") },
   clearFiltersBtn: $("#clearFiltersBtn"), adminSearch: $("#adminSearch"), adminTableBody: $("#adminTableBody"), selectAllRows: $("#selectAllRows"), applyBulkBtn: $("#applyBulkBtn"), bulkStatusSelect: $("#bulkStatusSelect"),
   bulkGenreSelect: $("#bulkGenreSelect"), bulkGenreAddBtn: $("#bulkGenreAddBtn"),
   recordForm: $("#recordForm"), cancelEditBtn: $("#cancelEditBtn"), duplicateWarning: $("#duplicateWarning"), adminMessage: $("#adminMessage"), exportBtn: $("#exportBtn"), importInput: $("#importInput"),
+  searchResultsModal: $("#searchResultsModal"), closeSearchResultsBtn: $("#closeSearchResultsBtn"), openFullSearchBtn: $("#openFullSearchBtn"),
   recordDetailsModal: $("#recordDetailsModal"), closeRecordDetailsBtn: $("#closeRecordDetailsBtn"), recordDetailsBody: $("#recordDetailsBody"), copyCitationBtn: $("#copyCitationBtn"),
   fetchMetadataBtn: $("#fetchMetadataBtn"), genres: $("#genres"), coverUpload: $("#coverUpload"), locationSelect: $("#location"),
   newLocationInput: $("#newLocationInput"), addLocationBtn: $("#addLocationBtn"), locationList: $("#locationList"), newGenreInput: $("#newGenreInput"), addGenreBtn: $("#addGenreBtn"), genreList: $("#genreList"),
@@ -63,13 +68,17 @@ function bindEvents() {
   els.loginForm.addEventListener("submit", (e) => { e.preventDefault(); const ok = login($("#username").value.trim(), $("#password").value); if (!ok) { els.loginError.textContent = "Login failed."; return; } els.loginError.textContent = ""; els.loginModal.classList.add("hidden"); els.loginForm.reset(); state.isAdmin = true; render(); if (location.hash === "#admin") switchView("admin"); });
 
   [els.keywordSearch, els.sortFilter, $("#advTitle"), $("#advCreator"), $("#advSubject"), $("#advKeyword"), $("#advYear"), $("#advFormat")].forEach((el) => el.addEventListener("input", () => { state.shown = PAGE_SIZE; renderPublic(); }));
-  els.keywordSearch.addEventListener("input", renderSuggestions);
-  Object.values(els.facets).forEach((el) => el.addEventListener("change", () => { state.shown = PAGE_SIZE; renderPublic(); }));
+  els.keywordSearch.addEventListener("input", () => { renderSuggestions(); if (els.keywordSearch.value.trim().length >= 2) openModal(els.searchResultsModal, els.keywordSearch); });
+  els.keywordSearch.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); openSearchResultsModal(); } });
+  els.runSearchBtn.addEventListener("click", openSearchResultsModal);
+  Object.values(els.facets).forEach((el) => el.addEventListener("change", () => { state.shown = PAGE_SIZE; openModal(els.searchResultsModal, els.closeSearchResultsBtn); renderPublic(); }));
   els.toggleAdvancedBtn.addEventListener("click", () => { const hidden = els.advancedSearch.classList.toggle("hidden"); els.toggleAdvancedBtn.setAttribute("aria-expanded", String(!hidden)); });
-  els.clearFiltersBtn.addEventListener("click", () => { Object.values(els.facets).forEach((s) => { s.value = "all"; }); ["#advTitle", "#advCreator", "#advSubject", "#advKeyword", "#advYear"].forEach((id)=>$(id).value=""); $("#advFormat").value="all"; els.keywordSearch.value=""; renderPublic(); });
+  els.clearFiltersBtn.addEventListener("click", () => { Object.values(els.facets).forEach((s) => { s.value = "all"; }); ["#advTitle", "#advCreator", "#advSubject", "#advKeyword", "#advYear"].forEach((id)=>$(id).value=""); $("#advFormat").value="all"; els.keywordSearch.value=""; renderPublic(); closeModal(els.searchResultsModal); });
   els.loadMoreBtn.addEventListener("click", () => { state.shown += PAGE_SIZE; renderPublic(); });
-  els.arrivalsPrevBtn.addEventListener("click", () => { state.arrivalsPage = Math.max(state.arrivalsPage - 1, 0); renderArrivals(); });
-  els.arrivalsNextBtn.addEventListener("click", () => { const maxPage = Math.max(Math.ceil(getRecentArrivals().length / 5) - 1, 0); state.arrivalsPage = Math.min(state.arrivalsPage + 1, maxPage); renderArrivals(); });
+  els.arrivalsPrevBtn.addEventListener("click", () => scrollCarouselBy(els.newArrivals, -1));
+  els.arrivalsNextBtn.addEventListener("click", () => scrollCarouselBy(els.newArrivals, 1));
+  els.shelvesPrevBtn.addEventListener("click", () => scrollCarouselBy(els.curatedShelfScroller, -1));
+  els.shelvesNextBtn.addEventListener("click", () => scrollCarouselBy(els.curatedShelfScroller, 1));
   els.randomItemBtn.addEventListener("click", () => openDetail(state.records[Math.floor(Math.random() * state.records.length)]));
 
   els.recordForm.addEventListener("input", checkDuplicateDraft);
@@ -93,18 +102,14 @@ function bindEvents() {
   els.adminTabButtons.forEach((btn) => btn.addEventListener("click", () => switchAdminTab(btn.dataset.adminTab)));
   els.exportBtn.addEventListener("click", () => exportRecords(state.records));
   els.importInput.addEventListener("change", async (e) => { if (!e.target.files?.[0]) return; state.records = await importRecords(e.target.files[0]); saveRecords(state.records); render(); });
-  els.closeRecordDetailsBtn.addEventListener("click", () => els.recordDetailsModal.classList.add("hidden"));
-  els.recordDetailsModal.addEventListener("click", (event) => {
-    if (event.target === els.recordDetailsModal) {
-      els.recordDetailsModal.classList.add("hidden");
-    }
-  });
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      els.recordDetailsModal.classList.add("hidden");
-      els.loginModal.classList.add("hidden");
-    }
-  });
+  els.closeSearchResultsBtn.addEventListener("click", () => closeModal(els.searchResultsModal));
+  els.openFullSearchBtn.addEventListener("click", () => { switchView("search"); closeModal(els.searchResultsModal); els.keywordSearch.focus(); });
+  els.closeRecordDetailsBtn.addEventListener("click", () => closeModal(els.recordDetailsModal));
+  [els.recordDetailsModal, els.loginModal, els.searchResultsModal].forEach((modal) => modal.addEventListener("click", (event) => {
+    if (event.target === modal) closeModal(modal);
+  }));
+  document.addEventListener("keydown", handleGlobalKeydown);
+  document.addEventListener("focusin", maintainFocusTrap);
 }
 
 function switchView(view) {
@@ -486,6 +491,8 @@ function render() {
 
 function renderPublic() {
   renderArrivals();
+  renderCuratedShelvesShowcase();
+  renderPopularSection();
   const facets = buildFacets(state.records);
   fillFacet(els.facets.format, ["all", ...facets.format]); fillFacet(els.facets.genre, ["all", ...facets.genre]); fillFacet(els.facets.year, ["all", ...facets.year]); fillFacet(els.facets.status, ["all", ...facets.status]); fillFacet(els.facets.location, ["all", ...facets.location]); fillFacet(els.facets.binding, ["all", ...facets.binding]);
   const criteria = q();
@@ -496,10 +503,11 @@ function renderPublic() {
   visible.forEach((r) => els.publicResults.appendChild(renderCard(r, criteria.keyword || criteria.advKeyword)));
   const suggestion = didYouMean(state.records, criteria.keyword);
   els.didYouMean.innerHTML = suggestion && hasSearchInput ? `Did you mean <button class="subject-link" type="button" id="dymBtn">${suggestion}</button>?` : "";
-  $("#dymBtn")?.addEventListener("click", ()=>{els.keywordSearch.value=suggestion; renderPublic();});
-  els.resultsSummary.textContent = hasSearchInput ? `${results.length} results` : "Search to view catalog records.";
-  els.emptyState.classList.toggle("hidden", results.length > 0 && hasSearchInput);
+  $("#dymBtn")?.addEventListener("click", ()=>{els.keywordSearch.value=suggestion; openSearchResultsModal();});
+  els.resultsSummary.textContent = hasSearchInput ? `${results.length} results` : "Use the search above to open results in a modal.";
+  els.emptyState.classList.toggle("hidden", results.length > 0 || !hasSearchInput);
   els.loadMoreBtn.classList.toggle("hidden", !hasSearchInput || results.length <= visible.length);
+  if (hasSearchInput) openModal(els.searchResultsModal, els.closeSearchResultsBtn);
 }
 
 function renderSuggestions() {
@@ -508,20 +516,91 @@ function renderSuggestions() {
   const suggestions = [...new Set(state.records.flatMap((r) => [r.title, r.creator, ...asArray(r.genres?.length ? r.genres : r.genre)]).filter((s) => s && s.toLowerCase().includes(term)).slice(0, 8))];
   els.searchSuggestions.innerHTML = suggestions.map((s) => `<button type="button" class="suggestion-item">${s}</button>`).join("");
   els.searchSuggestions.classList.toggle("hidden", !suggestions.length);
-  els.searchSuggestions.querySelectorAll(".suggestion-item").forEach((btn) => btn.addEventListener("click", () => { els.keywordSearch.value = btn.textContent; els.searchSuggestions.classList.add("hidden"); renderPublic(); }));
+  els.searchSuggestions.querySelectorAll(".suggestion-item").forEach((btn) => btn.addEventListener("click", () => { els.keywordSearch.value = btn.textContent; els.searchSuggestions.classList.add("hidden"); openSearchResultsModal(); }));
 }
 
 function hasActiveSearch(c) { return Boolean(c.keyword || c.title || c.creator || c.subject || c.advKeyword || c.year || (c.advFormat && c.advFormat !== "all") || Object.entries(c).some(([k,v])=>k.startsWith("facet") && v !== "all")); }
 function getRecentArrivals() { return [...state.records].sort((a, b) => Number(b.addedAt) - Number(a.addedAt)).slice(0, 24); }
 
 function renderArrivals() {
-  const recent = getRecentArrivals(); const perPage = 5; const pages = Math.max(Math.ceil(recent.length / perPage), 1); state.arrivalsPage = Math.min(state.arrivalsPage, pages - 1);
-  const pageItems = recent.slice(state.arrivalsPage * perPage, state.arrivalsPage * perPage + perPage);
-  els.newArrivals.innerHTML = "";
-  pageItems.forEach((r) => { const b = document.createElement("button"); b.className = "arrival-item"; b.type = "button"; b.innerHTML = `<img class="arrival-cover" src="${r.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${r.title}"><span class="arrival-title">${r.title}</span>`; b.addEventListener("click", () => openDetail(r)); els.newArrivals.appendChild(b); });
-  els.arrivalsPrevBtn.disabled = state.arrivalsPage === 0; els.arrivalsNextBtn.disabled = state.arrivalsPage >= pages - 1;
+  const recent = getRecentArrivals();
+  renderCarousel({
+    container: els.newArrivals,
+    items: recent,
+    renderItem: (r) => `<button class="arrival-item media-tile" data-record-id="${r.id}" type="button"><img class="arrival-cover" src="${r.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${r.title}"><span class="arrival-title">${r.title}</span><span class="arrival-meta">${r.creator || "Unknown"}</span></button>`,
+    onItemClick: (id) => openDetail(state.records.find((r) => r.id === id)),
+    autoScroll: true,
+  });
 }
 
+function renderCuratedShelvesShowcase() {
+  const shelves = Object.entries(groupCuratedShelves()).map(([name, items]) => ({ name, items }));
+  renderCarousel({
+    container: els.curatedShelfScroller,
+    items: shelves,
+    renderItem: (shelf) => `<button class="arrival-item shelf-tile" data-shelf-name="${encodeURIComponent(shelf.name)}" type="button"><span class="badge badge-status">${shelf.items.length} items</span><strong class="arrival-title">${shelf.name}</strong><span class="arrival-meta">${shelf.items.slice(0, 3).map((item) => item.title).join(" • ")}</span></button>`,
+    onItemClick: (name) => openShelfModal(decodeURIComponent(name)),
+    autoScroll: true,
+  });
+}
+
+function renderPopularSection() {
+  const stats = getStats(state.records);
+  const popularRecords = [...state.records].sort((a, b) => {
+    const aScore = (normalizeAuthor(a.creator) === normalizeAuthor(stats.mostOwnedAuthors[0]?.author) ? 2 : 0) + Number(a.addedAt || 0);
+    const bScore = (normalizeAuthor(b.creator) === normalizeAuthor(stats.mostOwnedAuthors[0]?.author) ? 2 : 0) + Number(b.addedAt || 0);
+    return bScore - aScore;
+  }).slice(0, 6);
+  els.popularGrid.innerHTML = `
+    <article class="popular-panel">
+      <h4>Top creators</h4>
+      <div class="popular-list">${stats.mostOwnedAuthors.map((entry) => `<button class="subject-link popular-link" type="button" data-author="${encodeURIComponent(entry.author)}">${entry.author} <span class="muted">(${entry.count})</span></button>`).join("")}</div>
+    </article>
+    <article class="popular-panel">
+      <h4>Popular to browse</h4>
+      <div class="popular-cards">${popularRecords.map((record) => `<button class="mini-card" type="button" data-record-id="${record.id}"><img src="${record.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${record.title}"><span><strong>${record.title}</strong><small>${record.creator}</small></span></button>`).join("")}</div>
+    </article>`;
+  els.popularGrid.querySelectorAll('[data-author]').forEach((btn) => btn.addEventListener('click', () => openAuthorResults(btn.dataset.author ? decodeURIComponent(btn.dataset.author) : btn.textContent)));
+  els.popularGrid.querySelectorAll('[data-record-id]').forEach((btn) => btn.addEventListener('click', () => openDetail(state.records.find((record) => record.id === btn.dataset.recordId))));
+}
+
+function openSearchResultsModal() {
+  state.shown = PAGE_SIZE;
+  renderPublic();
+  if (hasActiveSearch(q())) openModal(els.searchResultsModal, els.closeSearchResultsBtn);
+}
+
+function renderCarousel({ container, items, renderItem, onItemClick, autoScroll = false }) {
+  container.innerHTML = items.map(renderItem).join("");
+  container.dataset.empty = items.length ? 'false' : 'true';
+  container.querySelectorAll('[data-record-id]').forEach((button) => button.addEventListener('click', () => onItemClick(button.dataset.recordId)));
+  container.querySelectorAll('[data-shelf-name]').forEach((button) => button.addEventListener('click', () => onItemClick(button.dataset.shelfName)));
+  bindCarouselAutoScroll(container, autoScroll && items.length > 1);
+}
+
+function bindCarouselAutoScroll(container, enabled) {
+  const existing = state.carouselTimers.get(container.id);
+  if (existing) { clearInterval(existing); state.carouselTimers.delete(container.id); }
+  if (!enabled) return;
+  let paused = false;
+  container.onmouseenter = () => { paused = true; };
+  container.onmouseleave = () => { paused = false; };
+  const timer = setInterval(() => {
+    if (paused || document.hidden) return;
+    const maxScroll = container.scrollWidth - container.clientWidth;
+    if (container.scrollLeft >= maxScroll - 4) container.scrollTo({ left: 0, behavior: 'smooth' });
+    else container.scrollBy({ left: Math.max(220, Math.round(container.clientWidth * 0.75)), behavior: 'smooth' });
+  }, 3800);
+  state.carouselTimers.set(container.id, timer);
+}
+
+function scrollCarouselBy(container, direction) {
+  container.scrollBy({ left: direction * Math.max(220, Math.round(container.clientWidth * 0.8)), behavior: 'smooth' });
+}
+
+function groupCuratedShelves() {
+  return state.records.reduce((acc, r)=>{ if (!r.curatedShelf) return acc; (acc[r.curatedShelf] ||= []).push(r); return acc; }, {});
+}
 function fillFacet(select, values) { const current = select.value || "all"; select.innerHTML = values.map((v) => `<option value="${v}">${v === "all" ? "All" : `${v} (${facetCount(select.id, v)})`}</option>`).join(""); select.value = values.includes(current) ? current : "all"; }
 function facetCount(id, value) { if (value === "all") return state.records.length; const map={facetFormat:"format",facetGenre:"genre",facetYear:"year",facetStatus:"status",facetLocation:"location",facetBinding:"binding"}; const k=map[id]; return state.records.filter((r)=> k==="genre" ? asArray(r.genres?.length?r.genres:r.genre).includes(value) : String(r[k]||"")===value).length; }
 
@@ -547,28 +626,55 @@ function renderCard(r, term) {
   return node;
 }
 
-function openDetail(record) {
+function openDetail(record, options = {}) {
   if (!record) return;
+  const pushHistory = options.pushHistory ?? false;
+  if (pushHistory && state.recordModalHistory[state.recordModalHistory.length - 1]?.type !== 'record') {
+    state.recordModalHistory.push({ type: 'record', recordId: options.fromRecordId || record.id });
+  }
   location.hash = `record-${record.id}`;
   const related = getRelated(state.records, record);
   const genres = asArray(record.genres?.length ? record.genres : record.genre);
-  const decade = record.year ? `${Math.floor(Number(record.year) / 10) * 10}s` : "";
-  els.recordDetailsBody.innerHTML = `<article class="opac-record-layout"><div class="record-columns"><div class="record-image-column"><img src="${record.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${record.title}" class="details-cover" /></div><section class="record-main-column"><h4>${record.title}</h4><p class="muted">${record.subtitle || ""}</p><dl class="metadata-grid"><dt>Author / Creator</dt><dd><button class="subject-link" id="authorPageBtn" type="button">${record.creator}</button></dd><dt>Publisher</dt><dd>${record.publisher || "Unknown"}</dd><dt>Published</dt><dd>${record.year || "n.d."}</dd><dt>Genres</dt><dd>${genres.join(", ") || "n/a"}</dd><dt>Binding</dt><dd>${record.binding || "n/a"}</dd><dt>Series</dt><dd>${record.seriesName ? `${record.seriesName}${record.seriesNumber ? ` #${record.seriesNumber}` : ""}` : "n/a"}</dd><dt>Identifier</dt><dd>${record.identifier || "n/a"}</dd>${record.pageCount ? `<dt>Pages</dt><dd>${record.pageCount}</dd>` : ""}<dt>Date acquired</dt><dd>${record.dateAcquired || "n/a"}${record.pricePaid ? ` • $${record.pricePaid}` : ""}</dd></dl></section><aside class="record-availability-column"><div class="availability-card ${String(record.status||"").toLowerCase()==="on order"?"status-on-order":""} ${String(record.status||"").toLowerCase()==="on loan"?"status-on-loan":""}"><h5>Availability</h5><p><strong>Status:</strong> ${record.status}</p><p><strong>Location:</strong> ${record.location || "n/a"}</p><p><strong>Call Number:</strong> ${record.callNumber || "n/a"}</p><p><strong>Format:</strong> ${record.format}</p></div></aside></div><section class="detail-section"><h5>Description</h5><p>${record.description || "No description"}</p></section><section class="detail-section"><h5>Collection Pathways</h5><p class="muted"><button class="subject-link" id="decadeBtn" type="button">More from ${decade || "this era"}</button> <button class="subject-link" id="genreBtn" type="button">More ${genres[0] || "in this category"}</button></p></section><section class="detail-section"><h5>Series & Related</h5><p class="muted">Series items: ${related.bySeries.map((r)=>r.title).join(", ") || "None"}</p><p class="muted">By creator: ${related.byCreator.map((r)=>r.title).join(", ") || "None"}</p></section><section class="detail-section nearby-section"><h5>Browse a Shelf</h5><div class="nearby-spines" role="list">${related.virtualShelf.map((item)=>`<button class="book-spine ${item.id===record.id?"selected":""}" data-record-id="${item.id}" style="--spine-width:${getSpineWidth(item)}px" type="button"><span class="spine-title"><span>${item.title}</span><span>${item.creator || "Unknown"}</span></span><span class="spine-call">${item.callNumber || "No call #"}</span></button>`).join("")}</div></section></article>`;
-  els.recordDetailsBody.querySelectorAll(".book-spine").forEach((spine) => spine.addEventListener("click", () => openDetail(state.records.find((r) => r.id === spine.dataset.recordId))));
-  $("#authorPageBtn")?.addEventListener("click", ()=>renderAuthorPage(record.creator));
-  $("#decadeBtn")?.addEventListener("click", ()=>{els.keywordSearch.value=decade.slice(0,4); switchView('search'); renderPublic();});
-  $("#genreBtn")?.addEventListener("click", ()=>{$("#advSubject").value=genres[0]||""; switchView('search'); renderPublic();});
-  els.recordDetailsModal.classList.remove("hidden");
+  const decade = record.year ? `${Math.floor(Number(record.year) / 10) * 10}s` : '';
+  const virtualShelf = related.virtualShelf.map((item)=>`<button class="book-spine ${item.id===record.id?"selected":""}" data-record-id="${item.id}" style="--spine-width:${getSpineWidth(item)}px" type="button"><span class="spine-title-horizontal"><strong>${item.title}</strong><span>${item.creator || 'Unknown'}</span></span><span class="spine-call">${item.callNumber || 'No call #'}</span></button>`).join('');
+  els.recordDetailsBody.innerHTML = `<article class="opac-record-layout"><div class="record-columns"><div class="record-image-column"><img src="${record.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${record.title}" class="details-cover" /></div><section class="record-main-column"><h4>${record.title}</h4><p class="muted">${record.subtitle || ''}</p><dl class="metadata-grid"><dt>Author / Creator</dt><dd><button class="subject-link" id="authorPageBtn" type="button">${record.creator}</button></dd><dt>Publisher</dt><dd>${record.publisher || 'Unknown'}</dd><dt>Published</dt><dd>${record.year || 'n.d.'}</dd><dt>Genres</dt><dd>${genres.join(', ') || 'n/a'}</dd><dt>Binding</dt><dd>${record.binding || 'n/a'}</dd><dt>Series</dt><dd>${record.seriesName ? `${record.seriesName}${record.seriesNumber ? ` #${record.seriesNumber}` : ''}` : 'n/a'}</dd><dt>Identifier</dt><dd>${record.identifier || 'n/a'}</dd>${record.pageCount ? `<dt>Pages</dt><dd>${record.pageCount}</dd>` : ''}<dt>Date acquired</dt><dd>${record.dateAcquired || 'n/a'}${record.pricePaid ? ` • $${record.pricePaid}` : ''}</dd></dl></section><aside class="record-availability-column"><div class="availability-card ${String(record.status||'').toLowerCase()==='on order'?'status-on-order':''} ${String(record.status||'').toLowerCase()==='on loan'?'status-on-loan':''}"><h5>Availability</h5><p><strong>Status:</strong> ${record.status}</p><p><strong>Location:</strong> ${record.location || 'n/a'}</p><p><strong>Call Number:</strong> ${record.callNumber || 'n/a'}</p><p><strong>Format:</strong> ${record.format}</p></div></aside></div><section class="detail-section"><h5>Description</h5><p>${record.description || 'No description'}</p></section><section class="detail-section"><h5>Collection Pathways</h5><p class="muted"><button class="subject-link" id="decadeBtn" type="button">More from ${decade || 'this era'}</button> <button class="subject-link" id="genreBtn" type="button">More ${genres[0] || 'in this category'}</button></p></section><section class="detail-section"><h5>Series & Related</h5><p class="muted">Series items: ${related.bySeries.map((r)=>r.title).join(', ') || 'None'}</p><p class="muted">By creator: ${related.byCreator.map((r)=>r.title).join(', ') || 'None'}</p></section><section class="detail-section nearby-section"><h5>Browse a Shelf</h5><div class="nearby-spines" role="list">${virtualShelf}</div></section></article>`;
+  els.recordDetailsBody.querySelectorAll('.book-spine').forEach((spine) => spine.addEventListener('click', () => openDetail(state.records.find((r) => r.id === spine.dataset.recordId), { pushHistory: true, fromRecordId: record.id })));
+  $('#authorPageBtn')?.addEventListener('click', ()=>openAuthorResults(record.creator, record.id));
+  $('#decadeBtn')?.addEventListener('click', ()=>{els.keywordSearch.value=decade.slice(0,4); openSearchResultsModal();});
+  $('#genreBtn')?.addEventListener('click', ()=>{$('#advSubject').value=genres[0]||''; openSearchResultsModal();});
+  renderRecordModalHeader(record.title, state.recordModalHistory.length > 0);
+  openModal(els.recordDetailsModal, els.closeRecordDetailsBtn);
 }
 
-function renderAuthorPage(author) {
+function renderRecordModalHeader(title, showBack = false) {
+  const header = document.querySelector('#recordDetailsContent .record-details-header');
+  header.querySelector('#recordDetailsTitle').textContent = title;
+  header.querySelector('.modal-back-btn')?.remove();
+  if (showBack) {
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.className = 'button button-secondary modal-back-btn';
+    back.textContent = 'Back';
+    back.addEventListener('click', navigateRecordModalBack);
+    header.querySelector('.record-detail-actions').prepend(back);
+  }
+}
+
+function openAuthorResults(author, sourceRecordId = '') {
   const normalized = normalizeAuthor(author);
   const items = state.records.filter((r)=>normalizeAuthor(r.creator)===normalized);
-  switchView("covers");
-  els.coverWall.innerHTML = `<h4>${author}</h4>` + items.map((r, i)=>`<button class="wall-item ${i%2?'stacked':''}" type="button" data-id="${r.id}"><img src="${r.coverUrl || PLACEHOLDER_COVER}" alt="${r.title}" /><span>${r.title}</span></button>`).join("");
-  els.coverWall.querySelectorAll(".wall-item").forEach((b)=>b.addEventListener("click", ()=>openDetail(state.records.find((r)=>r.id===b.dataset.id))));
+  if (sourceRecordId) state.recordModalHistory.push({ type: 'record', recordId: sourceRecordId });
+  els.recordDetailsBody.innerHTML = `<section class="modal-results-view"><p class="muted">More by ${author}</p><div class="results-list compact-results">${items.map((r) => `<button class="record-card record-card-button" type="button" data-record-id="${r.id}"><img class="cover" src="${r.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${r.title}" /><div><div class="record-topline"><span class="badge badge-format" data-format="${String(r.format || 'other').toLowerCase().replace(/\s+/g, '-')}">${r.format}</span><span class="badge badge-status">${r.status}</span></div><h4 class="record-title">${r.title}</h4><p class="record-meta">${r.creator}${r.year ? ` • ${r.year}` : ''}</p><p class="record-location">${r.callNumber || 'No call number'} • ${r.location || 'No location'}</p></div></button>`).join('')}</div></section>`;
+  els.recordDetailsBody.querySelectorAll('[data-record-id]').forEach((button) => button.addEventListener('click', () => openDetail(state.records.find((r) => r.id === button.dataset.recordId), { pushHistory: true, fromRecordId: sourceRecordId })));
+  renderRecordModalHeader(`${author} — Author Results`, true);
+  openModal(els.recordDetailsModal, els.closeRecordDetailsBtn);
 }
 
+function navigateRecordModalBack() {
+  const prev = state.recordModalHistory.pop();
+  if (!prev) return;
+  if (prev.type === 'record') openDetail(state.records.find((r) => r.id === prev.recordId));
+}
 function renderRecentPage() {
   const now = Date.now();
   const week = state.records.filter((r)=>Number(r.addedAt)>now-1000*60*60*24*7);
@@ -590,18 +696,68 @@ function renderStatsPage() {
   els.statsPage.innerHTML = `<p>Total items: <strong>${s.total}</strong></p><p>Formats: ${Object.entries(s.byFormat).map(([k,v])=>`${k} (${v})`).join(' • ')}</p><p>Most owned authors: ${s.mostOwnedAuthors.map((a)=>`${a.author} (${a.count})`).join(', ')}</p><p>Publication year distribution: ${Object.entries(s.byYear).map(([k,v])=>`${k}: ${v}`).join(' • ')}</p><p>Newest additions: ${s.newest.map((r)=>r.title).join(', ')}</p>`;
 }
 function renderShelfPages() {
-  const map = state.records.reduce((acc, r)=>{ if (!r.curatedShelf) return acc; (acc[r.curatedShelf] ||= []).push(r); return acc; }, {});
-  els.shelfPages.innerHTML = Object.entries(map).map(([name, items])=>`<section><h4>${name}</h4><div class="cover-wall">${items.map((r,i)=>`<button class="wall-item ${i%3===0?'stacked':''}" data-id="${r.id}" type="button"><img src="${r.coverUrl || PLACEHOLDER_COVER}" alt="${r.title}" /><span>${r.title}</span></button>`).join('')}</div></section>`).join('') || '<p class="muted">No curated shelves yet.</p>';
+  const map = groupCuratedShelves();
+  els.shelfPages.innerHTML = Object.entries(map).map(([name, items])=>`<section class="shelf-page-section"><div class="section-header"><div><h4>${name}</h4><p class="muted">${items.length} items on this shelf.</p></div><button class="button button-secondary open-shelf-btn" data-shelf-name="${encodeURIComponent(name)}" type="button">Open shelf</button></div><div class="cover-wall">${items.slice(0,8).map((r,i)=>`<button class="wall-item ${i%3===0?'stacked':''}" data-id="${r.id}" type="button"><img src="${r.coverUrl || PLACEHOLDER_COVER}" alt="${r.title}" /><span>${r.title}</span></button>`).join('')}</div></section>`).join('') || '<p class="muted">No curated shelves yet.</p>';
   els.shelfPages.querySelectorAll('.wall-item').forEach((b)=>b.addEventListener('click',()=>openDetail(state.records.find((r)=>r.id===b.dataset.id))));
+  els.shelfPages.querySelectorAll('.open-shelf-btn').forEach((b)=>b.addEventListener('click',()=>openShelfModal(decodeURIComponent(b.dataset.shelfName))));
 }
 
 function getAdminFiltered() { const term = els.adminSearch.value.trim().toLowerCase(); if (!term) return state.records; return state.records.filter((r) => `${r.title} ${r.creator} ${r.identifier || ""}`.toLowerCase().includes(term)); }
 
+function openShelfModal(name) {
+  const items = groupCuratedShelves()[name] || [];
+  els.recordDetailsBody.innerHTML = `<section class="modal-results-view"><p class="muted">Curated shelf</p><h4>${name}</h4><div class="results-list compact-results">${items.map((r) => `<button class="record-card record-card-button" type="button" data-record-id="${r.id}"><img class="cover" src="${r.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${r.title}" /><div><div class="record-topline"><span class="badge badge-format">${r.format}</span><span class="badge badge-status">${r.status}</span></div><h4 class="record-title">${r.title}</h4><p class="record-meta">${r.creator}</p><p class="record-location">${r.callNumber || 'No call number'} • ${r.location || 'No location'}</p></div></button>`).join('')}</div></section>`;
+  els.recordDetailsBody.querySelectorAll('[data-record-id]').forEach((button) => button.addEventListener('click', () => openDetail(state.records.find((r) => r.id === button.dataset.recordId), { pushHistory: true })));
+  renderRecordModalHeader(`${name} — Shelf`, false);
+  openModal(els.recordDetailsModal, els.closeRecordDetailsBtn);
+}
+
 function getSpineWidth(record) {
+  const callNumberLength = String(record.callNumber || '').length;
   const pageCount = Number(record.pageCount);
-  if (Number.isFinite(pageCount) && pageCount > 0) return Math.min(72, Math.max(48, Math.round(44 + (pageCount / 900) * 28)));
-  const seed = [...String(record.id || `${record.title}-${record.creator}`)].reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  return 52 + (seed % 9);
+  const widthFromPages = Number.isFinite(pageCount) && pageCount > 0 ? Math.round(54 + (pageCount / 900) * 34) : 64;
+  return Math.min(108, Math.max(64, widthFromPages + Math.min(callNumberLength, 16)));
+}
+
+function openModal(modal, focusTarget) {
+  if (!modal) return;
+  state.lastFocused = document.activeElement;
+  state.activeModal = modal;
+  modal.classList.remove('hidden');
+  (focusTarget || modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))?.focus();
+}
+
+function closeModal(modal) {
+  if (!modal) return;
+  modal.classList.add('hidden');
+  if (state.activeModal === modal) state.activeModal = null;
+  if (modal === els.recordDetailsModal) state.recordModalHistory = [];
+  state.lastFocused?.focus?.();
+}
+
+function handleGlobalKeydown(event) {
+  if (event.key === 'Escape') {
+    if (state.activeModal) closeModal(state.activeModal);
+    return;
+  }
+  if (event.key !== 'Tab' || !state.activeModal) return;
+  trapTabKey(state.activeModal, event);
+}
+
+function maintainFocusTrap() {
+  if (!state.activeModal) return;
+  if (!state.activeModal.contains(document.activeElement)) {
+    state.activeModal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')?.focus();
+  }
+}
+
+function trapTabKey(modal, event) {
+  const focusables = [...modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')].filter((el) => !el.disabled && !el.classList.contains('hidden'));
+  if (!focusables.length) return;
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+  else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
 }
 function renderAdminTable() {
   els.adminTableBody.innerHTML = ""; if (!state.isAdmin) return;
