@@ -96,6 +96,7 @@ const els = {
   authorityClearSearchBtn: $("#authorityClearSearchBtn"),
   authorityCategoryGroups: $("#authorityCategoryGroups"),
   authorityAddEntryBtn: $("#authorityAddEntryBtn"),
+  authorityWorkspaceAddBtn: $("#authorityWorkspaceAddBtn"),
   authorityCategoryModal: $("#authorityCategoryModal"),
   closeAuthorityCategoryModalBtn: $("#closeAuthorityCategoryModalBtn"),
   authorityCategoryModalTitle: $("#authorityCategoryModalTitle"),
@@ -464,6 +465,7 @@ const AUTHORITY_LIST_CONFIG = {
   materialTypes: { key: "materialTypes", label: "Formats / Material Types", singular: "material type", description: "Loan rule categories and item-type labels.", legacyKey: "materialTypes", recordKey: "materialType", rich: false, group: "local" },
   audience: { key: "audience", label: "Audience", singular: "audience term", description: "Standard audience labels used for reader guidance.", legacyKey: "audience", recordKey: "targetAudience", rich: false, group: "local" },
   bindings: { key: "bindings", label: "Bindings", singular: "binding", description: "Physical binding and carrier details for holdings.", legacyKey: "bindings", recordKey: "binding", rich: false, group: "local" },
+  libraries: { key: "libraries", label: "Libraries", singular: "library", description: "Preferred lending and borrowing library names for ILL workflows.", legacyKey: "libraries", recordKey: "", rich: true, group: "local" },
   languages: { key: "languages", label: "Languages", singular: "language", description: "Preferred language labels and alternate forms.", legacyKey: "languages", recordKey: "languageCode", rich: true, group: "local" },
   noteTemplates: { key: "noteTemplates", label: "Standard Notes / Reusable Phrases", singular: "note template", description: "Reusable cataloging notes and staff text snippets.", legacyKey: "noteTemplates", recordKey: "", rich: true, group: "admin" },
   statusPresets: { key: "statusPresets", label: "Status Presets", singular: "status preset", description: "Reusable item status labels for holdings and circulation.", legacyKey: "statusPresets", recordKey: "status", rich: true, group: "admin" },
@@ -4582,6 +4584,36 @@ function activatePendingMaterial(materialId) {
   render();
 }
 
+function editPendingMaterial(materialId) {
+  const material = getAcquisitionMaterials().find((entry) => entry.id === materialId);
+  if (!material) return;
+  const title = window.prompt("Title", material.title || "");
+  if (title === null) return;
+  const creator = window.prompt("Author / creator", material.creator || "");
+  if (creator === null) return;
+  const format = window.prompt("Format", material.format || "");
+  if (format === null) return;
+  const callNumber = window.prompt("Call number", material.callNumber || "");
+  if (callNumber === null) return;
+  const notes = window.prompt("Notes", material.notes || "");
+  if (notes === null) return;
+  saveAcquisitionMaterials(getAcquisitionMaterials().map((entry) => (entry.id === materialId ? normalizeAcquisitionMaterial({ ...entry, title: title.trim(), creator: creator.trim(), format: format.trim(), callNumber: callNumber.trim(), notes: notes.trim() }) : entry)));
+  setAcquisitionMessage("Pending material metadata updated.");
+  renderAcquisitionsWorkspace();
+}
+
+function assignPendingMaterialLocation(materialId) {
+  const material = getAcquisitionMaterials().find((entry) => entry.id === materialId);
+  if (!material) return;
+  const suggested = getManagedLocations();
+  const promptText = suggested.length ? `Assign location\nAvailable: ${suggested.join(", ")}` : "Assign location";
+  const location = window.prompt(promptText, material.location || "");
+  if (location === null) return;
+  saveAcquisitionMaterials(getAcquisitionMaterials().map((entry) => (entry.id === materialId ? normalizeAcquisitionMaterial({ ...entry, location: location.trim() }) : entry)));
+  setAcquisitionMessage(location.trim() ? `Assigned ${location.trim()} to pending material.` : "Cleared pending material location.");
+  renderAcquisitionsWorkspace();
+}
+
 function removePendingMaterial(materialId) {
   const material = getAcquisitionMaterials().find((entry) => entry.id === materialId);
   saveAcquisitionMaterials(getAcquisitionMaterials().filter((entry) => entry.id !== materialId));
@@ -4779,7 +4811,7 @@ function renderDonationsStage(workflow) {
 function renderPendingStage(workflow) {
   const rows = workflow.pending;
   if (!rows.length) return `<div class="panel-header compact acquisitions-stage-header"><div><h3>Pending Materials</h3><p class="muted">Received and accepted materials waiting for item setup, metadata review, and activation.</p></div></div><div class="acquisition-empty-state"><h4>No pending materials awaiting activation</h4><p class="muted">Received orders and accepted donation items move here once staff has acknowledged and routed them.</p></div>`;
-  return `<div class="panel-header compact acquisitions-stage-header"><div><h3>Pending Materials</h3><p class="muted">Here are the materials that need finishing work before they become active catalog items.</p></div></div><div class="acquisition-data-table-wrap"><table class="serials-table acquisition-stage-table"><thead><tr><th>Title</th><th>Source</th><th>Material #</th><th>Format</th><th>Status</th><th>Date added</th><th>Location</th><th>Actions</th></tr></thead><tbody>${rows.map((material) => `<tr><td><strong>${material.title}</strong>${getOldPendingFlag(material) ? `<div class="acquisition-inline-flag">${getOldPendingFlag(material)}</div>` : ``}</td><td><strong>${material.sourceLabel || (material.sourceType === "donation" ? "Donation" : "Order")}</strong><div class="muted">${material.sourceType === "donation" ? `Batch: ${material.donationBatchName || "Donation"}${material.donorName ? ` · Donor: ${material.donorName}` : ""}` : material.orderName || "—"}</div></td><td>${material.materialNumber || "—"}</td><td>${material.format || "—"}</td><td>${getAcquisitionStatusBadge(material.status)}</td><td>${formatShortDate(material.sentToPendingAt || material.createdAt)}</td><td>${material.location || "Unassigned"}</td><td><div class="row-actions"><button class="button button-secondary" type="button" data-acq-activate="${material.id}">Activate item</button><button class="button button-secondary" type="button" data-acq-focus-form="true">Edit metadata</button><button class="button button-secondary" type="button" data-acq-focus-form="true">Assign location</button><button class="button" type="button" data-acq-remove="${material.id}">Remove / cancel</button></div></td></tr>`).join("")}</tbody></table></div>`;
+  return `<div class="panel-header compact acquisitions-stage-header"><div><h3>Pending Materials</h3><p class="muted">Here are the materials that need finishing work before they become active catalog items.</p></div></div><div class="acquisition-data-table-wrap"><table class="serials-table acquisition-stage-table"><thead><tr><th>Title</th><th>Source</th><th>Material #</th><th>Format</th><th>Status</th><th>Date added</th><th>Location</th><th>Actions</th></tr></thead><tbody>${rows.map((material) => `<tr><td><strong>${material.title}</strong>${getOldPendingFlag(material) ? `<div class="acquisition-inline-flag">${getOldPendingFlag(material)}</div>` : ``}</td><td><strong>${material.sourceLabel || (material.sourceType === "donation" ? "Donation" : "Order")}</strong><div class="muted">${material.sourceType === "donation" ? `Batch: ${material.donationBatchName || "Donation"}${material.donorName ? ` · Donor: ${material.donorName}` : ""}` : material.orderName || "—"}</div></td><td>${material.materialNumber || "—"}</td><td>${material.format || "—"}</td><td>${getAcquisitionStatusBadge(material.status)}</td><td>${formatShortDate(material.sentToPendingAt || material.createdAt)}</td><td>${material.location || "Unassigned"}</td><td><div class="row-actions"><button class="button button-secondary" type="button" data-acq-activate="${material.id}">Activate item</button><button class="button button-secondary" type="button" data-acq-edit-pending="${material.id}">Edit metadata</button><button class="button button-secondary" type="button" data-acq-assign-location="${material.id}">Assign location</button><button class="button" type="button" data-acq-remove="${material.id}">Remove / cancel</button></div></td></tr>`).join("")}</tbody></table></div>`;
 }
 
 function renderCompletedStage(workflow) {
@@ -4825,6 +4857,8 @@ function bindAcquisitionStageEvents() {
   document.querySelectorAll("[data-acq-undo-receipt]").forEach((button) => button.addEventListener("click", () => undoReceipt(button.dataset.acqUndoReceipt)));
   document.querySelectorAll("[data-acq-send-pending]").forEach((button) => button.addEventListener("click", () => sendMaterialToPending(button.dataset.acqSendPending)));
   document.querySelectorAll("[data-acq-activate]").forEach((button) => button.addEventListener("click", () => activatePendingMaterial(button.dataset.acqActivate)));
+  document.querySelectorAll("[data-acq-edit-pending]").forEach((button) => button.addEventListener("click", () => editPendingMaterial(button.dataset.acqEditPending)));
+  document.querySelectorAll("[data-acq-assign-location]").forEach((button) => button.addEventListener("click", () => assignPendingMaterialLocation(button.dataset.acqAssignLocation)));
   document.querySelectorAll("[data-acq-remove]").forEach((button) => button.addEventListener("click", () => removePendingMaterial(button.dataset.acqRemove)));
   document.querySelectorAll("[data-acq-close-order]").forEach((button) => button.addEventListener("click", () => closeOrder(button.dataset.acqCloseOrder)));
   document.querySelectorAll("[data-acq-reopen-order]").forEach((button) => button.addEventListener("click", () => reopenOrder(button.dataset.acqReopenOrder)));
@@ -4949,6 +4983,7 @@ function getManagedFormats() { return getAuthorityEntries("formats").filter((ent
 function getManagedBindings() { return getAuthorityEntries("bindings").filter((entry) => entry.status !== "retired").map((entry) => entry.preferredLabel); }
 function getManagedLocations() { return getAuthorityEntries("locations").filter((entry) => entry.status !== "retired").map((entry) => entry.preferredLabel); }
 function getManagedCuratedShelves() { return getAuthorityEntries("curatedShelves").filter((entry) => entry.status !== "retired").map((entry) => entry.preferredLabel); }
+function getManagedLibraries() { return getAuthorityEntries("libraries").filter((entry) => entry.status !== "retired").map((entry) => entry.preferredLabel); }
 
 function fillMaterialTypes() {
   const managed = getManagedMaterialTypes();
@@ -4999,6 +5034,17 @@ function fillCuratedShelves() {
     els.curatedShelfSelect.innerHTML = ['<option value="">None</option>', ...managed.map((shelf) => `<option value="${shelf}">${shelf}</option>`)].join("");
     els.curatedShelfSelect.value = managed.includes(current) ? current : "";
   }
+}
+
+function fillIllLibraries() {
+  const list = document.querySelector("#authorityLibrariesList");
+  if (!list) return;
+  const transactionLibraries = [
+    ...getIllTransactions("incoming").map((entry) => String(entry.lendingLibrary || "").trim()),
+    ...getIllTransactions("outgoing").map((entry) => String(entry.borrowingLibrary || "").trim()),
+  ].filter(Boolean);
+  const options = [...new Set([...getManagedLibraries(), ...transactionLibraries])].sort((a, b) => a.localeCompare(b));
+  list.innerHTML = options.map((library) => `<option value="${library}"></option>`).join("");
 }
 
 function renderAuthorityHome() {
@@ -5185,7 +5231,7 @@ function toggleAuthorityRetirement(key, entryId, forcedStatus = "") {
   updateAuthorityEntry(key, { ...entry, status: nextStatus, retiredAt: nextStatus === "retired" ? Date.now() : 0, updatedAt: Date.now() });
   renderAuthorityHome();
   renderAuthorityCategoryModal();
-  fillMaterialTypes(); fillGenres(); fillFormats(); fillBindings(); fillLocations(); fillCuratedShelves();
+  fillMaterialTypes(); fillGenres(); fillFormats(); fillBindings(); fillLocations(); fillCuratedShelves(); fillIllLibraries();
 }
 
 function deleteAuthorityEntry(key, entryId) {
@@ -6422,6 +6468,7 @@ function render() {
   fillBindings();
   fillLocations();
   fillCuratedShelves();
+  fillIllLibraries();
   renderHoldingsEditor(collectDraftHoldings().length ? collectDraftHoldings() : state.draftHoldings);
   renderTable();
   renderPatronSearchResults();
