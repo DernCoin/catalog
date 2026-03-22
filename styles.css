@@ -3817,7 +3817,8 @@ input, select, textarea {
 
 /* Compact four-column OPAC header override */
 .poster-hero-composition {
-  grid-template-columns: minmax(220px, 1fr) minmax(120px, 1fr) minmax(120px, 1fr) minmax(320px, 1fr);
+  grid-template-columns: minmax(280px, 1.25fr) minmax(90px, 0.35fr) minmax(90px, 0.35fr) minmax(440px, 1.35fr);
+  justify-content: end;
 }
 
 .poster-brand-column {
@@ -3825,23 +3826,26 @@ input, select, textarea {
   align-items: start;
   padding: 0.85rem 1rem;
   min-height: 12.5rem;
-  background: #5d6272;
-  color: #fff;
+  background: #ffe032;
+  color: #111;
   border: 2px solid #111;
 }
 
 .poster-brand-eyebrow {
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(17, 17, 17, 0.72);
   padding-left: 0;
 }
 
 .poster-brand-copy {
-  gap: 0.7rem;
+  gap: 0.55rem;
   padding: 0;
 }
 
 .poster-brand-column h1 {
-  font-size: clamp(2.4rem, 4.8vw, 4.8rem);
+  max-width: none;
+  font-size: clamp(2rem, 4.1vw, 4.1rem);
+  line-height: 0.9;
+  letter-spacing: -0.045em;
 }
 
 .site-tagline,
@@ -3860,9 +3864,12 @@ input, select, textarea {
 }
 
 .poster-search-stage {
+  justify-self: end;
+  width: 100%;
+  max-width: 100%;
   padding: 0.85rem 1rem;
   min-height: 12.5rem;
-  background: #5d6272;
+  background: #ffe032;
 }
 
 .poster-search-stack {
@@ -3914,7 +3921,7 @@ input, select, textarea {
 
 @media (max-width: 1260px) {
   .poster-hero-composition {
-    grid-template-columns: minmax(190px, 1fr) minmax(100px, 1fr) minmax(100px, 1fr) minmax(280px, 1fr);
+    grid-template-columns: minmax(240px, 1.1fr) minmax(70px, 0.25fr) minmax(70px, 0.25fr) minmax(360px, 1.2fr);
   }
 }
 
