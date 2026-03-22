@@ -16,6 +16,35 @@
         </div>
         <div class="header-actions">
           <button id="randomItemBtn" class="button button-secondary" type="button">Browse something unexpected</button>
+          <section class="search-main header-search-panel" aria-label="Search the catalog">
+            <label for="keywordSearch" class="sr-only">Global keyword search</label>
+            <input id="keywordSearch" type="search" placeholder="Search title, creator, subject, notes, call number…" />
+            <div id="searchSuggestions" class="suggestions hidden"></div>
+            <p id="didYouMean" class="muted did-you-mean"></p>
+            <div class="hero-search-actions">
+              <button id="runSearchBtn" class="button" type="button">Search Catalog</button>
+              <button id="toggleAdvancedBtn" class="button button-secondary" type="button" aria-expanded="false">Advanced Search</button>
+            </div>
+            <div id="advancedSearch" class="advanced-grid hidden">
+              <label>Title <input id="advTitle" type="search" /></label>
+              <label>Creator / Author / Artist <input id="advCreator" type="search" /></label>
+              <label>Subject / Genre <input id="advSubject" type="search" /></label>
+              <label>Keyword <input id="advKeyword" type="search" /></label>
+              <label>Year <input id="advYear" type="number" min="0" /></label>
+              <label>Format
+                <select id="advFormat">
+                  <option value="all">All formats</option>
+                  <option value="Book">Book</option>
+                  <option value="Vinyl">Vinyl</option>
+                  <option value="Board Game">Board Game</option>
+                  <option value="CD">CD</option>
+                  <option value="Zine">Zine</option>
+                  <option value="Magazine">Magazine</option>
+                  <option value="Other">Other</option>
+                </select>
+              </label>
+            </div>
+          </section>
           <button id="adminPageBtn" class="button button-secondary" type="button">Open ILS</button>
           <button id="adminToggleBtn" class="button hidden" type="button">Admin Login</button>
         </div>
@@ -35,43 +64,6 @@
       <section id="opacSection" class="card">
 
         <section id="viewSearch" class="view-panel">
-          <section class="discovery-hero section-panel" aria-label="Search the catalog">
-            <div class="hero-copy-wrap">
-              <p class="eyebrow">Discover faster</p>
-              <h2>Find something great, then drift through the collection.</h2>
-              <p class="muted">Search first, then skim recent arrivals, curated shelves, favorites, and covers without leaving the catalog floor.</p>
-            </div>
-            <div class="search-main hero-search-panel">
-              <label for="keywordSearch" class="sr-only">Global keyword search</label>
-              <input id="keywordSearch" type="search" placeholder="Search title, creator, subject, notes, call number…" />
-              <div id="searchSuggestions" class="suggestions hidden"></div>
-              <p id="didYouMean" class="muted did-you-mean"></p>
-              <div class="hero-search-actions">
-                <button id="runSearchBtn" class="button" type="button">Search Catalog</button>
-                <button id="toggleAdvancedBtn" class="button button-secondary" type="button" aria-expanded="false">Advanced Search</button>
-              </div>
-              <div id="advancedSearch" class="advanced-grid hidden">
-                <label>Title <input id="advTitle" type="search" /></label>
-                <label>Creator / Author / Artist <input id="advCreator" type="search" /></label>
-                <label>Subject / Genre <input id="advSubject" type="search" /></label>
-                <label>Keyword <input id="advKeyword" type="search" /></label>
-                <label>Year <input id="advYear" type="number" min="0" /></label>
-                <label>Format
-                  <select id="advFormat">
-                    <option value="all">All formats</option>
-                    <option value="Book">Book</option>
-                    <option value="Vinyl">Vinyl</option>
-                    <option value="Board Game">Board Game</option>
-                    <option value="CD">CD</option>
-                    <option value="Zine">Zine</option>
-                    <option value="Magazine">Magazine</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </label>
-              </div>
-            </div>
-          </section>
-
           <section class="homepage-grid">
           <section class="arrivals shelf-showcase section-panel" aria-labelledby="arrivalsTitle">
             <div class="arrivals-header">
