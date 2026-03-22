@@ -9,31 +9,37 @@
   <body>
     <header class="site-header opac-poster-shell">
       <div class="site-header-inner poster-hero">
-        <div class="site-branding poster-branding">
-          <p class="eyebrow">Personal Collection Catalog</p>
-          <h1>ONLINE CATALOG</h1>
-          <p class="site-tagline">A bold OPAC for browsing books, records, games, and everything adjacent in Jordan's Library.</p>
-        </div>
+        <section class="poster-hero-grid">
+          <div class="site-branding poster-branding section-panel" aria-labelledby="posterBrandTitle">
+            <p class="eyebrow">Personal Collection Catalog</p>
+            <h1 id="posterBrandTitle">ONLINE CATALOG</h1>
+            <p class="site-tagline">A bold OPAC for browsing books, records, games, and everything adjacent in Jordan's Library.</p>
+            <span class="poster-block poster-block-red" aria-hidden="true"></span>
+          </div>
 
-        <div class="poster-search-band">
-          <span class="poster-block poster-block-red" aria-hidden="true"></span>
-          <section class="search-main poster-search-panel" aria-label="Search the catalog">
+          <section class="search-main poster-search-panel section-panel" aria-label="Search the catalog">
             <div class="search-panel-heading sr-only">
               <p class="search-panel-title">Search the catalog</p>
               <p class="search-panel-copy">Title, creator, subject, notes, call number.</p>
             </div>
-            <label for="keywordSearch" class="sr-only">Global keyword search</label>
-            <div class="search-input-wrap poster-search-input-wrap">
-              <input id="keywordSearch" type="search" placeholder="Search the collection…" />
-              <button id="runSearchBtn" class="button poster-search-btn" type="button">Search</button>
-              <div id="searchSuggestions" class="suggestions hidden"></div>
-            </div>
-            <p id="didYouMean" class="muted did-you-mean"></p>
-            <div class="hero-search-actions poster-secondary-actions">
-              <button id="toggleAdvancedBtn" class="button button-secondary poster-pill" type="button" aria-expanded="false">Advanced Search</button>
-              <button id="randomItemBtn" class="button button-secondary poster-pill header-utility" type="button">Surprise Me</button>
-              <button id="adminPageBtn" class="button button-secondary poster-pill" type="button">Open ILS</button>
-              <button id="adminToggleBtn" class="button hidden poster-pill" type="button">Admin Login</button>
+            <div class="poster-search-stack">
+              <div class="poster-search-label">
+                <p class="section-kicker">Search</p>
+                <p class="poster-search-copy">Title, creator, subject, notes, and call number.</p>
+              </div>
+              <label for="keywordSearch" class="sr-only">Global keyword search</label>
+              <div class="search-input-wrap poster-search-input-wrap">
+                <input id="keywordSearch" type="search" placeholder="Search the collection…" />
+                <button id="runSearchBtn" class="button poster-search-btn" type="button">Search</button>
+                <div id="searchSuggestions" class="suggestions hidden"></div>
+              </div>
+              <p id="didYouMean" class="muted did-you-mean"></p>
+              <div class="hero-search-actions poster-secondary-actions">
+                <button id="toggleAdvancedBtn" class="button button-secondary poster-pill" type="button" aria-expanded="false">Advanced Search</button>
+                <button id="randomItemBtn" class="button button-secondary poster-pill header-utility" type="button">Surprise Me</button>
+                <button id="adminPageBtn" class="button button-secondary poster-pill" type="button">Open ILS</button>
+                <button id="adminToggleBtn" class="button hidden poster-pill" type="button">Admin Login</button>
+              </div>
             </div>
             <div id="advancedSearch" class="advanced-grid hidden">
               <label>Title <input id="advTitle" type="search" /></label>
@@ -55,8 +61,19 @@
               </label>
             </div>
           </section>
-          <span class="poster-block poster-block-blue" aria-hidden="true"></span>
-        </div>
+
+          <aside class="poster-feature-panel section-panel" aria-labelledby="posterFeatureTitle">
+            <p class="section-kicker">Highlight</p>
+            <h2 id="posterFeatureTitle">BROWSE THE STACK</h2>
+            <p class="poster-feature-copy">Rotating discovery energy for books, records, games, and edge-case catalog ephemera.</p>
+            <div class="poster-feature-meta">
+              <span>Editorial front page</span>
+              <span>Strict grid</span>
+              <span>Open stack mood</span>
+            </div>
+            <span class="poster-block poster-block-blue" aria-hidden="true"></span>
+          </aside>
+        </section>
       </div>
     </header>
 
