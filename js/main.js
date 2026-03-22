@@ -45,7 +45,7 @@ const els = {
   newLocationInput: $("#newLocationInput"), addLocationBtn: $("#addLocationBtn"), locationList: $("#locationList"), newGenreInput: $("#newGenreInput"), addGenreBtn: $("#addGenreBtn"), genreList: $("#genreList"),
   newFormatInput: $("#newFormatInput"), addFormatBtn: $("#addFormatBtn"), formatList: $("#formatList"),
   newBindingInput: $("#newBindingInput"), addBindingBtn: $("#addBindingBtn"), bindingList: $("#bindingList"),
-  recentBuckets: $("#recentBuckets"), coverWall: $("#coverWall"), statsPage: $("#statsPage"), shelfPages: $("#shelfPages"),
+  recentBuckets: $("#recentBuckets"), coverWall: $("#coverWall"), homeCoverWall: $("#homeCoverWall"), statsPage: $("#statsPage"), shelfPages: $("#shelfPages"),
   adminTabButtons: $$(".admin-tab-btn"), adminTabPanels: $$(".admin-tab-panel"), curatedShelfSelect: $("#curatedShelf"),
   newCuratedShelfInput: $("#newCuratedShelfInput"), addCuratedShelfBtn: $("#addCuratedShelfBtn"), curatedShelfList: $("#curatedShelfList"),
   formatSelect: $("#format"), bindingSelect: $("#binding"),
@@ -501,6 +501,7 @@ function renderPublic() {
   renderArrivals();
   renderCuratedShelvesShowcase();
   renderPopularSection();
+  renderHomeCoverWall();
   const facets = buildFacets(state.records);
   fillFacet(els.facets.format, ["all", ...facets.format]); fillFacet(els.facets.genre, ["all", ...facets.genre]); fillFacet(els.facets.year, ["all", ...facets.year]); fillFacet(els.facets.status, ["all", ...facets.status]); fillFacet(els.facets.location, ["all", ...facets.location]); fillFacet(els.facets.binding, ["all", ...facets.binding]);
   const criteria = q();
@@ -708,6 +709,13 @@ function navigateRecordModalBack() {
   if (!prev) return;
   if (prev.type === 'record') openDetail(state.records.find((r) => r.id === prev.recordId));
 }
+function renderHomeCoverWall() {
+  if (!els.homeCoverWall) return;
+  const featured = [...state.records].sort((a, b) => Number(b.addedAt || 0) - Number(a.addedAt || 0)).slice(0, 12);
+  els.homeCoverWall.innerHTML = featured.map((r) => `<button class="wall-item" data-id="${r.id}" type="button"><img src="${r.coverUrl || PLACEHOLDER_COVER}" alt="${r.title}" /><span>${r.title}</span></button>`).join("") || '<p class="muted">No covers yet.</p>';
+  els.homeCoverWall.querySelectorAll('.wall-item').forEach((button) => button.addEventListener('click', () => openDetail(state.records.find((record) => record.id === button.dataset.id))));
+}
+
 function renderRecentPage() {
   const recent = getRecentArrivals();
   if (!recent.length) {

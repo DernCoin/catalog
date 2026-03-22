@@ -8,14 +8,17 @@
   </head>
   <body>
     <header class="site-header">
-      <div>
-        <p class="eyebrow">Personal Collection Catalog</p>
-        <h1>Jordan's Library</h1>
-      </div>
-      <div class="header-actions">
-        <button id="randomItemBtn" class="button button-secondary" type="button">Browse something unexpected</button>
-        <button id="adminPageBtn" class="button button-secondary" type="button">Open ILS</button>
-        <button id="adminToggleBtn" class="button hidden" type="button">Admin Login</button>
+      <div class="site-header-inner">
+        <div class="site-branding">
+          <p class="eyebrow">Personal Collection Catalog</p>
+          <h1>Jordan's Library</h1>
+          <p class="site-tagline">A compact, design-forward discovery layer for books, records, games, and everything in between.</p>
+        </div>
+        <div class="header-actions">
+          <button id="randomItemBtn" class="button button-secondary" type="button">Browse something unexpected</button>
+          <button id="adminPageBtn" class="button button-secondary" type="button">Open ILS</button>
+          <button id="adminToggleBtn" class="button hidden" type="button">Admin Login</button>
+        </div>
       </div>
     </header>
 
@@ -32,7 +35,12 @@
       <section id="opacSection" class="card">
 
         <section id="viewSearch" class="view-panel">
-          <section class="discovery-hero" aria-label="Search the catalog">
+          <section class="discovery-hero section-panel" aria-label="Search the catalog">
+            <div class="hero-copy-wrap">
+              <p class="eyebrow">Discover faster</p>
+              <h2>Find something great, then drift through the collection.</h2>
+              <p class="muted">Search first, then skim recent arrivals, curated shelves, favorites, and covers without leaving the catalog floor.</p>
+            </div>
             <div class="search-main hero-search-panel">
               <label for="keywordSearch" class="sr-only">Global keyword search</label>
               <input id="keywordSearch" type="search" placeholder="Search title, creator, subject, notes, call number…" />
@@ -62,14 +70,10 @@
                 </label>
               </div>
             </div>
-            <div class="discovery-copy">
-              <p class="eyebrow">Discover your next item</p>
-              <h2>Search the collection, then keep browsing the shelves.</h2>
-              <p class="muted">Start with a keyword search, or explore recent arrivals, curated shelves, and the most popular corners of the catalog.</p>
-            </div>
           </section>
 
-          <section class="arrivals shelf-showcase" aria-labelledby="arrivalsTitle">
+          <section class="homepage-grid">
+          <section class="arrivals shelf-showcase section-panel" aria-labelledby="arrivalsTitle">
             <div class="arrivals-header">
               <div>
                 <h3 id="arrivalsTitle">Recently Added</h3>
@@ -83,7 +87,7 @@
             <div id="newArrivals" class="media-carousel" role="list" aria-label="Recently added items"></div>
           </section>
 
-          <section class="arrivals shelf-showcase" aria-labelledby="curatedShelvesTitle">
+          <section class="arrivals shelf-showcase section-panel" aria-labelledby="curatedShelvesTitle">
             <div class="arrivals-header">
               <div>
                 <h3 id="curatedShelvesTitle">Curated Shelves</h3>
@@ -97,7 +101,7 @@
             <div id="curatedShelfScroller" class="media-carousel" role="list" aria-label="Curated shelves"></div>
           </section>
 
-          <section class="popular-section" aria-labelledby="popularTitle">
+          <section class="popular-section section-panel" aria-labelledby="popularTitle">
             <div class="section-header">
               <div>
                 <h3 id="popularTitle">Most Popular</h3>
@@ -106,13 +110,26 @@
             </div>
             <div id="popularGrid" class="popular-grid"></div>
           </section>
+
+          <section class="cover-wall-panel section-panel" aria-labelledby="homeCoverWallTitle">
+            <div class="section-header module-header">
+              <div>
+                <p class="section-kicker">Gallery</p>
+                <h3 id="homeCoverWallTitle">Cover Wall</h3>
+              </div>
+              <button class="button button-secondary nav-btn" data-view="covers" type="button">Open wall</button>
+            </div>
+            <div id="homeCoverWall" class="cover-wall compact-cover-wall"></div>
+          </section>
+          </section>
         </section>
-<section id="viewRecent" class="view-panel hidden"><h3>Recently Added</h3><div id="recentBuckets"></div></section>
-        <section id="viewCovers" class="view-panel hidden"><h3>Cover Wall</h3><div id="coverWall" class="cover-wall"></div></section>
-        <section id="viewShelves" class="view-panel hidden"><h3>Curated Shelves</h3><div id="shelfPages"></div></section>
+<section id="viewRecent" class="view-panel hidden"><div class="section-panel page-panel"><div class="section-header module-header"><div><p class="section-kicker">Browse</p><h3>Recently Added</h3></div></div><div id="recentBuckets"></div></div></section>
+        <section id="viewCovers" class="view-panel hidden"><div class="section-panel page-panel"><div class="section-header module-header"><div><p class="section-kicker">Gallery</p><h3>Cover Wall</h3></div></div><div id="coverWall" class="cover-wall"></div></div></section>
+        <section id="viewShelves" class="view-panel hidden"><div class="section-panel page-panel"><div class="section-header module-header"><div><p class="section-kicker">Shelves</p><h3>Curated Shelves</h3></div></div><div id="shelfPages"></div></div></section>
       </section>
 
       <section id="adminSection" class="card hidden" aria-label="Catalog admin">
+        <div class="admin-shell">
         <div class="admin-header">
           <div>
             <h2>Admin Panel</h2>
@@ -304,6 +321,7 @@
             <p class="muted">Use export/import controls above for data backup and migration utilities.</p>
           </section>
         </section>
+        </div>
       </section>
     </main>
 
@@ -388,7 +406,7 @@
     <template id="recordTemplate">
       <article class="record-card">
         <img class="cover" alt="" loading="lazy" />
-        <div>
+        <div class="record-copy">
           <div class="record-topline">
             <span class="badge badge-format"></span>
             <span class="badge badge-status"></span>
@@ -397,9 +415,11 @@
           <p class="record-meta"></p>
           <p class="record-location"></p>
           <p class="record-subjects"></p>
-          <button class="button button-secondary expand-btn" type="button">Quick View</button>
+          <div class="record-actions-row">
+            <button class="button button-secondary expand-btn" type="button">Quick View</button>
+            <button class="button button-secondary view-details-btn" type="button">View Full Record</button>
+          </div>
           <div class="inline-details hidden"></div>
-          <button class="button button-secondary view-details-btn" type="button">View Full Record</button>
         </div>
       </article>
     </template>
