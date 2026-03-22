@@ -24,28 +24,27 @@
               <p class="search-panel-title">Search the catalog</p>
               <p class="search-panel-copy">Title, creator, subject, notes, call number.</p>
             </div>
-            <div class="poster-search-stage-inner">
-              <div class="poster-search-utility" aria-label="Search utilities">
-                <span class="poster-search-utility-label">Search / Browse / Return</span>
-                <button id="toggleAdvancedBtn" class="button button-secondary poster-search-utility-btn" type="button" aria-expanded="false">Advanced Search</button>
+            <div class="poster-search-utility" aria-label="Search utilities">
+              <span class="poster-search-utility-label">Search / Browse / Return</span>
+              <button id="toggleAdvancedBtn" class="button button-secondary poster-search-utility-btn" type="button" aria-expanded="false">Advanced Search</button>
+            </div>
+            <div class="poster-search-stack">
+              <div class="poster-search-label">
+                <p class="section-kicker">Search</p>
+                <h2 class="poster-search-headline">Find it fast.</h2>
+                <p class="poster-search-copy">Search titles, creators, subjects, notes, and call numbers from one loud central lane.</p>
               </div>
-              <div class="poster-search-stack">
-                <div class="poster-search-label">
-                  <h2 class="poster-search-headline">Find it fast.</h2>
-                  <p class="poster-search-copy">Search titles, creators, subjects, notes, and call numbers from one loud central lane.</p>
-                </div>
-                <label for="keywordSearch" class="sr-only">Global keyword search</label>
-                <div class="search-input-wrap poster-search-input-wrap">
-                  <input id="keywordSearch" type="search" placeholder="Search the collection…" />
-                  <button id="runSearchBtn" class="button poster-search-btn" type="button">Search</button>
-                  <div id="searchSuggestions" class="suggestions hidden"></div>
-                </div>
-                <p id="didYouMean" class="muted did-you-mean"></p>
-                <div class="hero-search-actions poster-secondary-actions">
-                  <button id="randomItemBtn" class="button button-secondary poster-pill header-utility" type="button">Surprise Me</button>
-                  <button id="adminPageBtn" class="button poster-pill poster-pill-dark" type="button">Open ILS</button>
-                  <button id="adminToggleBtn" class="button hidden poster-pill poster-pill-dark" type="button">Admin Login</button>
-                </div>
+              <label for="keywordSearch" class="sr-only">Global keyword search</label>
+              <div class="search-input-wrap poster-search-input-wrap">
+                <input id="keywordSearch" type="search" placeholder="Search the collection…" />
+                <button id="runSearchBtn" class="button poster-search-btn" type="button">Search</button>
+                <div id="searchSuggestions" class="suggestions hidden"></div>
+              </div>
+              <p id="didYouMean" class="muted did-you-mean"></p>
+              <div class="hero-search-actions poster-secondary-actions">
+                <button id="randomItemBtn" class="button button-secondary poster-pill header-utility" type="button">Surprise Me</button>
+                <button id="adminPageBtn" class="button poster-pill poster-pill-dark" type="button">Open ILS</button>
+                <button id="adminToggleBtn" class="button hidden poster-pill poster-pill-dark" type="button">Admin Login</button>
               </div>
             </div>
             <div id="advancedSearch" class="advanced-grid hidden">
