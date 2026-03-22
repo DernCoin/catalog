@@ -1273,9 +1273,32 @@ label > span, .status-label { display:block; font-size:.83rem; font-weight:700; 
   min-width: 0;
   scroll-snap-align: start;
 }
+#newArrivals .media-carousel-track > * {
+  flex-basis: calc((100% - (.75rem * 7)) / 8);
+}
 .media-carousel[data-empty='true']::after { content: 'Nothing to show yet.'; color: var(--muted); padding: .75rem; }
 .media-tile, .shelf-tile { min-height: 100%; display: flex; flex-direction: column; align-items: stretch; gap: .35rem; }
 .arrival-meta { font-size: .76rem; color: var(--muted); }
+#newArrivals .arrival-item {
+  padding: .3rem;
+}
+#newArrivals .arrival-title,
+#newArrivals .arrival-meta {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+#newArrivals .arrival-title {
+  margin-top: .2rem;
+  font-size: .72rem;
+  line-height: 1.2;
+  -webkit-line-clamp: 2;
+}
+#newArrivals .arrival-meta {
+  font-size: .68rem;
+  line-height: 1.2;
+  -webkit-line-clamp: 2;
+}
 .shelf-tile { justify-content: space-between; padding: .85rem; min-height: 250px; background: linear-gradient(180deg, #fff, #f7f0ff); }
 .popular-section { border: 1px solid var(--border); border-radius: 16px; padding: 1rem; background: linear-gradient(180deg, #fff, #fbf6ff); }
 .popular-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
@@ -1313,6 +1336,7 @@ label > span, .status-label { display:block; font-size:.83rem; font-weight:700; 
 
 @media (max-width: 1024px) {
   .media-carousel-track > * { flex-basis: calc((100% - (.75rem * 2)) / 3); }
+  #newArrivals .media-carousel-track > * { flex-basis: calc((100% - (.75rem * 4)) / 5); }
 }
 
 @media (max-width: 900px) {
@@ -1322,6 +1346,7 @@ label > span, .status-label { display:block; font-size:.83rem; font-weight:700; 
 
 @media (max-width: 720px) {
   .media-carousel-track > * { flex-basis: min(82%, 280px); }
+  #newArrivals .media-carousel-track > * { flex-basis: calc((100% - (.75rem * 2)) / 3); }
   .hero-search-actions { flex-direction: column; }
   .record-card { grid-template-columns: 92px 1fr; }
   .cover { width: 92px; height: 132px; }
