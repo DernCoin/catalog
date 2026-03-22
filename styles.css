@@ -1541,15 +1541,20 @@ textarea:focus-visible,
 input,
 select,
 textarea {
-  background: rgba(7, 12, 20, 0.9);
+  background: rgba(14, 20, 31, 0.98);
   border: 1px solid rgba(132, 159, 196, 0.18);
   color: #f7fbff;
 }
 #keywordSearch {
+  display: block;
+  width: 100%;
   height: 3.4rem;
+  margin: 0;
   padding: 0 1rem;
   font-size: 1rem;
   border-radius: 14px;
+  background: linear-gradient(180deg, rgba(18, 25, 38, 0.98), rgba(13, 20, 31, 0.98));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
 }
 input::placeholder,
 textarea::placeholder { color: #7d8ba3; }
@@ -1560,9 +1565,12 @@ textarea::placeholder { color: #7d8ba3; }
 }
 label { color: #ced7e6; font-size: .9rem; }
 .suggestions {
-  top: 4.55rem;
-  left: .9rem;
-  right: .9rem;
+  position: absolute;
+  top: calc(100% + .35rem);
+  left: 0;
+  right: 0;
+  width: 100%;
+  margin-top: 0;
   border-color: rgba(76, 194, 255, 0.2);
   background: rgba(13, 18, 29, 0.98);
 }
@@ -1850,3 +1858,5 @@ menu { display: flex; justify-content: flex-end; gap: .65rem; padding: 0; }
   .cover-wall,
   .recent-page-grid { grid-template-columns: 1fr 1fr; gap: .65rem; }
 }
+
+.catalog-tab-bar { display: none; }
