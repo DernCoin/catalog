@@ -3222,17 +3222,19 @@ input, select, textarea {
 
 /* OPAC homepage refinement: stronger editorial/brutalist composition */
 .site-header.opac-poster-shell {
-  padding: 1.35rem clamp(1rem, 2vw, 2.25rem) 1.2rem;
+  padding: 1.25rem clamp(1rem, 2vw, 2.25rem) 1rem;
 }
 
 .site-header-inner.poster-hero {
   position: relative;
+  max-width: 1380px;
+  margin: 0 auto;
 }
 
 .site-header-inner.poster-hero::before {
   content: "";
   position: absolute;
-  inset: auto 0 -1.3rem 22%;
+  inset: auto 8% -1rem 24%;
   height: 2px;
   background: rgba(17, 17, 17, 0.78);
   z-index: 0;
@@ -3241,8 +3243,8 @@ input, select, textarea {
 .poster-hero-grid {
   position: relative;
   z-index: 1;
-  grid-template-columns: minmax(300px, 0.88fr) minmax(470px, 1.22fr) minmax(240px, 0.58fr);
-  gap: 1rem;
+  grid-template-columns: minmax(260px, 28fr) minmax(420px, 44fr) minmax(220px, 24fr);
+  gap: 0.8rem;
   align-items: start;
 }
 
@@ -3264,124 +3266,150 @@ input, select, textarea {
   position: relative;
   display: grid;
   grid-template-rows: auto 1fr;
-  gap: 2rem;
-  padding: 1.25rem 1.15rem 1rem;
-  min-height: 31rem;
-  background: linear-gradient(180deg, rgba(255, 250, 240, 0.98), rgba(255, 236, 244, 0.78));
-  overflow: visible;
+  gap: 1.35rem;
+  padding: 1rem 1rem 0.95rem;
+  min-height: 23.5rem;
+  background: #6a6a70;
+  color: #fff7df;
+  overflow: hidden;
+}
+
+.poster-branding .eyebrow,
+.poster-branding .site-tagline {
+  color: #fff7df;
 }
 
 .poster-branding-copy {
   position: relative;
   z-index: 2;
   display: grid;
-  gap: 1rem;
+  gap: 0.85rem;
   align-content: start;
 }
 
 .poster-branding h1 {
-  max-width: 8ch;
-  font-size: clamp(4.15rem, 8.6vw, 7.8rem);
-  line-height: 0.84;
+  max-width: 7ch;
+  margin: 0;
+  font-size: clamp(3.8rem, 6.5vw, 6.6rem);
+  line-height: 0.86;
+  letter-spacing: -0.06em;
 }
 
 .site-tagline {
-  max-width: 18rem;
+  max-width: 17rem;
   margin: 0;
-  font-size: 0.96rem;
-  line-height: 1.32;
+  font-size: 0.92rem;
+  line-height: 1.35;
 }
 
 .poster-block-red {
   position: absolute;
-  right: -1rem;
-  bottom: 1.1rem;
-  min-height: 138px;
-  width: min(210px, 52%);
+  right: 1rem;
+  bottom: 1rem;
+  min-height: 92px;
+  width: min(118px, 34%);
   margin: 0;
   z-index: 1;
 }
 
 .poster-search-panel {
   position: relative;
-  margin-top: 2.3rem;
-  margin-left: -2.4rem;
-  padding: 1.3rem 1.35rem 1.2rem;
-  background: rgba(255, 250, 240, 0.97);
-  box-shadow: 16px 16px 0 rgba(17, 17, 17, 0.08);
+  margin-top: 0;
+  margin-left: 0;
+  padding: 1rem 1.1rem 1.05rem;
+  min-height: 20.75rem;
+  background: #ffe032;
+  box-shadow: 12px 12px 0 rgba(17, 17, 17, 0.08);
   z-index: 3;
 }
 
 .poster-search-panel::before {
-  content: "Search / Browse / Exit / Return";
-  position: absolute;
-  top: -0.95rem;
-  left: 1rem;
-  padding: 0.2rem 0.45rem;
-  background: #ffe032;
-  border: 2px solid #111;
-  font-size: 0.72rem;
+  content: none;
+}
+
+.poster-search-utility {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #111;
+}
+
+.poster-search-utility-label {
+  font-size: 0.7rem;
   font-weight: 900;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.poster-search-utility-btn {
+  min-height: 38px;
+  padding: 0.45rem 0.75rem;
+  background: rgba(255, 247, 223, 0.78);
+  box-shadow: none;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .poster-search-stack {
-  gap: 1rem;
+  display: grid;
+  gap: 0.9rem;
+  padding-top: 1rem;
 }
 
 .poster-search-label {
-  gap: 0.45rem;
-  max-width: 42rem;
+  display: grid;
+  gap: 0.4rem;
+  max-width: 34rem;
 }
 
 .poster-search-headline {
   margin: 0;
-  font-size: clamp(2.1rem, 4vw, 3.55rem);
-  line-height: 0.94;
+  font-size: clamp(2rem, 3.2vw, 3.1rem);
+  line-height: 0.92;
   letter-spacing: -0.05em;
   text-transform: uppercase;
 }
 
 .poster-search-copy {
-  max-width: 40ch;
-  font-size: 0.92rem;
+  max-width: 34ch;
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.3;
 }
 
 .poster-search-input-wrap {
-  min-height: 84px;
-  grid-template-columns: minmax(0, 1fr) 182px;
+  min-height: 70px;
+  grid-template-columns: minmax(0, 1fr) 154px;
 }
 
 .poster-search-input-wrap input[type="search"] {
-  min-height: 84px;
-  padding: 1.25rem 1.35rem;
-  font-size: clamp(1.2rem, 2vw, 1.65rem);
+  min-height: 70px;
+  padding: 1rem 1.1rem;
+  font-size: clamp(1.05rem, 1.65vw, 1.4rem);
 }
 
 .poster-search-btn,
 .poster-search-input-wrap .poster-search-btn {
-  min-width: 182px;
-  min-height: 84px;
-  font-size: 1.1rem;
+  min-width: 154px;
+  min-height: 70px;
+  font-size: 0.98rem;
 }
 
 .poster-secondary-actions {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, max-content));
   align-items: stretch;
-  gap: 0.6rem;
+  gap: 0.55rem;
 }
 
 .poster-pill,
 .poster-secondary-actions .button {
-  min-height: 54px;
-  padding: 0.75rem 0.85rem;
+  min-height: 46px;
+  padding: 0.65rem 0.9rem;
   box-shadow: none;
-  font-size: 0.86rem;
-}
-
-.poster-pill-primary {
-  background: #fff;
+  font-size: 0.8rem;
 }
 
 .poster-pill-dark,
@@ -3391,9 +3419,9 @@ input, select, textarea {
 }
 
 #adminPageBtn {
-  grid-row: 1 / span 2;
-  grid-column: 3;
-  min-height: 100%;
+  grid-row: auto;
+  grid-column: auto;
+  min-height: 46px;
 }
 
 #adminToggleBtn.poster-pill-dark {
@@ -3401,67 +3429,63 @@ input, select, textarea {
 }
 
 #advancedSearch {
-  margin-top: 0.9rem;
+  margin-top: 0.8rem;
   padding: 0.9rem;
   border-width: 2px;
-  background: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 252, 244, 0.92);
 }
 
 .poster-feature-panel {
   position: relative;
   align-self: end;
-  grid-template-rows: auto auto auto 1fr;
-  gap: 0.8rem;
-  min-height: 24.5rem;
-  margin-top: 4.4rem;
-  padding: 0.95rem 0.95rem 0.85rem;
-  background: linear-gradient(180deg, rgba(23, 73, 249, 0.14), rgba(255, 250, 240, 0.98) 48%, rgba(255, 250, 240, 0.98));
+  display: grid;
+  grid-template-rows: auto auto auto;
+  gap: 0.7rem;
+  min-height: 18.75rem;
+  margin-top: 2.15rem;
+  padding: 0.9rem 0.9rem 7.1rem;
+  background: #f5efe2;
   overflow: hidden;
 }
 
 .poster-feature-copy-block {
   display: grid;
-  gap: 0.65rem;
-  max-width: 16rem;
+  gap: 0.55rem;
+  max-width: 14rem;
   position: relative;
   z-index: 2;
 }
 
 .poster-feature-panel h2 {
-  font-size: clamp(2rem, 3.4vw, 3.25rem);
+  margin: 0;
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  line-height: 0.92;
 }
 
 .poster-feature-copy {
   max-width: 24ch;
-  font-size: 0.88rem;
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.3;
 }
 
 .poster-feature-meta {
-  gap: 0.35rem;
-}
-
-.poster-feature-meta span {
-  min-height: auto;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  font-size: 0.72rem;
-  letter-spacing: 0.12em;
+  display: none;
 }
 
 .poster-feature-actions {
   position: relative;
   z-index: 2;
   display: grid;
-  gap: 0.55rem;
+  gap: 0.5rem;
   justify-items: start;
 }
 
 .poster-feature-action {
   min-width: 0;
   width: auto;
-  min-height: 48px;
-  padding: 0.65rem 0.95rem;
+  min-height: 44px;
+  padding: 0.6rem 0.85rem;
   box-shadow: none;
 }
 
@@ -3469,8 +3493,8 @@ input, select, textarea {
   position: absolute;
   right: -2px;
   bottom: -2px;
-  width: 78%;
-  min-height: 190px;
+  width: 100%;
+  min-height: 78px;
   margin: 0;
   box-shadow: none;
 }
@@ -3568,11 +3592,7 @@ input, select, textarea {
   }
 
   .poster-hero-grid {
-    grid-template-columns: minmax(280px, 0.84fr) minmax(380px, 1.08fr) minmax(220px, 0.6fr);
-  }
-
-  .poster-search-panel {
-    margin-left: -1.4rem;
+    grid-template-columns: minmax(240px, 28fr) minmax(360px, 44fr) minmax(210px, 24fr);
   }
 
   .poster-homepage-grid {
