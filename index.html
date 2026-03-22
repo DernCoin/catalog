@@ -12,8 +12,10 @@
         <section class="poster-hero-grid">
           <div class="site-branding poster-branding section-panel" aria-labelledby="posterBrandTitle">
             <p class="eyebrow">Personal Collection Catalog</p>
-            <h1 id="posterBrandTitle">ONLINE CATALOG</h1>
-            <p class="site-tagline">A bold OPAC for browsing books, records, games, and everything adjacent in Jordan's Library.</p>
+            <div class="poster-branding-copy">
+              <h1 id="posterBrandTitle">ONLINE CATALOG</h1>
+              <p class="site-tagline">Browse books, records, games, and adjacent ephemera through a louder, more curated front page for Jordan's Library.</p>
+            </div>
             <span class="poster-block poster-block-red" aria-hidden="true"></span>
           </div>
 
@@ -25,7 +27,8 @@
             <div class="poster-search-stack">
               <div class="poster-search-label">
                 <p class="section-kicker">Search</p>
-                <p class="poster-search-copy">Title, creator, subject, notes, and call number.</p>
+                <h2 class="poster-search-headline">Find something worth pulling from the shelf.</h2>
+                <p class="poster-search-copy">Title, creator, subject, notes, call number, and everything drifting around them.</p>
               </div>
               <label for="keywordSearch" class="sr-only">Global keyword search</label>
               <div class="search-input-wrap poster-search-input-wrap">
@@ -35,10 +38,10 @@
               </div>
               <p id="didYouMean" class="muted did-you-mean"></p>
               <div class="hero-search-actions poster-secondary-actions">
-                <button id="toggleAdvancedBtn" class="button button-secondary poster-pill" type="button" aria-expanded="false">Advanced Search</button>
+                <button id="toggleAdvancedBtn" class="button button-secondary poster-pill poster-pill-primary" type="button" aria-expanded="false">Advanced Search</button>
                 <button id="randomItemBtn" class="button button-secondary poster-pill header-utility" type="button">Surprise Me</button>
-                <button id="adminPageBtn" class="button button-secondary poster-pill" type="button">Open ILS</button>
-                <button id="adminToggleBtn" class="button hidden poster-pill" type="button">Admin Login</button>
+                <button id="adminPageBtn" class="button poster-pill poster-pill-dark" type="button">Open ILS</button>
+                <button id="adminToggleBtn" class="button hidden poster-pill poster-pill-dark" type="button">Admin Login</button>
               </div>
             </div>
             <div id="advancedSearch" class="advanced-grid hidden">
@@ -64,12 +67,17 @@
 
           <aside class="poster-feature-panel section-panel" aria-labelledby="posterFeatureTitle">
             <p class="section-kicker">Highlight</p>
-            <h2 id="posterFeatureTitle">BROWSE THE STACK</h2>
-            <p class="poster-feature-copy">Rotating discovery energy for books, records, games, and edge-case catalog ephemera.</p>
+            <div class="poster-feature-copy-block">
+              <h2 id="posterFeatureTitle">BROWSE THE STACK</h2>
+              <p class="poster-feature-copy">A rotating editorial lane for strange adjacency, overlooked favorites, and the kind of serendipity that only makes sense inside a personal collection.</p>
+            </div>
             <div class="poster-feature-meta">
-              <span>Editorial front page</span>
-              <span>Strict grid</span>
-              <span>Open stack mood</span>
+              <span>Cover wall</span>
+              <span>Curated shelves</span>
+            </div>
+            <div class="poster-feature-actions">
+              <button class="button button-secondary poster-feature-action nav-btn" data-view="covers" type="button">Open Cover Wall</button>
+              <button class="button poster-feature-action nav-btn" data-view="shelves" type="button">Browse Shelves</button>
             </div>
             <span class="poster-block poster-block-blue" aria-hidden="true"></span>
           </aside>
@@ -85,6 +93,7 @@
           <section class="homepage-grid poster-homepage-grid">
             <aside class="poster-sidebar section-panel" aria-label="Browse sections">
               <p class="poster-sidebar-title">Browse</p>
+              <p class="poster-sidebar-note">Jump between discovery modes without flattening the homepage into equal modules.</p>
               <div class="poster-nav-list">
                 <button class="nav-btn poster-nav-item" data-view="search" type="button">New Arrivals</button>
                 <button class="nav-btn poster-nav-item" data-view="recent" type="button">Staff Picks Energy</button>
@@ -99,7 +108,7 @@
                 <div>
                   <p class="section-kicker">Discover</p>
                   <h2 id="posterCalloutTitle">Read. Explore. Return.</h2>
-                  <p class="muted">All of the discovery tools already in your OPAC, repackaged into a louder editorial-style front page.</p>
+                  <p class="muted">Discovery tools, reframed with more hierarchy, more negative space, and a sharper poster-like rhythm.</p>
                 </div>
                 <div class="poster-mini-badges" aria-hidden="true">
                   <span class="poster-chip poster-chip-mint">Rare Finds</span>
