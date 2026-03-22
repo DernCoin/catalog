@@ -11,40 +11,34 @@
       <div class="site-header-inner poster-hero">
         <section class="poster-hero-composition" aria-label="OPAC homepage hero">
           <div class="poster-brand-column" aria-labelledby="posterBrandTitle">
-            <p class="poster-brand-eyebrow">Personal Collection Catalog</p>
             <div class="poster-brand-copy">
+              <p class="poster-brand-eyebrow">Personal Collection Catalog</p>
               <h1 id="posterBrandTitle"><span>ONLINE</span><span>CATALOG</span></h1>
-              <p class="site-tagline">Browse books, records, games, and adjacent ephemera through a sharper front page built around search first, then discovery.</p>
             </div>
-            <span class="poster-brand-accent" aria-hidden="true"></span>
           </div>
+
+          <div class="poster-spacer-column" aria-hidden="true"></div>
+          <div class="poster-spacer-column" aria-hidden="true"></div>
 
           <section class="search-main poster-search-stage" aria-label="Search the catalog">
             <div class="search-panel-heading sr-only">
               <p class="search-panel-title">Search the catalog</p>
               <p class="search-panel-copy">Title, creator, subject, notes, call number.</p>
             </div>
-            <div class="poster-search-utility" aria-label="Search utilities">
-              <span class="poster-search-utility-label">Search / Browse / Return</span>
-              <button id="toggleAdvancedBtn" class="button button-secondary poster-search-utility-btn" type="button" aria-expanded="false">Advanced Search</button>
-            </div>
-            <div class="poster-search-stack">
-              <div class="poster-search-label">
-                <h2 class="poster-search-headline">Find it fast.</h2>
-                <p class="poster-search-copy">Search titles, creators, subjects, notes, and call numbers from one central poster field.</p>
-              </div>
+            <div class="poster-search-stack poster-search-stack-compact">
               <label for="keywordSearch" class="sr-only">Global keyword search</label>
               <div class="search-input-wrap poster-search-input-wrap">
                 <input id="keywordSearch" type="search" placeholder="Search the collection…" />
                 <button id="runSearchBtn" class="button poster-search-btn" type="button">Search</button>
                 <div id="searchSuggestions" class="suggestions hidden"></div>
               </div>
-              <p id="didYouMean" class="muted did-you-mean"></p>
               <div class="hero-search-actions poster-secondary-actions">
+                <button id="toggleAdvancedBtn" class="button button-secondary poster-pill header-utility" type="button" aria-expanded="false">Advanced Search</button>
                 <button id="randomItemBtn" class="button button-secondary poster-pill header-utility" type="button">Surprise Me</button>
                 <button id="adminPageBtn" class="button poster-pill poster-pill-dark" type="button">Open ILS</button>
                 <button id="adminToggleBtn" class="button hidden poster-pill poster-pill-dark" type="button">Admin Login</button>
               </div>
+              <p id="didYouMean" class="muted did-you-mean"></p>
             </div>
             <div id="advancedSearch" class="advanced-grid hidden">
               <label>Title <input id="advTitle" type="search" /></label>
@@ -66,19 +60,6 @@
               </label>
             </div>
           </section>
-
-          <aside class="poster-discovery-rail" aria-labelledby="posterFeatureTitle">
-            <p class="section-kicker poster-rail-label">Highlight</p>
-            <div class="poster-feature-copy-block">
-              <h2 id="posterFeatureTitle">Shelf Drift</h2>
-              <p class="poster-feature-copy">Jump into covers or shelves when you want wandering instead of a direct lookup.</p>
-            </div>
-            <div class="poster-feature-actions">
-              <button class="button button-secondary poster-feature-action nav-btn" data-view="covers" type="button">Open Cover Wall</button>
-              <button class="button poster-feature-action nav-btn" data-view="shelves" type="button">Browse Shelves</button>
-            </div>
-            <span class="poster-rail-accent" aria-hidden="true"></span>
-          </aside>
         </section>
       </div>
     </header>
