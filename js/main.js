@@ -24,6 +24,7 @@ const state = {
   searchModalPinned: false,
   recordModalHistory: [],
   carouselTimers: new Map(),
+  carouselHoverState: new WeakMap(),
 };
 
 const $ = (s) => document.querySelector(s);
@@ -507,7 +508,15 @@ function renderPublic() {
   els.resultsSummary.textContent = hasSearchInput ? `${results.length} results` : "Use the search above to open results in a modal.";
   els.emptyState.classList.toggle("hidden", results.length > 0 || !hasSearchInput);
   els.loadMoreBtn.classList.toggle("hidden", !hasSearchInput || results.length <= visible.length);
-  if (hasSearchInput) openModal(els.searchResultsModal, els.closeSearchResultsBtn);
+  syncSearchResultsModal(hasSearchInput);
+}
+
+function syncSearchResultsModal(hasSearchInput) {
+  if (hasSearchInput) {
+    openModal(els.searchResultsModal, els.closeSearchResultsBtn);
+    return;
+  }
+  if (state.activeModal === els.searchResultsModal || !els.searchResultsModal.classList.contains('hidden')) closeModal(els.searchResultsModal);
 }
 
 function renderSuggestions() {
@@ -581,16 +590,20 @@ function renderCarousel({ container, items, renderItem, onItemClick, autoScroll 
 function bindCarouselAutoScroll(container, enabled) {
   const existing = state.carouselTimers.get(container.id);
   if (existing) { clearInterval(existing); state.carouselTimers.delete(container.id); }
-  if (!enabled) return;
-  let paused = false;
-  container.onmouseenter = () => { paused = true; };
-  container.onmouseleave = () => { paused = false; };
+  if (!enabled || !container) return;
+  const setPaused = (paused) => state.carouselHoverState.set(container, paused);
+  setPaused(false);
+  container.onmouseenter = () => setPaused(true);
+  container.onmouseleave = () => setPaused(false);
+  container.onfocusin = () => setPaused(true);
+  container.onfocusout = () => setPaused(false);
   const timer = setInterval(() => {
-    if (paused || document.hidden) return;
-    const maxScroll = container.scrollWidth - container.clientWidth;
+    if (state.carouselHoverState.get(container) || document.hidden) return;
+    const maxScroll = Math.max(0, container.scrollWidth - container.clientWidth);
+    if (maxScroll <= 0) return;
     if (container.scrollLeft >= maxScroll - 4) container.scrollTo({ left: 0, behavior: 'smooth' });
     else container.scrollBy({ left: Math.max(220, Math.round(container.clientWidth * 0.75)), behavior: 'smooth' });
-  }, 3800);
+  }, 3200);
   state.carouselTimers.set(container.id, timer);
 }
 
@@ -676,15 +689,33 @@ function navigateRecordModalBack() {
   if (prev.type === 'record') openDetail(state.records.find((r) => r.id === prev.recordId));
 }
 function renderRecentPage() {
-  const now = Date.now();
-  const week = state.records.filter((r)=>Number(r.addedAt)>now-1000*60*60*24*7);
-  const weekIds = new Set(week.map((r)=>r.id));
-  const monthStart = new Date();
-  monthStart.setDate(1);
-  monthStart.setHours(0,0,0,0);
-  const month = state.records.filter((r)=>Number(r.addedAt)>=monthStart.getTime() && !weekIds.has(r.id));
-  els.recentBuckets.innerHTML = `<h4>This week</h4>${week.map((r)=>`<p><button class="subject-link recent-open" data-id="${r.id}" type="button">${r.title}</button> — ${r.creator}</p>`).join("") || '<p class="muted">No additions.</p>'}<h4>This month</h4>${month.map((r)=>`<p><button class="subject-link recent-open" data-id="${r.id}" type="button">${r.title}</button> — ${r.creator}</p>`).join("")}`;
-  els.recentBuckets.querySelectorAll('.recent-open').forEach((b)=>b.addEventListener('click',()=>openDetail(state.records.find((r)=>r.id===b.dataset.id))));
+  const recent = getRecentArrivals();
+  if (!recent.length) {
+    els.recentBuckets.innerHTML = '<p class="muted">No recent additions yet.</p>';
+    return;
+  }
+  els.recentBuckets.innerHTML = `
+    <section class="recent-page-showcase">
+      <div class="section-header">
+        <div>
+          <h4>Newest on the shelves</h4>
+          <p class="muted">This rail now auto-scrolls through every recent addition. Hover or focus to pause.</p>
+        </div>
+      </div>
+      <div id="recentPageScroller" class="media-carousel recent-page-carousel" role="list" aria-label="All recently added items"></div>
+    </section>
+    <section class="recent-page-grid">
+      ${recent.map((r, index) => `<button class="recent-page-card" data-record-id="${r.id}" type="button"><span class="recent-page-rank">${index + 1}</span><img class="recent-page-cover" src="${r.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${r.title}"><span class="recent-page-title">${r.title}</span><span class="recent-page-meta">${r.creator || 'Unknown'}${r.dateAdded ? ` • ${r.dateAdded}` : ''}</span></button>`).join('')}
+    </section>`;
+  const recentScroller = document.querySelector('#recentPageScroller');
+  renderCarousel({
+    container: recentScroller,
+    items: recent,
+    renderItem: (r) => `<button class="arrival-item media-tile recent-carousel-item" data-record-id="${r.id}" type="button"><img class="arrival-cover" src="${r.coverUrl || PLACEHOLDER_COVER}" alt="Cover for ${r.title}"><span class="arrival-title">${r.title}</span><span class="arrival-meta">${r.creator || 'Unknown'}${r.dateAdded ? ` • ${r.dateAdded}` : ''}</span></button>`,
+    onItemClick: (id) => openDetail(state.records.find((r) => r.id === id)),
+    autoScroll: true,
+  });
+  els.recentBuckets.querySelectorAll('[data-record-id]').forEach((button) => button.addEventListener('click', () => openDetail(state.records.find((r) => r.id === button.dataset.recordId))));
 }
 function renderCoverWall() {
   const shuffled = [...state.records].sort(() => Math.random() - 0.5);
