@@ -21,7 +21,7 @@
 
     <div class="catalog-tab-bar">
       <nav class="public-nav" aria-label="Catalog views">
-          <button class="button button-secondary nav-btn" data-view="search" type="button">Search</button>
+          <button class="button button-secondary nav-btn" data-view="search" type="button">Home</button>
           <button class="button button-secondary nav-btn" data-view="recent" type="button">Recently Added Page</button>
           <button class="button button-secondary nav-btn" data-view="covers" type="button">Cover Wall</button>
           <button class="button button-secondary nav-btn" data-view="shelves" type="button">Curated Shelves</button>
@@ -32,41 +32,21 @@
       <section id="opacSection" class="card">
 
         <section id="viewSearch" class="view-panel">
-        <section class="arrivals" aria-labelledby="arrivalsTitle">
-          <div class="arrivals-header">
-            <h3 id="arrivalsTitle">Recently Added</h3>
-            <div class="arrivals-controls">
-              <button id="arrivalsPrevBtn" class="button button-secondary" type="button" aria-label="Scroll recently added left">←</button>
-              <button id="arrivalsNextBtn" class="button button-secondary" type="button" aria-label="Scroll recently added right">→</button>
+          <section class="discovery-hero" aria-label="Search the catalog">
+            <div class="discovery-copy">
+              <p class="eyebrow">Discover your next item</p>
+              <h2>Search the collection, then keep browsing the shelves.</h2>
+              <p class="muted">Start with a keyword search, or explore recent arrivals, curated shelves, and the most popular corners of the catalog.</p>
             </div>
-          </div>
-          <div id="newArrivals" class="cover-scroller" role="list"></div>
-        </section>
-
-        <section class="search-shell" aria-label="Search and filters">
-          <div class="search-column">
-            <div class="search-main">
+            <div class="search-main hero-search-panel">
               <label for="keywordSearch" class="sr-only">Global keyword search</label>
-              <input id="keywordSearch" type="search" placeholder="Search everything: title, creator, subjects, notes, call number..." />
+              <input id="keywordSearch" type="search" placeholder="Search title, creator, subject, notes, call number…" />
               <div id="searchSuggestions" class="suggestions hidden"></div>
               <p id="didYouMean" class="muted did-you-mean"></p>
-
-              <div class="toolbar">
+              <div class="hero-search-actions">
+                <button id="runSearchBtn" class="button" type="button">Search Catalog</button>
                 <button id="toggleAdvancedBtn" class="button button-secondary" type="button" aria-expanded="false">Advanced Search</button>
-                <label>
-                  Sort by
-                  <select id="sortFilter">
-                    <option value="relevance">Relevance</option>
-                    <option value="newest">Newest first</option>
-                    <option value="oldest">Oldest first</option>
-                    <option value="titleAsc">Title A-Z</option>
-                    <option value="titleDesc">Title Z-A</option>
-                    <option value="creatorAsc">Creator A-Z</option>
-                    <option value="callNumber">Call Number</option>
-                  </select>
-                </label>
               </div>
-
               <div id="advancedSearch" class="advanced-grid hidden">
                 <label>Title <input id="advTitle" type="search" /></label>
                 <label>Creator / Author / Artist <input id="advCreator" type="search" /></label>
@@ -87,31 +67,47 @@
                 </label>
               </div>
             </div>
+          </section>
 
-            <div class="search-results-shell">
-              <p id="resultsSummary" class="results-summary"></p>
-              <div id="publicResults" class="results-list"></div>
-              <div class="pagination-row">
-                <button id="loadMoreBtn" class="button button-secondary hidden" type="button">Load More</button>
+          <section class="arrivals shelf-showcase" aria-labelledby="arrivalsTitle">
+            <div class="arrivals-header">
+              <div>
+                <h3 id="arrivalsTitle">Recently Added</h3>
+                <p class="muted">Fresh arrivals that quietly glide by until something catches your eye.</p>
+              </div>
+              <div class="arrivals-controls">
+                <button id="arrivalsPrevBtn" class="button button-secondary" type="button" aria-label="Scroll recently added left">←</button>
+                <button id="arrivalsNextBtn" class="button button-secondary" type="button" aria-label="Scroll recently added right">→</button>
               </div>
             </div>
-            <p id="emptyState" class="empty-state hidden">No records match your search. Try broadening your filters or searching by keyword.</p>
-          </div>
+            <div id="newArrivals" class="media-carousel" role="list" aria-label="Recently added items"></div>
+          </section>
 
-          <aside class="facets" aria-label="Faceted filters">
-            <h3>Refine Results</h3>
-            <label>Format <select id="facetFormat"></select></label>
-            <label>Genre / Category <select id="facetGenre"></select></label>
-            <label>Year <select id="facetYear"></select></label>
-            <label>Availability <select id="facetStatus"></select></label>
-            <label>Location <select id="facetLocation"></select></label>
-            <label>Binding <select id="facetBinding"></select></label>
-            <button id="clearFiltersBtn" class="button button-secondary" type="button">Clear Filters</button>
-          </aside>
-        </section>
+          <section class="arrivals shelf-showcase" aria-labelledby="curatedShelvesTitle">
+            <div class="arrivals-header">
+              <div>
+                <h3 id="curatedShelvesTitle">Curated Shelves</h3>
+                <p class="muted">Staff-picks energy, organized into browseable themed groupings.</p>
+              </div>
+              <div class="arrivals-controls">
+                <button id="shelvesPrevBtn" class="button button-secondary" type="button" aria-label="Scroll curated shelves left">←</button>
+                <button id="shelvesNextBtn" class="button button-secondary" type="button" aria-label="Scroll curated shelves right">→</button>
+              </div>
+            </div>
+            <div id="curatedShelfScroller" class="media-carousel" role="list" aria-label="Curated shelves"></div>
+          </section>
 
+          <section class="popular-section" aria-labelledby="popularTitle">
+            <div class="section-header">
+              <div>
+                <h3 id="popularTitle">Most Popular</h3>
+                <p class="muted">A quick look at the creators and titles with the strongest presence in the collection.</p>
+              </div>
+            </div>
+            <div id="popularGrid" class="popular-grid"></div>
+          </section>
         </section>
-        <section id="viewRecent" class="view-panel hidden"><h3>Recently Added</h3><div id="recentBuckets"></div></section>
+<section id="viewRecent" class="view-panel hidden"><h3>Recently Added</h3><div id="recentBuckets"></div></section>
         <section id="viewCovers" class="view-panel hidden"><h3>Cover Wall</h3><div id="coverWall" class="cover-wall"></div></section>
         <section id="viewShelves" class="view-panel hidden"><h3>Curated Shelves</h3><div id="shelfPages"></div></section>
       </section>
@@ -311,7 +307,58 @@
       </section>
     </main>
 
-    <div id="loginModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+        <div id="searchResultsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="searchResultsTitle">
+      <article class="modal-content search-modal-content" id="searchResultsContent">
+        <div class="record-details-header">
+          <div>
+            <h3 id="searchResultsTitle">Search Results</h3>
+            <p id="resultsSummary" class="results-summary"></p>
+          </div>
+          <div class="record-detail-actions">
+            <button id="openFullSearchBtn" class="button button-secondary" type="button">Open search page</button>
+            <button id="closeSearchResultsBtn" class="button button-secondary" type="button">Close</button>
+          </div>
+        </div>
+        <section class="search-shell search-modal-shell" aria-label="Search and filters">
+          <div class="search-column">
+            <div class="toolbar search-modal-toolbar">
+              <label>
+                Sort by
+                <select id="sortFilter">
+                  <option value="relevance">Relevance</option>
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="titleAsc">Title A-Z</option>
+                  <option value="titleDesc">Title Z-A</option>
+                  <option value="creatorAsc">Creator A-Z</option>
+                  <option value="callNumber">Call Number</option>
+                </select>
+              </label>
+              <button id="clearFiltersBtn" class="button button-secondary" type="button">Clear Filters</button>
+            </div>
+            <div class="search-results-shell">
+              <div id="publicResults" class="results-list"></div>
+              <div class="pagination-row">
+                <button id="loadMoreBtn" class="button button-secondary hidden" type="button">Load More</button>
+              </div>
+            </div>
+            <p id="emptyState" class="empty-state hidden">No records match your search. Try broadening your filters or searching by keyword.</p>
+          </div>
+
+          <aside class="facets" aria-label="Faceted filters">
+            <h3>Refine Results</h3>
+            <label>Format <select id="facetFormat"></select></label>
+            <label>Genre / Category <select id="facetGenre"></select></label>
+            <label>Year <select id="facetYear"></select></label>
+            <label>Availability <select id="facetStatus"></select></label>
+            <label>Location <select id="facetLocation"></select></label>
+            <label>Binding <select id="facetBinding"></select></label>
+          </aside>
+        </section>
+      </article>
+    </div>
+
+<div id="loginModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
       <form id="loginForm" class="modal-content">
         <h3 id="loginTitle">Admin Login</h3>
         <p class="muted">Sign in to manage records. This temporary login can later be replaced with Firebase Auth.</p>
