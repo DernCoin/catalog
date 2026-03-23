@@ -14,7 +14,7 @@
             <div class="poster-brand-copy ils-brand-copy-compact">
               <p class="poster-brand-eyebrow">Integrated Library System</p>
               <h1 id="ilsHeroTitle"><span>STAFF</span><span>WORKSPACE</span></h1>
-              <p class="ils-hero-copy">Circulation, cataloging, and patron service in one compact workspace.</p>
+              <p class="ils-hero-copy">Daily circulation, catalog, and patron operations in one staff console.</p>
             </div>
           </div>
 
@@ -22,7 +22,7 @@
             <div class="ils-hero-board-top">
               <div>
                 <p class="section-kicker">Global record search</p>
-                <p class="ils-hero-description">Find records, creators, identifiers, and call numbers fast.</p>
+                <p class="ils-hero-description">Find records, creators, identifiers, and call numbers without leaving the workspace.</p>
               </div>
             </div>
             <div class="ils-hero-search-block">
@@ -32,30 +32,19 @@
                 <input id="searchInput" type="search" placeholder="Search records, creators, identifiers, or call numbers" autocomplete="off" />
                 <div id="searchResultsPopover" class="search-popover hidden" role="listbox" aria-label="Matching records"></div>
               </div>
-              <p id="ilsSectionDescription" class="ils-search-support">Jump to a record or launch a module from the actions rail.</p>
+              <p id="ilsSectionDescription" class="ils-search-support">Jump directly to a record, or open a staff module from the actions rail.</p>
             </div>
           </section>
 
-          <aside class="ils-hero-utility section-panel" aria-label="ILS quick actions and counters">
-            <div class="ils-utility-topline">
-              <a class="ils-opac-link" href="./index.html">Back to OPAC</a>
-              <p id="headerCounterFeedback" class="quick-counter-feedback" aria-live="polite"></p>
-            </div>
-            <div class="header-quick-counters" aria-label="Desk counters">
-              <button id="visitorCounterBtn" class="button quick-counter-btn" type="button">
-                <span>Visitors</span>
-                <span id="visitorCounterTotal" class="quick-counter-total">0 today</span>
-              </button>
-              <button id="referenceCounterBtn" class="button quick-counter-btn quick-counter-reference" type="button">
-                <span>Reference</span>
-                <span id="referenceCounterTotal" class="quick-counter-total">0 today</span>
-              </button>
-            </div>
+          <aside class="ils-hero-utility section-panel" aria-label="ILS quick actions">
+            <a class="ils-opac-link" href="./index.html">Back to OPAC</a>
             <div class="ils-hero-quick-actions" aria-label="Quick staff actions">
               <button class="button" type="button" data-ils-section="circulation">Circulation</button>
               <button class="button button-secondary" type="button" data-ils-section="cataloging">Cataloging</button>
               <button class="button button-secondary" type="button" data-ils-section="patrons">Patrons</button>
+              <button class="button button-secondary" type="button" data-ils-section="reports">Reports</button>
             </div>
+            <p class="ils-utility-note">Desk counters now live in the dashboard so this header stays focused and compact.</p>
           </aside>
         </section>
       </div>
