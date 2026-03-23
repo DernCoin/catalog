@@ -5255,3 +5255,172 @@ input, select, textarea {
   .dashboard-panel-header,
   .dashboard-date-row { flex-direction: column; }
 }
+
+
+/* ILS wireframe polish */
+.ils-body {
+  --bg: #f5f5f5;
+  --card: #ffffff;
+  --text: #111111;
+  --muted: #4a4a4a;
+  --accent: #111111;
+  --accent-2: #111111;
+  --accent-3: #111111;
+  --border: #111111;
+  --danger: #111111;
+  --shadow: none;
+  --panel-soft: #f0f0f0;
+  --panel-dark: #ffffff;
+  --panel-deep: #ffffff;
+  --panel-alert: #f0f0f0;
+}
+
+.ils-body .panel-card,
+.ils-body .card-like,
+.ils-body .admin-block,
+.ils-body .admin-tab-panel,
+.ils-body .section-panel,
+.ils-body .modal-content,
+.ils-body .search-popover,
+.ils-body .dashboard-stat-card,
+.ils-body .dashboard-task-row,
+.ils-body .dashboard-activity-row,
+.ils-body .dashboard-preview-row,
+.ils-body .availability-card,
+.ils-body .record-card,
+.ils-body .serials-table,
+.ils-body .acquisition-summary-card,
+.ils-body .patron-card,
+.ils-body .report-card,
+.ils-body .dashboard-tile,
+.ils-body .quick-counter-btn,
+.ils-body .circulation-mode-banner,
+.ils-body .status-message,
+.ils-body .empty-state,
+.ils-body .editor-panel,
+.ils-body .dashboard-preview-stack section {
+  background: #fff !important;
+  background-image: none !important;
+  border: 1px solid #111 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  color: #111 !important;
+}
+
+.ils-body .button,
+.ils-body .button-secondary,
+.ils-body .button-primary,
+.ils-body .ils-section-btn,
+.ils-body .ils-subnav-btn,
+.ils-body .toolbar-action,
+.ils-body .dashboard-action-button,
+.ils-body .dashboard-inline-link,
+.ils-body .ils-opac-link,
+.ils-body .row-actions button,
+.ils-body .admin-tab-btn,
+.ils-body .circulation-tab-btn,
+.ils-body .quick-counter-btn,
+.ils-body .acquisitions-stage-btn,
+.ils-body .search-result-item {
+  background: #fff !important;
+  color: #111 !important;
+  border: 1px solid #111 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+.ils-body .button:hover,
+.ils-body .button:focus-visible,
+.ils-body .button-secondary:hover,
+.ils-body .button-secondary:focus-visible,
+.ils-body .button-primary:hover,
+.ils-body .button-primary:focus-visible,
+.ils-body .ils-section-btn.is-active,
+.ils-body .ils-subnav-btn.is-active,
+.ils-body .toolbar-action:hover,
+.ils-body .dashboard-action-button:hover,
+.ils-body .dashboard-inline-link:hover,
+.ils-body .ils-opac-link:hover,
+.ils-body .row-actions button:hover,
+.ils-body .admin-tab-btn.is-active,
+.ils-body .circulation-tab-btn.is-active,
+.ils-body .search-result-item:hover {
+  background: #111 !important;
+  color: #fff !important;
+}
+
+.ils-body .muted,
+.ils-body .dashboard-stat-copy,
+.ils-body .dashboard-date,
+.ils-body .quick-counter-feedback,
+.ils-body .status-hint,
+.ils-body .field-help,
+.ils-body .ils-brand-copy,
+.ils-body .ils-section-description {
+  color: #444 !important;
+}
+
+.ils-body table th,
+.ils-body table td,
+.ils-body .serials-table th,
+.ils-body .serials-table td {
+  border-color: #111 !important;
+  background: #fff !important;
+  color: #111 !important;
+}
+
+.ils-body thead th,
+.ils-body .serials-table thead th,
+.ils-body .table-toolbar,
+.ils-body .acquisitions-stage-nav,
+.ils-body .admin-tab-nav,
+.ils-body .dashboard-date-row {
+  background: #f0f0f0 !important;
+  color: #111 !important;
+  border-color: #111 !important;
+  box-shadow: none !important;
+}
+
+.ils-body .badge,
+.ils-body .status-badge,
+.ils-body .acquisition-badge,
+.ils-body .serial-pill,
+.ils-body .dashboard-label,
+.ils-body .pill,
+.ils-body .tag,
+.ils-body [class*="badge"],
+.ils-body [class*="pill"] {
+  background: #fff !important;
+  color: #111 !important;
+  border: 1px solid #111 !important;
+  box-shadow: none !important;
+}
+
+.ils-body .dashboard-stat-card.is-urgent,
+.ils-body .dashboard-task-row.is-urgent,
+.ils-body .circulation-mode-banner,
+.ils-body .acquisitions-hero,
+.ils-body .acquisitions-stage-panel,
+.ils-body .panel-header {
+  background: #f0f0f0 !important;
+}
+
+.ils-body input,
+.ils-body select,
+.ils-body textarea {
+  background: #fff !important;
+  color: #111 !important;
+  border: 1px solid #111 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.ils-body input:focus,
+.ils-body select:focus,
+.ils-body textarea:focus,
+.ils-body button:focus-visible,
+.ils-body a:focus-visible {
+  outline: 2px dashed #111;
+  outline-offset: 2px;
+}
