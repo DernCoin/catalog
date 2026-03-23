@@ -23,11 +23,9 @@ It now includes a polished public catalog experience and a distinct Firebase-rea
 
 ## Project structure
 
-- `index.html`: semantic layout for public OPAC, admin UI, login modal, and record details modal.
-- `base.css`: shared design tokens, component primitives, and common responsive/print rules.
+- `opac.html`: semantic layout for public OPAC, admin UI, login modal, and record details modal.
 - `opac.css`: OPAC-facing stylesheet entrypoint.
 - `ils.css`: ILS/staff-facing stylesheet entrypoint.
-- `styles.css`: legacy compatibility entrypoint that now forwards to `base.css`.
 - `js/config.js`: app constants and credentials placeholder.
 - `js/seed.js`: starter sample records across books, vinyl, board games, and other media.
 - `js/storage.js`: persistence adapter (`localStorage`) + import/export helpers.
@@ -54,6 +52,6 @@ Then open <http://localhost:8000>.
 
 1. Open `js/config.js` and fill in `FIREBASE_CONFIG` if you want the OPAC/record layer to use Firebase services later.
 2. Ensure Firestore has a collection matching `FIREBASE_COLLECTION` (default: `records`) if you plan to re-enable Firebase-backed record sync.
-3. Open `index.html` for OPAC and `ils.html` for cataloging. The ILS currently signs in locally with `admin` / `catalog123`.
+3. Open `opac.html` for OPAC and `ils.html` for cataloging. The ILS currently signs in locally with `admin` / `catalog123`.
 
 When Firebase is configured, OPAC and ILS use the same Firestore records so you do not need to recreate items manually. Other ILS data such as patrons, subscriptions, holds, circulation rules, and acquisitions remain local to the browser.
