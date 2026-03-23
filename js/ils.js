@@ -153,6 +153,7 @@ const els = {
   referenceCounterBtn: $("#referenceCounterBtn"),
   referenceCounterTotal: $("#referenceCounterTotal"),
   headerCounterFeedback: $("#headerCounterFeedback"),
+  heroSectionJumpButtons: $$(".ils-hero-quick-actions [data-ils-section]"),
   patronForm: $("#patronForm"),
   patronName: $("#patronName"),
   patronMiddleName: $("#patronMiddleName"),
@@ -6415,6 +6416,9 @@ function bindEvents() {
     const referenceBtn = event.target.closest('#referenceCounterBtn');
     if (referenceBtn) incrementDailyCounter("reference");
   });
+  if (els.visitorCounterBtn) els.visitorCounterBtn.addEventListener("click", () => incrementDailyCounter("visitor"));
+  if (els.referenceCounterBtn) els.referenceCounterBtn.addEventListener("click", () => incrementDailyCounter("reference"));
+  els.heroSectionJumpButtons.forEach((button) => button.addEventListener("click", () => switchIlsSection(button.dataset.ilsSection)));
   if (els.checkOutForm) els.checkOutForm.addEventListener("submit", checkOutRecord);
   if (els.checkOutCardNumber) els.checkOutCardNumber.addEventListener("input", () => renderCheckoutPatronPreview());
   if (els.runMissingReportBtn) els.runMissingReportBtn.addEventListener("click", renderMissingBiblioReport);

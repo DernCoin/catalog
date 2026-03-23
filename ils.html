@@ -14,16 +14,16 @@
             <div class="poster-brand-copy">
               <p class="poster-brand-eyebrow">Integrated Library System</p>
               <h1 id="ilsHeroTitle"><span>STAFF</span><span>WORKSPACE</span></h1>
-              <p class="ils-hero-copy">Circulation, cataloging, acquisitions, patrons, and reporting—reframed as one editorial control board.</p>
+              <p class="ils-hero-copy">Circulation, cataloging, acquisitions, patrons, and reporting in one compact staff workspace built for daily service.</p>
             </div>
           </div>
 
           <section class="ils-hero-board section-panel" aria-label="ILS header tools">
             <div class="ils-hero-board-top">
               <div>
-                <p class="section-kicker">Control board</p>
-                <h2>One place for daily service work.</h2>
-                <p class="ils-hero-description">Keep the staff homepage calm: one headline, one search surface, and a stronger hierarchy that matches the OPAC’s poster rhythm.</p>
+                <p class="section-kicker">Staff landing area</p>
+                <h2>Search the catalog and move straight into the work.</h2>
+                <p class="ils-hero-description">Use a global lookup for records, creators, identifiers, and call numbers, then jump into the right module without leaving the header.</p>
               </div>
               <a class="ils-opac-link" href="./index.html">Back to OPAC</a>
             </div>
@@ -35,9 +35,38 @@
                 <div id="searchResultsPopover" class="search-popover hidden" role="listbox" aria-label="Matching records"></div>
               </div>
               <p id="ilsSectionDescription" class="ils-search-support">Open a module from the rail, or jump directly into a record from search.</p>
+              <div class="ils-hero-quick-actions" aria-label="Quick staff actions">
+                <button class="button" type="button" data-ils-section="circulation">Open circulation</button>
+                <button class="button button-secondary" type="button" data-ils-section="cataloging">Start cataloging</button>
+                <button class="button button-secondary" type="button" data-ils-section="patrons">Find patron</button>
+              </div>
             </div>
             <p id="headerCounterFeedback" class="quick-counter-feedback" aria-live="polite"></p>
           </section>
+
+          <aside class="ils-hero-utility section-panel" aria-label="ILS quick status and actions">
+            <div class="ils-utility-block">
+              <p class="section-kicker">Desk actions</p>
+              <div class="header-quick-counters">
+                <button id="visitorCounterBtn" class="button quick-counter-btn" type="button">
+                  <span>Visitor count</span>
+                  <span id="visitorCounterTotal" class="quick-counter-total">0 today</span>
+                </button>
+                <button id="referenceCounterBtn" class="button quick-counter-btn quick-counter-reference" type="button">
+                  <span>Reference questions</span>
+                  <span id="referenceCounterTotal" class="quick-counter-total">0 today</span>
+                </button>
+              </div>
+            </div>
+            <div class="ils-utility-block">
+              <p class="section-kicker">At a glance</p>
+              <ul class="ils-utility-list">
+                <li><strong>Dashboard</strong><span>Open desk totals, summaries, and urgent tasks.</span></li>
+                <li><strong>Circulation</strong><span>Move between checkout, check-in, and holds without extra tabs.</span></li>
+                <li><strong>Reports</strong><span>Review collection, traffic, and service activity from one place.</span></li>
+              </ul>
+            </div>
+          </aside>
         </section>
       </div>
     </header>
