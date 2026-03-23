@@ -3828,7 +3828,10 @@ input, select, textarea {
   min-height: 12.5rem;
   background: #111;
   color: #f6ead0;
+<<<<<<< codex/update-opac-ui-color-and-layout-3tvd0r
   overflow: hidden;
+=======
+>>>>>>> main
   border: 2px solid #111;
 }
 
@@ -3866,8 +3869,14 @@ input, select, textarea {
 
 .poster-search-stage {
   justify-self: end;
+<<<<<<< codex/update-opac-ui-color-and-layout-3tvd0r
   width: 100%;
   max-width: none;
+=======
+  width: min(100%, 460px);
+  max-width: 460px;
+  margin-left: auto;
+>>>>>>> main
   padding: 0.85rem 1rem;
   min-height: 12.5rem;
   background: #ffe032;
