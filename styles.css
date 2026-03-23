@@ -3826,13 +3826,13 @@ input, select, textarea {
   align-items: start;
   padding: 0.85rem 1rem;
   min-height: 12.5rem;
-  background: #ffe032;
-  color: #111;
+  background: #111;
+  color: #f6ead0;
   border: 2px solid #111;
 }
 
 .poster-brand-eyebrow {
-  color: rgba(17, 17, 17, 0.72);
+  color: rgba(246, 234, 208, 0.72);
   padding-left: 0;
 }
 
@@ -3865,8 +3865,9 @@ input, select, textarea {
 
 .poster-search-stage {
   justify-self: end;
-  width: 100%;
-  max-width: 100%;
+  width: min(100%, 460px);
+  max-width: 460px;
+  margin-left: auto;
   padding: 0.85rem 1rem;
   min-height: 12.5rem;
   background: #ffe032;
@@ -3880,13 +3881,14 @@ input, select, textarea {
 .poster-search-input-wrap {
   min-height: 58px;
   grid-template-columns: minmax(0, 1fr) 132px;
-  background: #fff;
+  background: #ffe032;
 }
 
 .poster-search-input-wrap input[type="search"] {
   min-height: 54px;
   padding: 0.8rem 0.95rem;
   font-size: 1rem;
+  background: #ffe032;
 }
 
 .poster-search-btn,
@@ -3933,6 +3935,12 @@ input, select, textarea {
   .poster-brand-column {
     padding-right: 1rem;
     border: 2px solid #111;
+  }
+
+  .poster-search-stage {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
   }
 
   .poster-spacer-column {
