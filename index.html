@@ -7,20 +7,21 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <header class="site-header opac-poster-shell">
-      <div class="site-header-inner poster-hero">
-        <section class="poster-hero-composition" aria-label="OPAC homepage hero">
-          <div class="poster-brand-column" aria-labelledby="posterBrandTitle">
-            <div class="poster-brand-copy">
-              <p class="poster-brand-eyebrow">Personal Collection Catalog</p>
-              <h1 id="posterBrandTitle"><span>ONLINE</span><span>CATALOG</span></h1>
+    <header class="site-header opac-ils-shell">
+      <div class="site-header-inner opac-ils-hero">
+        <section class="opac-ils-hero-grid" aria-label="OPAC homepage hero">
+          <div class="opac-ils-brand card-like" aria-labelledby="posterBrandTitle">
+            <p class="eyebrow">Online Public Access Catalog</p>
+            <h1 id="posterBrandTitle">Jordan's Library Catalog</h1>
+            <p class="muted opac-ils-brand-copy">A public discovery layer styled to match the staff workspace while keeping every catalog tool in place.</p>
+            <div class="opac-ils-brand-stats" aria-label="Catalog highlights">
+              <span class="badge badge-status">Shared record set</span>
+              <span class="badge badge-status">Discovery tools</span>
+              <span class="badge badge-status">Staff-ready handoff</span>
             </div>
           </div>
 
-          <div class="poster-spacer-column" aria-hidden="true"></div>
-          <div class="poster-spacer-column" aria-hidden="true"></div>
-
-          <section class="search-main poster-search-stage" aria-label="Search the catalog">
+          <section class="search-main poster-search-stage opac-ils-search card-like" aria-label="Search the catalog">
             <div class="search-panel-heading sr-only">
               <p class="search-panel-title">Search the catalog</p>
               <p class="search-panel-copy">Title, creator, subject, notes, call number.</p>
@@ -64,33 +65,34 @@
       </div>
     </header>
 
-    <main class="layout poster-layout">
-      <section id="opacSection" class="card poster-card">
+    <main class="layout poster-layout opac-ils-layout">
+      <section id="opacSection" class="card poster-card opac-ils-card">
 
         <section id="viewSearch" class="view-panel">
-          <section class="homepage-grid poster-homepage-grid">
-            <aside class="poster-sidebar section-panel" aria-label="Browse sections">
-              <p class="poster-sidebar-title">Browse</p>
-              <p class="poster-sidebar-note">Jump between discovery modes without flattening the homepage into equal modules.</p>
+          <section class="homepage-grid poster-homepage-grid opac-ils-homepage-grid">
+            <aside class="poster-sidebar section-panel opac-ils-sidebar" aria-label="Browse sections">
+              <p class="eyebrow">Browse modules</p>
+              <p class="poster-sidebar-title">Patron navigation</p>
+              <p class="poster-sidebar-note">Use the same visual language as the ILS to move between public discovery views.</p>
               <div class="poster-nav-list">
                 <button class="nav-btn poster-nav-item" data-view="search" type="button">New Arrivals</button>
-                <button class="nav-btn poster-nav-item" data-view="recent" type="button">Staff Picks Energy</button>
+                <button class="nav-btn poster-nav-item" data-view="recent" type="button">Recently Added</button>
                 <button class="nav-btn poster-nav-item" data-view="covers" type="button">Cover Wall</button>
                 <button class="nav-btn poster-nav-item" data-view="shelves" type="button">Curated Collections</button>
               </div>
-              <div class="poster-sticker poster-sticker-red">STAFF PICKS</div>
+              <div class="poster-sticker poster-sticker-red">PUBLIC OPAC</div>
             </aside>
 
-            <div class="poster-main-column">
-              <section class="poster-callout section-panel" aria-labelledby="posterCalloutTitle">
+            <div class="poster-main-column opac-ils-main-column">
+              <section class="poster-callout section-panel opac-ils-callout" aria-labelledby="posterCalloutTitle">
                 <div>
-                  <p class="section-kicker">Discover</p>
-                  <h2 id="posterCalloutTitle">Read. Explore. Return.</h2>
-                  <p class="muted">Discovery tools, reframed with more hierarchy, more negative space, and a sharper poster-like rhythm.</p>
+                  <p class="section-kicker">Desk-to-public continuity</p>
+                  <h2 id="posterCalloutTitle">Discover the collection with the same visual system staff use.</h2>
+                  <p class="muted">Search, browse, and shelf views now sit in a cleaner ILS-aligned frame instead of the old poster-forward presentation.</p>
                 </div>
                 <div class="poster-mini-badges" aria-hidden="true">
-                  <span class="poster-chip poster-chip-mint">Rare Finds</span>
-                  <span class="poster-chip poster-chip-blue">Curated Collections</span>
+                  <span class="poster-chip poster-chip-mint">Fast search</span>
+                  <span class="poster-chip poster-chip-blue">Shared workflow</span>
                 </div>
               </section>
 
@@ -121,7 +123,7 @@
               </section>
             </div>
 
-            <div class="poster-right-rail">
+            <div class="poster-right-rail opac-ils-rail">
               <section class="cover-wall-panel section-panel poster-section" aria-labelledby="homeCoverWallTitle">
                 <div class="section-header module-header">
                   <div>
