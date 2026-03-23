@@ -7,114 +7,66 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body class="ils-body">
-    <header class="site-header opac-poster-shell ils-poster-shell">
-      <div class="site-header-inner ils-poster-hero">
-        <section class="ils-hero-composition" aria-label="ILS workspace header">
-          <div class="ils-hero-brand poster-brand-column" aria-labelledby="ilsHeroTitle">
-            <div class="poster-brand-copy ils-brand-copy-compact">
-              <p class="poster-brand-eyebrow">Integrated Library System</p>
-              <h1 id="ilsHeroTitle"><span>STAFF</span><span>WORKSPACE</span></h1>
-              <p class="ils-hero-copy">A staff floor for circulation, catalog, and patron work with more attitude than dashboard polish.</p>
-            </div>
+    <div class="ils-app-shell">
+      <aside class="ils-sidebar" aria-label="Primary navigation">
+        <div class="ils-sidebar-brand panel-card">
+          <p class="ils-brand-kicker">Integrated Library System</p>
+          <h1 class="ils-brand-title">Staff Workspace</h1>
+          <p class="ils-brand-copy">A black-and-white wireframe foundation for circulation, cataloging, patron, and reporting work.</p>
+        </div>
+
+        <nav class="ils-sidebar-nav" aria-label="Primary ILS sections">
+          <div class="ils-nav-item"><button class="ils-section-btn is-active" data-ils-section="dashboard" type="button">Dashboard</button><nav id="ilsSubnav-dashboard" class="ils-subnav hidden" aria-label="Dashboard tools"></nav></div>
+          <div class="ils-nav-item"><button class="ils-section-btn" data-ils-section="circulation" type="button">Circulation</button><nav id="ilsSubnav-circulation" class="ils-subnav hidden" aria-label="Circulation tools"></nav></div>
+          <div class="ils-nav-item"><button class="ils-section-btn" data-ils-section="cataloging" type="button">Cataloging</button><nav id="ilsSubnav-cataloging" class="ils-subnav hidden" aria-label="Cataloging tools"></nav></div>
+          <div class="ils-nav-item"><button class="ils-section-btn" data-ils-section="acquisitions" type="button">Acquisitions</button><nav id="ilsSubnav-acquisitions" class="ils-subnav hidden" aria-label="Acquisitions tools"></nav></div>
+          <div class="ils-nav-item"><button class="ils-section-btn" data-ils-section="patrons" type="button">Patrons</button><nav id="ilsSubnav-patrons" class="ils-subnav hidden" aria-label="Patron tools"></nav></div>
+          <div class="ils-nav-item"><button class="ils-section-btn" data-ils-section="ill" type="button">Interlibrary Loan</button><nav id="ilsSubnav-ill" class="ils-subnav hidden" aria-label="Interlibrary loan tools"></nav></div>
+          <div class="ils-nav-item"><button class="ils-section-btn" data-ils-section="register" type="button">Daily Register</button><nav id="ilsSubnav-register" class="ils-subnav hidden" aria-label="Register tools"></nav></div>
+          <div class="ils-nav-item"><button class="ils-section-btn" data-ils-section="administration" type="button">Administration</button><nav id="ilsSubnav-administration" class="ils-subnav hidden" aria-label="Administration tools"></nav></div>
+          <div class="ils-nav-item"><button class="ils-section-btn" data-ils-section="reports" type="button">Reports</button><nav id="ilsSubnav-reports" class="ils-subnav hidden" aria-label="Report tools"></nav></div>
+        </nav>
+      </aside>
+
+      <div class="ils-main-shell">
+        <header class="ils-toolbar panel-card">
+          <div class="ils-toolbar-title-group">
+            <p class="ils-toolbar-label">Workspace</p>
+            <h2 class="ils-toolbar-title">Jordan's Library ILS</h2>
           </div>
 
-          <section class="ils-hero-board section-panel" aria-label="ILS global search">
-            <div class="ils-hero-board-top">
-              <div>
-                <p class="section-kicker">Global record search</p>
-                <p class="ils-hero-description">Search records, creators, identifiers, and call numbers from a workspace built like an editorial desk, not a startup dashboard.</p>
-              </div>
-            </div>
-            <div class="ils-hero-search-block">
-              <label class="sr-only" for="searchInput">Search records</label>
-              <p class="ils-search-label">Search the catalog</p>
-              <div class="ils-toolbar-search ils-toolbar-search-hero">
-                <input id="searchInput" type="search" placeholder="Search records, creators, identifiers, or call numbers" autocomplete="off" />
-                <div id="searchResultsPopover" class="search-popover hidden" role="listbox" aria-label="Matching records"></div>
-              </div>
-              <p id="ilsSectionDescription" class="ils-search-support">Jump directly to a record, or open a staff module from the actions rail.</p>
-            </div>
-          </section>
+          <div class="ils-toolbar-search ils-toolbar-search-hero">
+            <label class="sr-only" for="searchInput">Search records</label>
+            <input id="searchInput" type="search" placeholder="Search records, creators, identifiers, or call numbers" autocomplete="off" />
+            <div id="searchResultsPopover" class="search-popover hidden" role="listbox" aria-label="Matching records"></div>
+          </div>
 
-          <aside class="ils-hero-utility section-panel" aria-label="ILS quick actions">
+          <div class="ils-toolbar-actions">
             <a class="ils-opac-link" href="./index.html">Back to OPAC</a>
             <div class="ils-hero-quick-actions" aria-label="Quick staff actions">
-              <button class="button" type="button" data-ils-section="circulation">Circulation</button>
-              <button class="button button-secondary" type="button" data-ils-section="cataloging">Cataloging</button>
-              <button class="button button-secondary" type="button" data-ils-section="patrons">Patrons</button>
-              <button class="button button-secondary" type="button" data-ils-section="reports">Reports</button>
+              <button class="toolbar-action" type="button" data-ils-section="circulation">Check Out</button>
+              <button class="toolbar-action" type="button" data-ils-section="cataloging">Add Record</button>
+              <button class="toolbar-action" type="button" data-ils-section="patrons">Add Patron</button>
+              <button class="toolbar-action" type="button" data-ils-section="reports">Reports</button>
             </div>
-            <p class="ils-utility-note">Counters live in the dashboard. This rail stays sharp, spare, and directional.</p>
-          </aside>
-        </section>
-      </div>
-    </header>
-
-    <main class="layout poster-layout ils-layout">
-      <section class="card poster-card ils-poster-card" id="ilsCard">
-        <div class="ils-shell-grid">
-          <aside class="ils-navigation card-like section-panel" aria-label="ILS navigation">
-            <div class="ils-nav-block ils-nav-block-intro">
-              <p class="eyebrow">Staff modules</p>
-              <h2 class="ils-nav-title">Navigate the system</h2>
-              <p class="ils-nav-copy">Sharper modules, deliberate contrast, and a more fashion-editorial sense of movement between desk tasks.</p>
-              <nav class="ils-top-nav" aria-label="Primary ILS sections">
-                <div class="ils-nav-item">
-                  <button class="button button-secondary ils-section-btn is-active" data-ils-section="dashboard" type="button">Dashboard</button>
-                  <nav id="ilsSubnav-dashboard" class="ils-subnav" aria-label="Dashboard tools"></nav>
-                </div>
-                <div class="ils-nav-item">
-                  <button class="button button-secondary ils-section-btn" data-ils-section="circulation" type="button">Circulation</button>
-                  <nav id="ilsSubnav-circulation" class="ils-subnav" aria-label="Circulation tools"></nav>
-                </div>
-                <div class="ils-nav-item">
-                  <button class="button button-secondary ils-section-btn" data-ils-section="cataloging" type="button">Cataloging</button>
-                  <nav id="ilsSubnav-cataloging" class="ils-subnav" aria-label="Cataloging tools"></nav>
-                </div>
-                <div class="ils-nav-item">
-                  <button class="button button-secondary ils-section-btn" data-ils-section="acquisitions" type="button">Acquisitions</button>
-                  <nav id="ilsSubnav-acquisitions" class="ils-subnav" aria-label="Acquisitions tools"></nav>
-                </div>
-                <div class="ils-nav-item">
-                  <button class="button button-secondary ils-section-btn" data-ils-section="patrons" type="button">Patrons</button>
-                  <nav id="ilsSubnav-patrons" class="ils-subnav" aria-label="Patron tools"></nav>
-                </div>
-                <div class="ils-nav-item">
-                  <button class="button button-secondary ils-section-btn" data-ils-section="ill" type="button">Interlibrary Loan</button>
-                  <nav id="ilsSubnav-ill" class="ils-subnav" aria-label="Interlibrary loan tools"></nav>
-                </div>
-                <div class="ils-nav-item">
-                  <button class="button button-secondary ils-section-btn" data-ils-section="register" type="button">Daily Register</button>
-                  <nav id="ilsSubnav-register" class="ils-subnav" aria-label="Register tools"></nav>
-                </div>
-                <div class="ils-nav-item">
-                  <button class="button button-secondary ils-section-btn" data-ils-section="administration" type="button">Administration</button>
-                  <nav id="ilsSubnav-administration" class="ils-subnav" aria-label="Administration tools"></nav>
-                </div>
-                <div class="ils-nav-item">
-                  <button class="button button-secondary ils-section-btn" data-ils-section="reports" type="button">Reports</button>
-                  <nav id="ilsSubnav-reports" class="ils-subnav" aria-label="Report tools"></nav>
-                </div>
-              </nav>
-            </div>
-          </aside>
-          <div class="ils-main-column">
-            <div class="ils-main-header section-panel ils-main-header-panel">
-              <div class="ils-main-header-copy">
-                <p class="section-kicker">Current module</p>
-                <h2 id="ilsSectionTitle" class="ils-section-title">Dashboard</h2>
-              </div>
-              <div class="ils-main-header-note">
-                <p class="ils-section-description">Overview of circulation, cataloging, acquisitions, and patron activity.</p>
-              </div>
-            </div>
-
-        <section class="admin-tab-panel hidden ils-dashboard-panel" data-ils-panel="dashboard">
-          <div class="dashboard-date-row">
-            <div class="dashboard-date" id="dashboardDate"></div>
           </div>
-          <div id="dashboardTileGrid" class="dashboard-tile-grid" aria-label="ILS dashboard shortcuts and summaries"></div>
-        </section>
+        </header>
+
+        <main class="ils-content">
+          <section class="ils-module-header panel-card">
+            <div>
+              <p class="ils-module-kicker">Current module</p>
+              <h2 id="ilsSectionTitle" class="ils-section-title">Dashboard</h2>
+            </div>
+            <p id="ilsSectionDescription" class="ils-section-description">Overview of circulation, cataloging, acquisitions, and patron activity.</p>
+          </section>
+
+          <section class="admin-tab-panel ils-dashboard-panel" data-ils-panel="dashboard">
+            <div class="dashboard-date-row">
+              <div class="dashboard-date" id="dashboardDate"></div>
+            </div>
+            <div id="dashboardTileGrid" class="dashboard-tile-grid" aria-label="ILS dashboard shortcuts and summaries"></div>
+          </section>
 
         <section class="admin-tab-panel hidden" data-ils-panel="acquisitions">
           <div class="acquisitions-shell">
@@ -1477,7 +1429,9 @@
         </div>
       </div>
     </section>
-    </main>
+        </main>
+      </div>
+    </div>
 
     <script type="module" src="./js/ils.js"></script>
   </body>
