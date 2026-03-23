@@ -2613,16 +2613,16 @@ function renderDashboard() {
 
       <section class="dashboard-stats-grid" aria-label="Primary dashboard stats">
         ${stats.map((card) => `<button class="dashboard-stat-card ${card.label.includes('Overdues') || card.label.includes('Missing') ? 'is-urgent' : ''}" type="button" data-dashboard-target="${card.target}" ${card.circulationTab ? `data-dashboard-circulation="${card.circulationTab}"` : ""}><span class="dashboard-stat-label">${card.label}</span><strong class="dashboard-stat-value">${card.value}</strong><span class="dashboard-stat-copy">${card.copy}</span><span class="dashboard-stat-link">Open module →</span></button>`).join("")}
-        <button class="dashboard-stat-card dashboard-counter-card" type="button" id="visitorCounterBtn">
+        <button class="dashboard-stat-card dashboard-counter-card" type="button" id="dashboardVisitorCounterBtn">
           <span class="dashboard-stat-label">Visitors Today</span>
           <strong class="dashboard-stat-value">+1</strong>
-          <span class="dashboard-stat-copy">Tap to log a building visit. <span id="visitorCounterTotal" class="dashboard-counter-total">Today: 0</span></span>
+          <span class="dashboard-stat-copy">Tap to log a building visit. <span id="dashboardVisitorCounterTotal" class="dashboard-counter-total">Today: 0</span></span>
           <span class="dashboard-stat-link">Add visit →</span>
         </button>
-        <button class="dashboard-stat-card dashboard-counter-card" type="button" id="referenceCounterBtn">
+        <button class="dashboard-stat-card dashboard-counter-card" type="button" id="dashboardReferenceCounterBtn">
           <span class="dashboard-stat-label">Reference Today</span>
           <strong class="dashboard-stat-value">+1</strong>
-          <span class="dashboard-stat-copy">Tap to log a reference question. <span id="referenceCounterTotal" class="dashboard-counter-total">Today: 0</span></span>
+          <span class="dashboard-stat-copy">Tap to log a reference question. <span id="dashboardReferenceCounterTotal" class="dashboard-counter-total">Today: 0</span></span>
           <span class="dashboard-stat-link">Add question →</span>
         </button>
       </section>
