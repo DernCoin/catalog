@@ -3956,3 +3956,211 @@ input, select, textarea {
     min-height: 4rem;
   }
 }
+
+/* OPAC / ILS visual alignment */
+.opac-ils-shell {
+  background: linear-gradient(135deg, #fbf8ff 0%, #f4eeff 52%, #eef4fb 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 1.25rem 1.1rem;
+}
+
+.site-header-inner.opac-ils-hero {
+  width: 100%;
+  max-width: 1680px;
+  margin: 0 auto;
+}
+
+.opac-ils-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.4fr);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.opac-ils-brand,
+.opac-ils-search,
+.opac-ils-sidebar,
+.opac-ils-callout,
+.opac-ils-card,
+.opac-ils-rail .section-panel,
+.opac-ils-main-column .section-panel,
+.opac-ils-layout .page-panel {
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, #fff, #fcf9ff);
+  box-shadow: 0 10px 28px rgba(36, 18, 58, 0.08);
+}
+
+.opac-ils-brand {
+  display: grid;
+  gap: .9rem;
+  align-content: start;
+  padding: 1.15rem;
+}
+
+.opac-ils-brand h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  line-height: .95;
+}
+
+.opac-ils-brand-copy {
+  max-width: 38rem;
+}
+
+.opac-ils-brand-stats {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+.opac-ils-search {
+  padding: 1rem;
+  min-height: 100%;
+}
+
+.opac-ils-layout {
+  max-width: 1680px;
+}
+
+.opac-ils-card {
+  padding: 1rem;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.opac-ils-homepage-grid {
+  grid-template-columns: 280px minmax(0, 1.25fr) minmax(300px, .95fr);
+  gap: 1rem;
+}
+
+.opac-ils-sidebar {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+}
+
+.opac-ils-sidebar .poster-nav-item {
+  justify-content: flex-start;
+  text-align: left;
+  width: 100%;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #f3ecff;
+  color: #342348;
+  font-weight: 700;
+  padding: .75rem .95rem;
+}
+
+.opac-ils-sidebar .poster-nav-item:hover,
+.opac-ils-sidebar .poster-nav-item:focus-visible {
+  background: #e8dcff;
+  border-color: #ccb8f5;
+  transform: none;
+}
+
+.opac-ils-callout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) auto;
+  gap: 1rem;
+  align-items: start;
+  padding: 1.1rem;
+}
+
+.opac-ils-main-column,
+.opac-ils-rail {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.opac-ils-layout .poster-section,
+.opac-ils-layout .cover-wall-panel,
+.opac-ils-layout .page-panel {
+  padding: 1rem;
+}
+
+.opac-ils-layout .poster-section h3,
+.opac-ils-layout .page-panel h3 {
+  text-transform: none;
+  letter-spacing: -.02em;
+  font-size: clamp(1.15rem, 2vw, 1.55rem);
+  line-height: 1.1;
+}
+
+.opac-ils-layout .poster-search-input-wrap,
+.opac-ils-layout .hero-search-actions {
+  max-width: none;
+}
+
+.opac-ils-layout .poster-search-btn,
+.opac-ils-layout .poster-pill,
+.opac-ils-layout .poster-secondary-actions .button {
+  min-height: 44px;
+}
+
+.opac-ils-layout .poster-search-btn {
+  box-shadow: none;
+}
+
+.opac-ils-layout .poster-pill,
+.opac-ils-layout .poster-secondary-actions .button {
+  background: #efe7fa;
+  color: #342348;
+  border: 1px solid var(--border);
+}
+
+.opac-ils-layout .poster-pill-dark,
+.opac-ils-layout .poster-secondary-actions .poster-pill-dark {
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  color: #fff;
+  border-color: transparent;
+}
+
+.opac-ils-layout .poster-sticker {
+  border-radius: 999px;
+  padding: .45rem .8rem;
+  letter-spacing: .08em;
+}
+
+.opac-ils-layout .poster-chip {
+  border-radius: 999px;
+  font-size: .82rem;
+}
+
+.opac-ils-layout .popular-grid,
+.opac-ils-layout .cover-wall,
+.opac-ils-layout #recentBuckets,
+.opac-ils-layout #shelfPages {
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .opac-ils-hero-grid,
+  .opac-ils-homepage-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .opac-ils-sidebar {
+    position: static;
+  }
+
+  .opac-ils-callout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .opac-ils-shell {
+    padding: .85rem;
+  }
+
+  .opac-ils-card {
+    padding: 0;
+  }
+
+  .opac-ils-layout .poster-search-input-wrap {
+    grid-template-columns: 1fr;
+  }
+}
