@@ -7,13 +7,18 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <header class="site-header">
-      <div>
-        <p class="eyebrow">Integrated Library System</p>
-        <h1>Catalog Staff Workspace</h1>
-        <p class="muted">Manage records in Firebase. OPAC reads from this same record set.</p>
-      </div>
-      <div class="header-actions header-actions-staff">
+    <header class="site-header opac-poster-shell ils-poster-shell">
+      <div class="site-header-inner ils-poster-hero">
+        <section class="ils-hero-composition" aria-label="ILS workspace hero">
+          <div class="ils-hero-brand poster-brand-column" aria-labelledby="ilsHeroTitle">
+            <div class="poster-brand-copy">
+              <p class="poster-brand-eyebrow">Integrated Library System</p>
+              <h1 id="ilsHeroTitle"><span>STAFF</span><span>WORKSPACE</span></h1>
+              <p class="ils-hero-copy">Manage circulation, cataloging, acquisitions, and reporting in the same visual language as the OPAC.</p>
+            </div>
+          </div>
+
+      <div class="header-actions header-actions-staff ils-hero-actions">
         <div class="header-quick-counters" aria-label="Daily building counters">
           <button class="button quick-counter-btn" id="visitorCounterBtn" type="button">Visitor +1 <span id="visitorCounterTotal" class="quick-counter-total">Today: 0</span></button>
           <button class="button quick-counter-btn quick-counter-reference" id="referenceCounterBtn" type="button">Reference +1 <span id="referenceCounterTotal" class="quick-counter-total">Today: 0</span></button>
@@ -21,12 +26,14 @@
         <p id="headerCounterFeedback" class="quick-counter-feedback" aria-live="polite"></p>
         <a class="button button-secondary" href="./index.html">Back to OPAC</a>
       </div>
+        </section>
+      </div>
     </header>
 
-    <main class="layout ils-layout">
-      <section class="card" id="ilsCard">
+    <main class="layout poster-layout ils-layout">
+      <section class="card poster-card ils-poster-card" id="ilsCard">
         <div class="ils-shell-grid">
-          <aside class="ils-navigation card-like" aria-label="ILS navigation">
+          <aside class="ils-navigation card-like section-panel" aria-label="ILS navigation">
             <div class="ils-nav-block">
               <p class="eyebrow">Staff modules</p>
               <nav class="ils-top-nav" aria-label="Primary ILS sections">
@@ -70,7 +77,7 @@
             </div>
           </aside>
           <div class="ils-main-column">
-            <div class="ils-main-header">
+            <div class="ils-main-header section-panel ils-main-header-panel">
               <div>
                 <h2 id="ilsSectionTitle" class="ils-section-title">Dashboard</h2>
                 <p id="ilsSectionDescription" class="muted ils-section-description">Overview of circulation, cataloging, acquisitions, and patron activity.</p>
@@ -82,7 +89,7 @@
               </div>
             </div>
 
-        <section class="admin-tab-panel hidden" data-ils-panel="dashboard">
+        <section class="admin-tab-panel hidden ils-dashboard-panel" data-ils-panel="dashboard">
           <div class="dashboard-date-row">
             <div class="dashboard-date" id="dashboardDate"></div>
           </div>
