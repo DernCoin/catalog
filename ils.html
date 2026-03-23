@@ -14,18 +14,30 @@
             <div class="poster-brand-copy">
               <p class="poster-brand-eyebrow">Integrated Library System</p>
               <h1 id="ilsHeroTitle"><span>STAFF</span><span>WORKSPACE</span></h1>
-              <p class="ils-hero-copy">Manage circulation, cataloging, acquisitions, and reporting in the same visual language as the OPAC.</p>
+              <p class="ils-hero-copy">Circulation, cataloging, acquisitions, patrons, and reporting—reframed as one editorial control board.</p>
             </div>
           </div>
 
-      <div class="header-actions header-actions-staff ils-hero-actions">
-        <div class="header-quick-counters" aria-label="Daily building counters">
-          <button class="button quick-counter-btn" id="visitorCounterBtn" type="button">Visitor +1 <span id="visitorCounterTotal" class="quick-counter-total">Today: 0</span></button>
-          <button class="button quick-counter-btn quick-counter-reference" id="referenceCounterBtn" type="button">Reference +1 <span id="referenceCounterTotal" class="quick-counter-total">Today: 0</span></button>
-        </div>
-        <p id="headerCounterFeedback" class="quick-counter-feedback" aria-live="polite"></p>
-        <a class="button button-secondary" href="./index.html">Back to OPAC</a>
-      </div>
+          <section class="ils-hero-board section-panel" aria-label="ILS header tools">
+            <div class="ils-hero-board-top">
+              <div>
+                <p class="section-kicker">Control board</p>
+                <h2>One place for daily service work.</h2>
+                <p class="ils-hero-description">Keep the staff homepage calm: one headline, one search surface, and a stronger hierarchy that matches the OPAC’s poster rhythm.</p>
+              </div>
+              <a class="ils-opac-link" href="./index.html">Back to OPAC</a>
+            </div>
+            <div class="ils-hero-search-block">
+              <label class="sr-only" for="searchInput">Search records</label>
+              <p class="ils-search-label">Global record search</p>
+              <div class="ils-toolbar-search ils-toolbar-search-hero">
+                <input id="searchInput" type="search" placeholder="Search records, creators, identifiers, or call numbers" autocomplete="off" />
+                <div id="searchResultsPopover" class="search-popover hidden" role="listbox" aria-label="Matching records"></div>
+              </div>
+              <p id="ilsSectionDescription" class="ils-search-support">Open a module from the rail, or jump directly into a record from search.</p>
+            </div>
+            <p id="headerCounterFeedback" class="quick-counter-feedback" aria-live="polite"></p>
+          </section>
         </section>
       </div>
     </header>
@@ -34,8 +46,10 @@
       <section class="card poster-card ils-poster-card" id="ilsCard">
         <div class="ils-shell-grid">
           <aside class="ils-navigation card-like section-panel" aria-label="ILS navigation">
-            <div class="ils-nav-block">
+            <div class="ils-nav-block ils-nav-block-intro">
               <p class="eyebrow">Staff modules</p>
+              <h2 class="ils-nav-title">Navigate the system</h2>
+              <p class="ils-nav-copy">Bold modules, fewer treatments, clearer movement between service-desk tasks.</p>
               <nav class="ils-top-nav" aria-label="Primary ILS sections">
                 <div class="ils-nav-item">
                   <button class="button button-secondary ils-section-btn is-active" data-ils-section="dashboard" type="button">Dashboard</button>
@@ -78,14 +92,12 @@
           </aside>
           <div class="ils-main-column">
             <div class="ils-main-header section-panel ils-main-header-panel">
-              <div>
+              <div class="ils-main-header-copy">
+                <p class="section-kicker">Current module</p>
                 <h2 id="ilsSectionTitle" class="ils-section-title">Dashboard</h2>
-                <p id="ilsSectionDescription" class="muted ils-section-description">Overview of circulation, cataloging, acquisitions, and patron activity.</p>
               </div>
-              <div class="ils-toolbar-search">
-                <label class="sr-only" for="searchInput">Search records</label>
-                <input id="searchInput" type="search" placeholder="Search records to edit" autocomplete="off" />
-                <div id="searchResultsPopover" class="search-popover hidden" role="listbox" aria-label="Matching records"></div>
+              <div class="ils-main-header-note">
+                <p class="ils-section-description">Overview of circulation, cataloging, acquisitions, and patron activity.</p>
               </div>
             </div>
 
