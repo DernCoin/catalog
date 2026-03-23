@@ -1323,19 +1323,21 @@ function saveRegisterTransactions(transactions) {
 }
 
 function setHeaderFeedback(message, type = "success") {
-  if (!els.headerCounterFeedback) return;
-  els.headerCounterFeedback.textContent = message;
-  els.headerCounterFeedback.className = `quick-counter-feedback is-visible ${type === "error" ? "is-error" : ""}`.trim();
+  const feedback = $("#headerCounterFeedback");
+  if (!feedback) return;
+  feedback.textContent = message;
+  feedback.className = `quick-counter-feedback is-visible ${type === "error" ? "is-error" : ""}`.trim();
   window.clearTimeout(setHeaderFeedback.timeoutId);
   setHeaderFeedback.timeoutId = window.setTimeout(() => {
-    if (!els.headerCounterFeedback) return;
-    els.headerCounterFeedback.textContent = "";
-    els.headerCounterFeedback.className = "quick-counter-feedback";
+    const activeFeedback = $("#headerCounterFeedback");
+    if (!activeFeedback) return;
+    activeFeedback.textContent = "";
+    activeFeedback.className = "quick-counter-feedback";
   }, 1200);
 }
 
 function flashCounterFeedback(type, total) {
-  const btn = type === "visitor" ? els.visitorCounterBtn : els.referenceCounterBtn;
+  const btn = type === "visitor" ? $("#visitorCounterBtn") : $("#referenceCounterBtn");
   if (btn) {
     btn.classList.remove("is-pulsing");
     void btn.offsetWidth;
@@ -1346,8 +1348,10 @@ function flashCounterFeedback(type, total) {
 }
 
 function renderQuickCounters() {
-  if (els.visitorCounterTotal) els.visitorCounterTotal.textContent = `Today: ${getDailyCounterTotal("visitor")}`;
-  if (els.referenceCounterTotal) els.referenceCounterTotal.textContent = `Today: ${getDailyCounterTotal("reference")}`;
+  const visitorTotal = $("#visitorCounterTotal");
+  const referenceTotal = $("#referenceCounterTotal");
+  if (visitorTotal) visitorTotal.textContent = `Today: ${getDailyCounterTotal("visitor")}`;
+  if (referenceTotal) referenceTotal.textContent = `Today: ${getDailyCounterTotal("reference")}`;
 }
 
 function setIllMessage(_type, message, isError = false) {
@@ -2582,64 +2586,82 @@ function renderDashboard() {
   els.dashboardTileGrid.innerHTML = `
     <section class="dashboard-home">
       <header class="dashboard-hero card-like">
-        <div>
+        <div class="dashboard-hero-copy">
           <p class="eyebrow">Staff home</p>
           <h3>Dashboard</h3>
-          <p class="dashboard-subheading">Overview of circulation, cataloging, acquisitions, and patron activity.</p>
-          <p class="muted dashboard-welcome">Here’s what needs attention today.</p>
+          <p class="dashboard-subheading">The day at a glance: one lead board, one action band, and a tighter set of support panels.</p>
+          <p class="dashboard-welcome">Only the highest-priority service signals should dominate this page.</p>
         </div>
-        <div class="dashboard-hero-actions">
+        <div class="dashboard-hero-meta">
           <div class="dashboard-updated">${dashboardUpdatedLabel}</div>
-          <div class="dashboard-action-row">
-            ${quickActions.map((action) => `<button class="button button-secondary dashboard-chip" type="button" data-dashboard-target="${action.target}" ${action.circulationTab ? `data-dashboard-circulation="${action.circulationTab}"` : ""}>${action.label}</button>`).join("")}
-          </div>
+          <p class="dashboard-meta-note">Use the left rail for module changes, then jump into active work from the controls below.</p>
         </div>
       </header>
 
-      <section class="dashboard-stats-grid" aria-label="Primary dashboard stats">
-        ${stats.map((card) => `<button class="dashboard-stat-card ${card.label.includes('Overdues') || card.label.includes('Missing') ? 'is-urgent' : ''}" type="button" data-dashboard-target="${card.target}" ${card.circulationTab ? `data-dashboard-circulation="${card.circulationTab}"` : ""}><span class="dashboard-stat-label">${card.label}</span><strong class="dashboard-stat-value">${card.value}</strong><span class="dashboard-stat-copy">${card.copy}</span><span class="dashboard-stat-link">Open module →</span></button>`).join("")}
+      <section class="dashboard-actions-band dashboard-panel card-like" aria-label="Quick staff actions">
+        <div class="dashboard-panel-header">
+          <div><p class="section-kicker">Launch</p><h4>Start common tasks</h4><p class="muted">Consistent system controls for circulation, cataloging, patrons, acquisitions, and reporting.</p></div>
+        </div>
+        <div class="dashboard-action-row dashboard-action-row-primary">
+          ${actionPanel.map((action) => `<button class="button dashboard-action-button" type="button" data-dashboard-target="${action.target}" ${action.circulationTab ? `data-dashboard-circulation="${action.circulationTab}"` : ""}>${action.label}</button>`).join("")}
+        </div>
+        <div class="dashboard-action-row dashboard-action-row-secondary">
+          ${quickActions.map((action) => `<button class="button button-secondary dashboard-chip" type="button" data-dashboard-target="${action.target}" ${action.circulationTab ? `data-dashboard-circulation="${action.circulationTab}"` : ""}>${action.label}</button>`).join("")}
+        </div>
       </section>
 
-      <section class="dashboard-work-row">
+      <section class="dashboard-stats-grid" aria-label="Primary dashboard stats">
+        ${stats.map((card) => `<button class="dashboard-stat-card ${card.label.includes('Overdues') || card.label.includes('Missing') ? 'is-urgent' : ''}" type="button" data-dashboard-target="${card.target}" ${card.circulationTab ? `data-dashboard-circulation="${card.circulationTab}"` : ""}><span class="dashboard-stat-label">${card.label}</span><strong class="dashboard-stat-value">${card.value}</strong><span class="dashboard-stat-copy">${card.copy}</span><span class="dashboard-stat-link">Open module →</span></button>`).join("")}
+        <button class="dashboard-stat-card dashboard-counter-card" type="button" id="visitorCounterBtn">
+          <span class="dashboard-stat-label">Visitors Today</span>
+          <strong class="dashboard-stat-value">+1</strong>
+          <span class="dashboard-stat-copy">Tap to log a building visit. <span id="visitorCounterTotal" class="dashboard-counter-total">Today: 0</span></span>
+          <span class="dashboard-stat-link">Add visit →</span>
+        </button>
+        <button class="dashboard-stat-card dashboard-counter-card" type="button" id="referenceCounterBtn">
+          <span class="dashboard-stat-label">Reference Today</span>
+          <strong class="dashboard-stat-value">+1</strong>
+          <span class="dashboard-stat-copy">Tap to log a reference question. <span id="referenceCounterTotal" class="dashboard-counter-total">Today: 0</span></span>
+          <span class="dashboard-stat-link">Add question →</span>
+        </button>
+      </section>
+
+      <section class="dashboard-editorial-grid">
         <article class="dashboard-panel card-like dashboard-tasks-panel">
-          <div class="dashboard-panel-header"><div><h4>Today’s Work</h4><p class="muted">Short task list built from live circulation, cataloging, acquisitions, and serials data.</p></div></div>
+          <div class="dashboard-panel-header"><div><p class="section-kicker">Queue</p><h4>Today’s work</h4><p class="muted">Short task list built from live circulation, cataloging, acquisitions, and serials data.</p></div></div>
           <div class="dashboard-task-list">
             ${todaysWork.map((item) => item.count ? `<button class="dashboard-task-row ${item.urgent ? 'is-urgent' : ''}" type="button" data-dashboard-target="${item.target}" ${item.circulationTab ? `data-dashboard-circulation="${item.circulationTab}"` : ""}><span>${item.label}</span><span class="dashboard-task-arrow">Open →</span></button>` : `<div class="dashboard-task-row is-empty"><span>${item.empty}</span></div>`).join("")}
           </div>
         </article>
-        <aside class="dashboard-panel card-like dashboard-actions-panel">
-          <div class="dashboard-panel-header"><div><h4>Quick Actions</h4><p class="muted">Open the right workspace without wading into the full dashboard.</p></div></div>
-          <div class="dashboard-action-grid">
-            ${actionPanel.map((action) => `<button class="button dashboard-action-button" type="button" data-dashboard-target="${action.target}" ${action.circulationTab ? `data-dashboard-circulation="${action.circulationTab}"` : ""}>${action.label}</button>`).join("")}
-          </div>
-        </aside>
-      </section>
 
-      <section class="dashboard-panel card-like dashboard-activity-panel">
-        <div class="dashboard-panel-header"><div><h4>Recent Activity</h4><p class="muted">Most recent staff actions across circulation, cataloging, acquisitions, patrons, and serials.</p></div><button class="button button-secondary dashboard-inline-action" type="button" data-dashboard-target="stats">View more</button></div>
-        ${renderList(recentActivity, (entry) => `<li><button class="dashboard-activity-row" type="button" data-dashboard-target="${entry.target}" ${entry.target === 'circulation' ? 'data-dashboard-circulation="checkout"' : ''}><span class="dashboard-activity-icon">${entry.icon}</span><span class="dashboard-activity-copy"><strong>${entry.text}</strong><span class="muted">${formatRelativeTime(entry.timestamp)}</span></span></button></li>`, "No recent staff activity yet.")}
-      </section>
+        <section class="dashboard-support-column">
+          <section class="dashboard-panel card-like dashboard-activity-panel">
+            <div class="dashboard-panel-header"><div><p class="section-kicker">Timeline</p><h4>Recent activity</h4><p class="muted">Latest staff actions across circulation, cataloging, acquisitions, patrons, and serials.</p></div><button class="button button-secondary dashboard-inline-action" type="button" data-dashboard-target="stats">View more</button></div>
+            ${renderList(recentActivity, (entry) => `<li><button class="dashboard-activity-row" type="button" data-dashboard-target="${entry.target}" ${entry.target === 'circulation' ? 'data-dashboard-circulation="checkout"' : ''}><span class="dashboard-activity-icon">${entry.icon}</span><span class="dashboard-activity-copy"><strong>${entry.text}</strong><span class="muted">${formatRelativeTime(entry.timestamp)}</span></span></button></li>`, "No recent staff activity yet.")}
+          </section>
 
-      <section class="dashboard-preview-grid">
-        <article class="dashboard-panel card-like">
-          <div class="dashboard-panel-header"><div><h4>Overdue Preview</h4><p class="muted">Most overdue items needing follow-up.</p></div><button class="button button-secondary dashboard-inline-action" type="button" data-dashboard-target="circulation">Open Circulation</button></div>
-          ${renderList(overduePreview, ({ record, holding, overdueDays }) => `<li><button class="dashboard-preview-row" type="button" data-dashboard-target="circulation"><strong>${record.title || 'Untitled'}</strong><span>${holding.checkedOutToName || 'Unknown patron'} · Due ${holding.dueDate || 'No due date'} · ${overdueDays} day${overdueDays === 1 ? '' : 's'} overdue</span></button></li>`, "No items are currently overdue.")}
-        </article>
+          <section class="dashboard-preview-grid">
+            <article class="dashboard-panel card-like">
+              <div class="dashboard-panel-header"><div><p class="section-kicker">Follow-up</p><h4>Overdue preview</h4><p class="muted">Most overdue items needing follow-up.</p></div><button class="button button-secondary dashboard-inline-action" type="button" data-dashboard-target="circulation">Open Circulation</button></div>
+              ${renderList(overduePreview, ({ record, holding, overdueDays }) => `<li><button class="dashboard-preview-row" type="button" data-dashboard-target="circulation"><strong>${record.title || 'Untitled'}</strong><span>${holding.checkedOutToName || 'Unknown patron'} · Due ${holding.dueDate || 'No due date'} · ${overdueDays} day${overdueDays === 1 ? '' : 's'} overdue</span></button></li>`, "No items are currently overdue.")}
+            </article>
 
-        <article class="dashboard-panel card-like">
-          <div class="dashboard-panel-header"><div><h4>Pending Cataloging / Materials</h4><p class="muted">Recently staged materials awaiting action.</p></div><button class="button button-secondary dashboard-inline-action" type="button" data-dashboard-target="acquisitions">Open Acquisitions</button></div>
-          ${renderList(pendingPreview, (material) => `<li><button class="dashboard-preview-row" type="button" data-dashboard-target="acquisitions"><strong>${material.title}</strong><span>${material.orderName || 'No order'} · ${material.materialNumber || 'No material #'} · ${material.status || 'Pending Material'}</span></button></li>`, "No pending materials awaiting activation.")}
-        </article>
+            <article class="dashboard-panel card-like">
+              <div class="dashboard-panel-header"><div><p class="section-kicker">Cataloging</p><h4>Pending materials</h4><p class="muted">Recently staged materials awaiting action.</p></div><button class="button button-secondary dashboard-inline-action" type="button" data-dashboard-target="acquisitions">Open Acquisitions</button></div>
+              ${renderList(pendingPreview, (material) => `<li><button class="dashboard-preview-row" type="button" data-dashboard-target="acquisitions"><strong>${material.title}</strong><span>${material.orderName || 'No order'} · ${material.materialNumber || 'No material #'} · ${material.status || 'Pending Material'}</span></button></li>`, "No pending materials awaiting activation.")}
+            </article>
 
-        <article class="dashboard-panel card-like">
-          <div class="dashboard-panel-header"><div><h4>Patron Alerts</h4><p class="muted">Patrons with alerts, blocks, or account issues.</p></div><button class="button button-secondary dashboard-inline-action" type="button" data-dashboard-target="patrons">Open Patrons</button></div>
-          ${renderList(patronPreview, (patron) => `<li><button class="dashboard-preview-row" type="button" data-dashboard-target="patrons"><strong>${patron.name || 'Unnamed patron'}</strong><span>${patron.cardNumber || 'No card'} · ${patron.status || 'Active'}${patron.blocks ? ` · ${patron.blocks}` : patron.alerts ? ` · ${patron.alerts}` : ''}</span></button></li>`, "No patron alerts or account issues right now.")}
-        </article>
+            <article class="dashboard-panel card-like">
+              <div class="dashboard-panel-header"><div><p class="section-kicker">Accounts</p><h4>Patron alerts</h4><p class="muted">Patrons with alerts, blocks, or account issues.</p></div><button class="button button-secondary dashboard-inline-action" type="button" data-dashboard-target="patrons">Open Patrons</button></div>
+              ${renderList(patronPreview, (patron) => `<li><button class="dashboard-preview-row" type="button" data-dashboard-target="patrons"><strong>${patron.name || 'Unnamed patron'}</strong><span>${patron.cardNumber || 'No card'} · ${patron.status || 'Active'}${patron.blocks ? ` · ${patron.blocks}` : patron.alerts ? ` · ${patron.alerts}` : ''}</span></button></li>`, "No patron alerts or account issues right now.")}
+            </article>
 
-        <article class="dashboard-panel card-like">
-          <div class="dashboard-panel-header"><div><h4>Serials / Renewals</h4><p class="muted">Upcoming renewals and recently added issues.</p></div><button class="button button-secondary dashboard-inline-action" type="button" data-dashboard-target="serials">Open Serials</button></div>
-          ${renderList(serialPreview, (entry) => `<li><button class="dashboard-preview-row" type="button" data-dashboard-target="serials"><strong>${entry.title}</strong><span>${entry.frequency} · ${entry.detail}</span></button></li>`, "No serial renewals or recent issues to show.")}
-        </article>
+            <article class="dashboard-panel card-like">
+              <div class="dashboard-panel-header"><div><p class="section-kicker">Serials</p><h4>Renewals</h4><p class="muted">Upcoming renewals and recently added issues.</p></div><button class="button button-secondary dashboard-inline-action" type="button" data-dashboard-target="serials">Open Serials</button></div>
+              ${renderList(serialPreview, (entry) => `<li><button class="dashboard-preview-row" type="button" data-dashboard-target="serials"><strong>${entry.title}</strong><span>${entry.frequency} · ${entry.detail}</span></button></li>`, "No serial renewals or recent issues to show.")}
+            </article>
+          </section>
+        </section>
       </section>
     </section>
   `;
@@ -6384,8 +6406,15 @@ function bindEvents() {
   if (els.closeRegisterTransactionsModalBtn) els.closeRegisterTransactionsModalBtn.addEventListener("click", closeRegisterTransactionsModal);
   if (els.registerTransactionsModal) els.registerTransactionsModal.addEventListener("click", (event) => { if (event.target === els.registerTransactionsModal) closeRegisterTransactionsModal(); });
   $$('[data-register-quick-amount]').forEach((button) => button.addEventListener('click', () => prefillRegisterForm({ amount: button.dataset.registerQuickAmount, category: 'Copies' })));
-  if (els.visitorCounterBtn) els.visitorCounterBtn.addEventListener("click", () => incrementDailyCounter("visitor"));
-  if (els.referenceCounterBtn) els.referenceCounterBtn.addEventListener("click", () => incrementDailyCounter("reference"));
+  if (els.dashboardTileGrid) els.dashboardTileGrid.addEventListener("click", (event) => {
+    const visitorBtn = event.target.closest('#visitorCounterBtn');
+    if (visitorBtn) {
+      incrementDailyCounter("visitor");
+      return;
+    }
+    const referenceBtn = event.target.closest('#referenceCounterBtn');
+    if (referenceBtn) incrementDailyCounter("reference");
+  });
   if (els.checkOutForm) els.checkOutForm.addEventListener("submit", checkOutRecord);
   if (els.checkOutCardNumber) els.checkOutCardNumber.addEventListener("input", () => renderCheckoutPatronPreview());
   if (els.runMissingReportBtn) els.runMissingReportBtn.addEventListener("click", renderMissingBiblioReport);
