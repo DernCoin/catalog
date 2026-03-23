@@ -43,11 +43,16 @@
 
           <div class="ils-toolbar-actions">
             <a class="ils-opac-link" href="./index.html">Back to OPAC</a>
-            <div class="ils-hero-quick-actions" aria-label="Quick staff actions">
-              <button class="toolbar-action" type="button" data-ils-section="circulation">Check Out</button>
-              <button class="toolbar-action" type="button" data-ils-section="cataloging">Add Record</button>
-              <button class="toolbar-action" type="button" data-ils-section="patrons">Add Patron</button>
-              <button class="toolbar-action" type="button" data-ils-section="reports">Reports</button>
+            <div class="header-quick-counters" aria-label="Service desk counters">
+              <button id="visitorCounterBtn" class="button quick-counter-btn" type="button">
+                <span>Visitor Count</span>
+                <span id="visitorCounterTotal" class="quick-counter-total">Today: 0</span>
+              </button>
+              <button id="referenceCounterBtn" class="button quick-counter-btn quick-counter-reference" type="button">
+                <span>Reference Questions</span>
+                <span id="referenceCounterTotal" class="quick-counter-total">Today: 0</span>
+              </button>
+              <p id="headerCounterFeedback" class="quick-counter-feedback" aria-live="polite"></p>
             </div>
           </div>
         </header>
