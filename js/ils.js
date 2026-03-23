@@ -6490,38 +6490,48 @@ function bindEvents() {
   if (els.authorityEntryModal) els.authorityEntryModal.addEventListener("click", (event) => { if (event.target === els.authorityEntryModal) closeAuthorityModal(); });
 }
 
+function runRenderStep(label, renderStep) {
+  try {
+    renderStep();
+  } catch (error) {
+    console.error(`Unable to render ${label}.`, error);
+  }
+}
+
 function render() {
   ensureNoticeTemplatesSeeded();
-  fillMaterialTypes();
-  fillGenres();
-  fillFormats();
-  fillBindings();
-  fillLocations();
-  fillCuratedShelves();
-  fillIllLibraries();
-  renderHoldingsEditor(collectDraftHoldings().length ? collectDraftHoldings() : state.draftHoldings);
-  renderTable();
-  renderPatronSearchResults();
-  renderPatronDetail();
-  renderNoticesWorkspace();
-  renderSubscriptionsTable();
-  renderSerialIssuesTable();
-  renderAcquisitionsWorkspace();
-  renderCheckoutQueue();
-  renderCheckoutPatronPreview();
-  renderCheckoutPatronContext();
-  renderCheckInResult();
-  renderRecentTransactions(els.recentCheckoutTransactions, 'checkout');
-  renderRecentTransactions(els.recentCheckinTransactions, 'checkin');
-  renderCirculationRulesTable();
-  renderReceiptSettings();
-  renderHoldsTable();
-  renderStatsPanel();
-  renderDashboard();
-  renderQuickCounters();
-  renderIllWorkspace();
-  renderRegisterWorkspace();
-  renderAuthorityControl();
+  [
+    ["material types", fillMaterialTypes],
+    ["genres", fillGenres],
+    ["formats", fillFormats],
+    ["bindings", fillBindings],
+    ["locations", fillLocations],
+    ["curated shelves", fillCuratedShelves],
+    ["ILL libraries", fillIllLibraries],
+    ["holdings editor", () => renderHoldingsEditor(collectDraftHoldings().length ? collectDraftHoldings() : state.draftHoldings)],
+    ["records table", renderTable],
+    ["patron search results", renderPatronSearchResults],
+    ["patron detail", renderPatronDetail],
+    ["notices workspace", renderNoticesWorkspace],
+    ["subscriptions table", renderSubscriptionsTable],
+    ["serial issues table", renderSerialIssuesTable],
+    ["acquisitions workspace", renderAcquisitionsWorkspace],
+    ["checkout queue", renderCheckoutQueue],
+    ["checkout patron preview", renderCheckoutPatronPreview],
+    ["checkout patron context", renderCheckoutPatronContext],
+    ["check-in result", renderCheckInResult],
+    ["recent checkout transactions", () => renderRecentTransactions(els.recentCheckoutTransactions, 'checkout')],
+    ["recent check-in transactions", () => renderRecentTransactions(els.recentCheckinTransactions, 'checkin')],
+    ["circulation rules table", renderCirculationRulesTable],
+    ["receipt settings", renderReceiptSettings],
+    ["holds table", renderHoldsTable],
+    ["stats panel", renderStatsPanel],
+    ["dashboard", renderDashboard],
+    ["quick counters", renderQuickCounters],
+    ["ILL workspace", renderIllWorkspace],
+    ["register workspace", renderRegisterWorkspace],
+    ["authority control", renderAuthorityControl],
+  ].forEach(([label, renderStep]) => runRenderStep(label, renderStep));
 }
 
 function init() {
