@@ -4461,3 +4461,464 @@ input, select, textarea {
     line-height: 0.9;
   }
 }
+
+/* ILS artsy editorial redesign */
+.ils-body {
+  --bg: #f3ede3;
+  --card: #f7f1e6;
+  --text: #151515;
+  --muted: #5d564c;
+  --accent: #b2331a;
+  --accent-2: #b2331a;
+  --accent-3: #1b47b8;
+  --border: #121212;
+  --danger: #8f1f12;
+  --shadow: none;
+  --panel-soft: #e8dfd1;
+  --panel-dark: #201d1c;
+  --panel-deep: #2f241f;
+  --panel-alert: #d7c0b6;
+  background: #f3ede3;
+  color: var(--text);
+  font-family: "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+}
+
+.ils-body h1,
+.ils-body h2,
+.ils-body h3,
+.ils-body h4,
+.ils-body .dashboard-tile-value,
+.ils-body .dashboard-stat-value,
+.ils-body .circulation-mode-banner h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.ils-body .site-header.ils-poster-shell {
+  padding: 1rem 1rem 0.7rem;
+  background: #f3ede3;
+  border-bottom: 2px solid var(--border);
+}
+
+.ils-body .ils-poster-hero::before {
+  inset: 0.7rem 8% 0.7rem 8%;
+  border: 1px solid rgba(18, 18, 18, 0.2);
+}
+
+.ils-body .ils-hero-composition {
+  grid-template-columns: minmax(220px, 24%) minmax(0, 46%) minmax(260px, 30%);
+  gap: 0.9rem;
+  align-items: stretch;
+}
+
+.ils-body .ils-hero-brand,
+.ils-body .ils-hero-board,
+.ils-body .ils-hero-utility,
+.ils-body .ils-navigation,
+.ils-body .ils-main-header-panel,
+.ils-body .dashboard-tile,
+.ils-body .dashboard-stat-card,
+.ils-body .dashboard-panel,
+.ils-body .card-like,
+.ils-body .editor-panel,
+.ils-body .record-workspace,
+.ils-body .workspace-toolbar-row-secondary,
+.ils-body .record-import-bar,
+.ils-body .record-sticky-actions,
+.ils-body .circulation-mode-banner,
+.ils-body .circulation-message-panel,
+.ils-body .checkin-result-panel,
+.ils-body .patron-summary-chip,
+.ils-body .detail-card,
+.ils-body .patron-detail-address,
+.ils-body .summary-card,
+.ils-body .patron-notice-group,
+.ils-body .patron-notice-template-card,
+.ils-body .managed-item,
+.ils-body .managed-empty,
+.ils-body .holding-row,
+.ils-body .receipt-card,
+.ils-body .recent-transactions-list li,
+.ils-body .search-popover,
+.ils-body .search-result-item {
+  border: 2px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.ils-body .ils-hero-brand {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  align-items: end;
+  padding: 1rem;
+  background: #201d1c;
+  color: #f7f1e6;
+}
+
+.ils-body .ils-hero-brand::after {
+  content: "STACKS";
+  position: absolute;
+  top: 1rem;
+  right: -1.8rem;
+  padding: 0.25rem 2rem;
+  background: #f7f1e6;
+  color: #121212;
+  border: 2px solid #121212;
+  transform: rotate(90deg);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+}
+
+.ils-body .poster-brand-eyebrow,
+.ils-body .section-kicker,
+.ils-body .eyebrow,
+.ils-body .ils-search-label,
+.ils-body .ils-opac-link {
+  color: var(--accent);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+}
+
+.ils-body .ils-hero-brand.poster-brand-column h1,
+.ils-body .ils-section-title {
+  text-transform: uppercase;
+  line-height: 0.86;
+}
+
+.ils-body .ils-hero-brand.poster-brand-column h1 {
+  font-size: clamp(2.4rem, 4vw, 4.3rem);
+}
+
+.ils-body .ils-hero-copy,
+.ils-body .ils-hero-description,
+.ils-body .ils-search-support,
+.ils-body .ils-utility-note,
+.ils-body .ils-nav-copy,
+.ils-body .muted {
+  color: var(--muted);
+}
+
+.ils-body .ils-hero-board {
+  position: relative;
+  padding: 1rem 1.1rem 1.1rem;
+  background: #f7f1e6;
+}
+
+.ils-body .ils-hero-board::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 1.1rem;
+  background: #b2331a;
+}
+
+.ils-body .ils-hero-board-top,
+.ils-body .ils-hero-search-block {
+  padding-left: 1rem;
+}
+
+.ils-body .ils-hero-search-block {
+  border-top: 2px solid var(--border);
+  gap: 0.55rem;
+}
+
+.ils-body .ils-hero-utility {
+  position: relative;
+  align-content: start;
+  gap: 0.9rem;
+  padding: 1rem;
+  background: #ddd2c1;
+}
+
+.ils-body .ils-hero-utility::before {
+  content: "STAFF USE";
+  justify-self: start;
+  padding: 0.2rem 0.55rem;
+  background: #1b47b8;
+  color: #f7f1e6;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
+.ils-body .ils-opac-link {
+  justify-self: start;
+  color: var(--text);
+}
+
+.ils-body .button {
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  background: var(--text);
+  color: #f7f1e6;
+  box-shadow: none;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.ils-body .button.button-secondary {
+  background: transparent;
+  color: var(--text);
+}
+
+.ils-body .button:hover,
+.ils-body .button:focus-visible {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0 #b2331a;
+}
+
+.ils-body input,
+.ils-body select,
+.ils-body textarea {
+  border: 2px solid var(--border);
+  border-radius: 0;
+  background: #fbf7f0;
+  color: var(--text);
+}
+
+.ils-body .ils-toolbar-search-hero input,
+.ils-body .ils-toolbar-search input {
+  min-height: 3.5rem;
+  padding: 0.8rem 0.95rem;
+  background: #fbf7f0;
+}
+
+.ils-body .search-result-item {
+  background: #fbf7f0;
+}
+
+.ils-body .search-result-item.is-active,
+.ils-body .search-result-item:hover {
+  background: #ddd2c1;
+}
+
+.ils-body .ils-layout {
+  max-width: 1460px;
+}
+
+.ils-body .ils-poster-card {
+  padding: 1rem;
+  background: transparent;
+  border: 0;
+}
+
+.ils-body .ils-shell-grid {
+  grid-template-columns: 285px minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.ils-body .ils-navigation {
+  position: sticky;
+  top: 0.8rem;
+  padding: 1rem;
+  background: #f7f1e6;
+}
+
+.ils-body .ils-nav-title {
+  font-size: clamp(1.6rem, 2.4vw, 2.1rem);
+  margin-bottom: 0.45rem;
+}
+
+.ils-body .ils-top-nav {
+  gap: 0.45rem;
+}
+
+.ils-body .ils-section-btn,
+.ils-body .ils-subnav-btn {
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+}
+
+.ils-body .ils-section-btn.is-active,
+.ils-body .ils-subnav-btn.is-active {
+  background: var(--accent);
+  color: #f7f1e6;
+  border-color: var(--accent);
+}
+
+.ils-body .ils-main-header-panel {
+  position: relative;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.7fr);
+  align-items: end;
+  padding: 1.1rem 1.2rem;
+  background: #f7f1e6;
+}
+
+.ils-body .ils-main-header-panel::after {
+  content: "";
+  position: absolute;
+  right: 1rem;
+  top: -0.8rem;
+  width: 5.5rem;
+  height: 1rem;
+  background: #1b47b8;
+}
+
+.ils-body .ils-section-title {
+  font-size: clamp(2.3rem, 4vw, 4.5rem);
+}
+
+.ils-body .dashboard-date-row {
+  justify-content: flex-start;
+}
+
+.ils-body .dashboard-date {
+  display: inline-block;
+  padding: 0.25rem 0.55rem;
+  border: 2px solid var(--border);
+  background: #ddd2c1;
+  color: var(--text);
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.ils-body .dashboard-tile,
+.ils-body .dashboard-stat-card,
+.ils-body .dashboard-panel,
+.ils-body .card-like,
+.ils-body .circulation-message-panel,
+.ils-body .summary-card,
+.ils-body .managed-item,
+.ils-body .holding-row {
+  background: #f7f1e6;
+}
+
+.ils-body .dashboard-tile:nth-child(3n),
+.ils-body .dashboard-stat-card:nth-child(3n) {
+  background: #ddd2c1;
+}
+
+.ils-body .dashboard-tile:nth-child(4n),
+.ils-body .dashboard-panel .dashboard-task-row.is-urgent,
+.ils-body .circulation-mode-banner-checkout {
+  background: #e3d6cf;
+}
+
+.ils-body .dashboard-tile-footer,
+.ils-body .dashboard-stat-link,
+.ils-body .dashboard-task-arrow,
+.ils-body .dashboard-inline-action {
+  color: var(--accent);
+}
+
+.ils-body .dashboard-preview-row,
+.ils-body .dashboard-activity-row,
+.ils-body .dashboard-task-row {
+  border: 2px solid var(--border);
+  border-radius: 0;
+  background: #fbf7f0;
+}
+
+.ils-body .circulation-tab-btn.is-active,
+.ils-body .button-primary,
+.ils-body .quick-counter-btn,
+.ils-body .quick-counter-reference {
+  background: var(--accent);
+  color: #f7f1e6;
+  border-color: var(--accent);
+}
+
+.ils-body .circulation-mode-banner {
+  padding: 1rem 1.1rem;
+}
+
+.ils-body .circulation-mode-banner-checkin,
+.ils-body .circulation-gate-badge.is-ready {
+  background: #d8d2c8;
+}
+
+.ils-body .circulation-mode-banner-holds {
+  background: #e8dfd1;
+}
+
+.ils-body .circulation-mode-icon,
+.ils-body .quick-counter-total,
+.ils-body .circulation-gate-badge,
+.ils-body .status-badge {
+  border-radius: 999px;
+  border: 2px solid var(--border);
+  box-shadow: none;
+}
+
+.ils-body .quick-counter-total,
+.ils-body .circulation-gate-badge.is-locked {
+  background: #f7f1e6;
+  color: var(--text);
+}
+
+.ils-body .acquisitions-stage-nav,
+.ils-body .ils-hero-quick-actions,
+.ils-body .dashboard-action-grid {
+  gap: 0.7rem;
+}
+
+.ils-body .acquisitions-stage-nav .button,
+.ils-body .dashboard-action-button,
+.ils-body .ils-hero-quick-actions .button {
+  min-height: 3rem;
+}
+
+.ils-body .record-workspace,
+.ils-body .editor-panel,
+.ils-body .workspace-toolbar-row-secondary {
+  background: #ddd2c1;
+}
+
+.ils-body .cover,
+.ils-body .details-cover {
+  border-radius: 0;
+  border: 2px solid var(--border);
+}
+
+@media (max-width: 1180px) {
+  .ils-body .ils-hero-composition {
+    grid-template-columns: minmax(220px, 28%) minmax(0, 1fr);
+  }
+
+  .ils-body .ils-hero-utility {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 980px) {
+  .ils-body .ils-hero-composition,
+  .ils-body .ils-main-header-panel,
+  .ils-body .ils-shell-grid,
+  .ils-body .dashboard-hero,
+  .ils-body .dashboard-work-row,
+  .ils-body .circulation-checkout-layout,
+  .ils-body .circulation-checkin-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .ils-body .ils-navigation {
+    position: static;
+  }
+}
+
+@media (max-width: 760px) {
+  .ils-body .ils-poster-hero::before {
+    inset: 0.45rem;
+  }
+
+  .ils-body .ils-hero-brand::after {
+    right: -2.3rem;
+  }
+
+  .ils-body .ils-hero-quick-actions,
+  .ils-body .dashboard-action-grid,
+  .ils-body .dashboard-preview-grid,
+  .ils-body .header-quick-counters {
+    grid-template-columns: 1fr;
+  }
+}
