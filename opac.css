@@ -5255,3 +5255,192 @@ input, select, textarea {
   .dashboard-panel-header,
   .dashboard-date-row { flex-direction: column; }
 }
+
+/* OPAC wireframe restoration */
+body.opac-wireframe {
+  background: #f5f5f5;
+  color: #111;
+}
+
+body.opac-wireframe .site-header.opac-poster-shell,
+body.opac-wireframe .layout.poster-layout {
+  background: #f5f5f5;
+}
+
+body.opac-wireframe .site-header-inner.poster-hero::before,
+body.opac-wireframe .poster-sticker,
+body.opac-wireframe .poster-chip,
+body.opac-wireframe .poster-mini-badges,
+body.opac-wireframe .poster-spacer-column {
+  display: none;
+}
+
+body.opac-wireframe .poster-hero-composition,
+body.opac-wireframe .poster-homepage-grid,
+body.opac-wireframe .poster-right-rail {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+body.opac-wireframe .poster-brand-column,
+body.opac-wireframe .poster-search-stage,
+body.opac-wireframe #opacSection,
+body.opac-wireframe .poster-sidebar,
+body.opac-wireframe .poster-callout,
+body.opac-wireframe .poster-section,
+body.opac-wireframe .page-panel,
+body.opac-wireframe .search-main,
+body.opac-wireframe .search-results,
+body.opac-wireframe .facets,
+body.opac-wireframe .arrivals,
+body.opac-wireframe .popular-card,
+body.opac-wireframe .wall-item,
+body.opac-wireframe .record-card,
+body.opac-wireframe .shelf-card,
+body.opac-wireframe .record-details-content,
+body.opac-wireframe .search-modal-content,
+body.opac-wireframe .availability-card,
+body.opac-wireframe .detail-section,
+body.opac-wireframe .nearby-spines,
+body.opac-wireframe .spine,
+body.opac-wireframe .suggestions,
+body.opac-wireframe .empty-state,
+body.opac-wireframe .filter-chip,
+body.opac-wireframe .search-result-item {
+  background: #fff;
+  color: #111;
+  border: 1px solid #111;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+body.opac-wireframe .poster-brand-column {
+  min-height: auto;
+  padding: 1rem;
+  background: #111;
+  color: #fff;
+}
+
+body.opac-wireframe .poster-brand-eyebrow {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+body.opac-wireframe .poster-brand-column h1,
+body.opac-wireframe .section-kicker,
+body.opac-wireframe .poster-sidebar-title,
+body.opac-wireframe .poster-nav-item,
+body.opac-wireframe .section-header h3,
+body.opac-wireframe .poster-callout h2,
+body.opac-wireframe .detail-section h5,
+body.opac-wireframe .availability-card h5,
+body.opac-wireframe .record-card h3,
+body.opac-wireframe .popular-card h3,
+body.opac-wireframe .shelf-card h3 {
+  letter-spacing: 0;
+  text-transform: uppercase;
+  color: inherit;
+}
+
+body.opac-wireframe .poster-search-stage,
+body.opac-wireframe .poster-sidebar,
+body.opac-wireframe .poster-callout,
+body.opac-wireframe .poster-section,
+body.opac-wireframe .page-panel {
+  padding: 1rem;
+}
+
+body.opac-wireframe .poster-search-input-wrap {
+  min-height: auto;
+  grid-template-columns: minmax(0, 1fr) 140px;
+  border: 1px solid #111;
+}
+
+body.opac-wireframe .poster-search-input-wrap input[type="search"],
+body.opac-wireframe #advancedSearch input,
+body.opac-wireframe #advancedSearch select,
+body.opac-wireframe .facets input,
+body.opac-wireframe .facets select,
+body.opac-wireframe .search-toolbar input,
+body.opac-wireframe .search-toolbar select {
+  border: 1px solid #111;
+  border-radius: 0;
+  box-shadow: none;
+  background: #fff;
+  color: #111;
+}
+
+body.opac-wireframe .poster-search-input-wrap input[type="search"] {
+  min-height: 52px;
+}
+
+body.opac-wireframe .button,
+body.opac-wireframe .poster-pill,
+body.opac-wireframe .nav-btn,
+body.opac-wireframe .subject-link,
+body.opac-wireframe .filter-chip,
+body.opac-wireframe .page-btn,
+body.opac-wireframe .carousel-btn,
+body.opac-wireframe .search-result-item,
+body.opac-wireframe .close-modal,
+body.opac-wireframe .modal-actions .button {
+  border: 1px solid #111;
+  border-radius: 0;
+  background: #fff;
+  color: #111;
+  box-shadow: none;
+}
+
+body.opac-wireframe .button:hover,
+body.opac-wireframe .button:focus-visible,
+body.opac-wireframe .poster-pill-dark,
+body.opac-wireframe .nav-btn:hover,
+body.opac-wireframe .nav-btn.is-active,
+body.opac-wireframe .page-btn.is-active,
+body.opac-wireframe .filter-chip.is-active,
+body.opac-wireframe .subject-link:hover,
+body.opac-wireframe .search-result-item:hover {
+  background: #111;
+  color: #fff;
+}
+
+body.opac-wireframe .poster-secondary-actions {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+body.opac-wireframe .poster-nav-list,
+body.opac-wireframe .arrivals-header,
+body.opac-wireframe .section-header,
+body.opac-wireframe .record-columns,
+body.opac-wireframe .record-main-column,
+body.opac-wireframe .metadata-grid,
+body.opac-wireframe .popular-grid,
+body.opac-wireframe .cover-wall,
+body.opac-wireframe .nearby-spines,
+body.opac-wireframe .media-carousel,
+body.opac-wireframe .search-layout {
+  gap: 1rem;
+}
+
+body.opac-wireframe .record-card,
+body.opac-wireframe .popular-card,
+body.opac-wireframe .shelf-card,
+body.opac-wireframe .wall-item,
+body.opac-wireframe .spine {
+  transform: none;
+}
+
+body.opac-wireframe .muted,
+body.opac-wireframe .poster-sidebar-note,
+body.opac-wireframe .did-you-mean {
+  color: #444;
+}
+
+@media (max-width: 760px) {
+  body.opac-wireframe .poster-search-input-wrap {
+    grid-template-columns: 1fr;
+  }
+
+  body.opac-wireframe .poster-secondary-actions {
+    grid-template-columns: 1fr;
+  }
+}
