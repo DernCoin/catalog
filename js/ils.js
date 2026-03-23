@@ -2586,83 +2586,80 @@ function renderDashboard() {
 
   els.dashboardTileGrid.innerHTML = `
     <section class="dashboard-home">
-      <header class="dashboard-hero card-like">
-        <div class="dashboard-hero-copy">
-          <p class="eyebrow">Staff home</p>
-          <h3>Dashboard</h3>
-          <p class="dashboard-subheading">The day at a glance: one lead board, one action band, and a tighter set of support panels.</p>
-          <p class="dashboard-welcome">Only the highest-priority service signals should dominate this page.</p>
+      <section class="dashboard-section">
+        <div class="dashboard-section-heading">
+          <div>
+            <p class="dashboard-label">Key metrics</p>
+            <h3>Operational overview</h3>
+          </div>
+          <p class="dashboard-section-note">A compact summary of live service, circulation, and collection activity.</p>
         </div>
-        <div class="dashboard-hero-meta">
-          <div class="dashboard-updated">${dashboardUpdatedLabel}</div>
-          <p class="dashboard-meta-note">Use the left rail for module changes, then jump into active work from the controls below.</p>
-        </div>
-      </header>
-
-      <section class="dashboard-actions-band dashboard-panel card-like" aria-label="Quick staff actions">
-        <div class="dashboard-panel-header">
-          <div><p class="section-kicker">Launch</p><h4>Start common tasks</h4><p class="muted">Consistent system controls for circulation, cataloging, patrons, acquisitions, and reporting.</p></div>
-        </div>
-        <div class="dashboard-action-row dashboard-action-row-primary">
-          ${actionPanel.map((action) => `<button class="button dashboard-action-button" type="button" data-dashboard-target="${action.target}" ${action.circulationTab ? `data-dashboard-circulation="${action.circulationTab}"` : ""}>${action.label}</button>`).join("")}
-        </div>
-        <div class="dashboard-action-row dashboard-action-row-secondary">
-          ${quickActions.map((action) => `<button class="button button-secondary dashboard-chip" type="button" data-dashboard-target="${action.target}" ${action.circulationTab ? `data-dashboard-circulation="${action.circulationTab}"` : ""}>${action.label}</button>`).join("")}
+        <div class="dashboard-stats-grid" aria-label="Primary dashboard stats">
+          ${stats.slice(0, 8).map((card) => `<button class="dashboard-stat-card ${card.label.includes('Overdues') || card.label.includes('Missing') ? 'is-urgent' : ''}" type="button" data-dashboard-target="${card.target}" ${card.circulationTab ? `data-dashboard-circulation="${card.circulationTab}"` : ""}><span class="dashboard-stat-label">${card.label}</span><strong class="dashboard-stat-value">${card.value}</strong><span class="dashboard-stat-copy">${card.copy}</span></button>`).join("")}
         </div>
       </section>
 
-      <section class="dashboard-stats-grid" aria-label="Primary dashboard stats">
-        ${stats.map((card) => `<button class="dashboard-stat-card ${card.label.includes('Overdues') || card.label.includes('Missing') ? 'is-urgent' : ''}" type="button" data-dashboard-target="${card.target}" ${card.circulationTab ? `data-dashboard-circulation="${card.circulationTab}"` : ""}><span class="dashboard-stat-label">${card.label}</span><strong class="dashboard-stat-value">${card.value}</strong><span class="dashboard-stat-copy">${card.copy}</span><span class="dashboard-stat-link">Open module →</span></button>`).join("")}
-        <button class="dashboard-stat-card dashboard-counter-card" type="button" id="dashboardVisitorCounterBtn">
-          <span class="dashboard-stat-label">Visitors Today</span>
-          <strong class="dashboard-stat-value">+1</strong>
-          <span class="dashboard-stat-copy">Tap to log a building visit. <span id="dashboardVisitorCounterTotal" class="dashboard-counter-total">Today: 0</span></span>
-          <span class="dashboard-stat-link">Add visit →</span>
-        </button>
-        <button class="dashboard-stat-card dashboard-counter-card" type="button" id="dashboardReferenceCounterBtn">
-          <span class="dashboard-stat-label">Reference Today</span>
-          <strong class="dashboard-stat-value">+1</strong>
-          <span class="dashboard-stat-copy">Tap to log a reference question. <span id="dashboardReferenceCounterTotal" class="dashboard-counter-total">Today: 0</span></span>
-          <span class="dashboard-stat-link">Add question →</span>
-        </button>
-      </section>
-
-      <section class="dashboard-editorial-grid">
-        <article class="dashboard-panel card-like dashboard-tasks-panel">
-          <div class="dashboard-panel-header"><div><p class="section-kicker">Queue</p><h4>Today’s work</h4><p class="muted">Short task list built from live circulation, cataloging, acquisitions, and serials data.</p></div></div>
-          <div class="dashboard-task-list">
-            ${todaysWork.map((item) => item.count ? `<button class="dashboard-task-row ${item.urgent ? 'is-urgent' : ''}" type="button" data-dashboard-target="${item.target}" ${item.circulationTab ? `data-dashboard-circulation="${item.circulationTab}"` : ""}><span>${item.label}</span><span class="dashboard-task-arrow">Open →</span></button>` : `<div class="dashboard-task-row is-empty"><span>${item.empty}</span></div>`).join("")}
+      <section class="dashboard-layout-grid">
+        <article class="dashboard-panel card-like dashboard-actions-panel">
+          <div class="dashboard-panel-header">
+            <div>
+              <p class="dashboard-label">Quick actions</p>
+              <h4>Start a task</h4>
+            </div>
+            <p class="muted">Common actions for service desk and catalog work.</p>
+          </div>
+          <div class="dashboard-actions-grid">
+            ${actionPanel.slice(0, 8).map((action) => `<button class="dashboard-action-button" type="button" data-dashboard-target="${action.target}" ${action.circulationTab ? `data-dashboard-circulation="${action.circulationTab}"` : ""}>${action.label}</button>`).join("")}
           </div>
         </article>
 
-        <section class="dashboard-support-column">
-          <section class="dashboard-panel card-like dashboard-activity-panel">
-            <div class="dashboard-panel-header"><div><p class="section-kicker">Timeline</p><h4>Recent activity</h4><p class="muted">Latest staff actions across circulation, cataloging, acquisitions, patrons, and serials.</p></div><button class="button button-secondary dashboard-inline-action" type="button" data-dashboard-target="stats">View more</button></div>
-            ${renderList(recentActivity, (entry) => `<li><button class="dashboard-activity-row" type="button" data-dashboard-target="${entry.target}" ${entry.target === 'circulation' ? 'data-dashboard-circulation="checkout"' : ''}><span class="dashboard-activity-icon">${entry.icon}</span><span class="dashboard-activity-copy"><strong>${entry.text}</strong><span class="muted">${formatRelativeTime(entry.timestamp)}</span></span></button></li>`, "No recent staff activity yet.")}
-          </section>
+        <article class="dashboard-panel card-like dashboard-tasks-panel">
+          <div class="dashboard-panel-header">
+            <div>
+              <p class="dashboard-label">Task list</p>
+              <h4>Needs attention</h4>
+            </div>
+            <p class="muted">Priority queues assembled from current system activity.</p>
+          </div>
+          <div class="dashboard-task-list">
+            ${todaysWork.map((item) => item.count ? `<button class="dashboard-task-row ${item.urgent ? 'is-urgent' : ''}" type="button" data-dashboard-target="${item.target}" ${item.circulationTab ? `data-dashboard-circulation="${item.circulationTab}"` : ""}><span>${item.label}</span><span class="dashboard-task-count">${item.count}</span></button>` : `<div class="dashboard-task-row is-empty"><span>${item.empty}</span></div>`).join("")}
+          </div>
+        </article>
 
-          <section class="dashboard-preview-grid">
-            <article class="dashboard-panel card-like">
-              <div class="dashboard-panel-header"><div><p class="section-kicker">Follow-up</p><h4>Overdue preview</h4><p class="muted">Most overdue items needing follow-up.</p></div><button class="button button-secondary dashboard-inline-action" type="button" data-dashboard-target="circulation">Open Circulation</button></div>
+        <article class="dashboard-panel card-like dashboard-activity-panel">
+          <div class="dashboard-panel-header">
+            <div>
+              <p class="dashboard-label">Recent activity</p>
+              <h4>Latest updates</h4>
+            </div>
+            <button class="dashboard-inline-link" type="button" data-dashboard-target="stats">Open reports</button>
+          </div>
+          ${renderList(recentActivity, (entry) => `<li><button class="dashboard-activity-row" type="button" data-dashboard-target="${entry.target}" ${entry.target === 'circulation' ? 'data-dashboard-circulation="checkout"' : ''}><span class="dashboard-activity-copy"><strong>${entry.text}</strong><span class="muted">${formatRelativeTime(entry.timestamp)}</span></span></button></li>`, "No recent staff activity yet.")}
+        </article>
+
+        <article class="dashboard-panel card-like dashboard-preview-panel">
+          <div class="dashboard-panel-header">
+            <div>
+              <p class="dashboard-label">Service watch</p>
+              <h4>Follow-up preview</h4>
+            </div>
+            <p class="muted">Selected items that need quick review.</p>
+          </div>
+          <div class="dashboard-preview-stack">
+            <section>
+              <h5>Overdues</h5>
               ${renderList(overduePreview, ({ record, holding, overdueDays }) => `<li><button class="dashboard-preview-row" type="button" data-dashboard-target="circulation"><strong>${record.title || 'Untitled'}</strong><span>${holding.checkedOutToName || 'Unknown patron'} · Due ${holding.dueDate || 'No due date'} · ${overdueDays} day${overdueDays === 1 ? '' : 's'} overdue</span></button></li>`, "No items are currently overdue.")}
-            </article>
-
-            <article class="dashboard-panel card-like">
-              <div class="dashboard-panel-header"><div><p class="section-kicker">Cataloging</p><h4>Pending materials</h4><p class="muted">Recently staged materials awaiting action.</p></div><button class="button button-secondary dashboard-inline-action" type="button" data-dashboard-target="acquisitions">Open Acquisitions</button></div>
+            </section>
+            <section>
+              <h5>Pending materials</h5>
               ${renderList(pendingPreview, (material) => `<li><button class="dashboard-preview-row" type="button" data-dashboard-target="acquisitions"><strong>${material.title}</strong><span>${material.orderName || 'No order'} · ${material.materialNumber || 'No material #'} · ${material.status || 'Pending Material'}</span></button></li>`, "No pending materials awaiting activation.")}
-            </article>
-
-            <article class="dashboard-panel card-like">
-              <div class="dashboard-panel-header"><div><p class="section-kicker">Accounts</p><h4>Patron alerts</h4><p class="muted">Patrons with alerts, blocks, or account issues.</p></div><button class="button button-secondary dashboard-inline-action" type="button" data-dashboard-target="patrons">Open Patrons</button></div>
+            </section>
+            <section>
+              <h5>Patron alerts</h5>
               ${renderList(patronPreview, (patron) => `<li><button class="dashboard-preview-row" type="button" data-dashboard-target="patrons"><strong>${patron.name || 'Unnamed patron'}</strong><span>${patron.cardNumber || 'No card'} · ${patron.status || 'Active'}${patron.blocks ? ` · ${patron.blocks}` : patron.alerts ? ` · ${patron.alerts}` : ''}</span></button></li>`, "No patron alerts or account issues right now.")}
-            </article>
-
-            <article class="dashboard-panel card-like">
-              <div class="dashboard-panel-header"><div><p class="section-kicker">Serials</p><h4>Renewals</h4><p class="muted">Upcoming renewals and recently added issues.</p></div><button class="button button-secondary dashboard-inline-action" type="button" data-dashboard-target="serials">Open Serials</button></div>
-              ${renderList(serialPreview, (entry) => `<li><button class="dashboard-preview-row" type="button" data-dashboard-target="serials"><strong>${entry.title}</strong><span>${entry.frequency} · ${entry.detail}</span></button></li>`, "No serial renewals or recent issues to show.")}
-            </article>
-          </section>
-        </section>
+            </section>
+          </div>
+        </article>
       </section>
     </section>
   `;
