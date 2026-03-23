@@ -3340,7 +3340,7 @@ function printNotice(noticeId) {
   if (!notice) return;
   const popup = window.open("", "_blank", "width=900,height=700");
   if (!popup) return;
-  popup.document.write(`<!doctype html><html><head><title>${notice.noticeType}</title><link rel="stylesheet" href="styles.css"></head><body class="notice-print-window">${buildNoticePreviewMarkup(notice)}</body></html>`);
+  popup.document.write(`<!doctype html><html><head><title>${notice.noticeType}</title><link rel="stylesheet" href="ils.css"></head><body class="notice-print-window">${buildNoticePreviewMarkup(notice)}</body></html>`);
   popup.document.close();
   popup.focus();
   popup.print();

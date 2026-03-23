@@ -24,7 +24,10 @@ It now includes a polished public catalog experience and a distinct Firebase-rea
 ## Project structure
 
 - `index.html`: semantic layout for public OPAC, admin UI, login modal, and record details modal.
-- `styles.css`: responsive OPAC/admin styling, accessibility focus states, and print-friendly record display.
+- `base.css`: shared design tokens, component primitives, and common responsive/print rules.
+- `opac.css`: OPAC-facing stylesheet entrypoint.
+- `ils.css`: ILS/staff-facing stylesheet entrypoint.
+- `styles.css`: legacy compatibility entrypoint that now forwards to `base.css`.
 - `js/config.js`: app constants and credentials placeholder.
 - `js/seed.js`: starter sample records across books, vinyl, board games, and other media.
 - `js/storage.js`: persistence adapter (`localStorage`) + import/export helpers.
