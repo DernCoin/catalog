@@ -13,93 +13,50 @@
           <div class="poster-brand-column" aria-labelledby="posterBrandTitle">
             <div class="poster-brand-copy">
               <p class="poster-brand-eyebrow">Personal Collection Catalog</p>
-              <h1 id="posterBrandTitle"><span>ONLINE</span><span>CATALOG</span></h1>
+              <h1 id="posterBrandTitle"><span>POSTER</span><span>OPAC</span></h1>
             </div>
           </div>
-
-          <div class="poster-spacer-column" aria-hidden="true"></div>
-          <div class="poster-spacer-column" aria-hidden="true"></div>
-
-          <section class="search-main poster-search-stage" aria-label="Search the catalog">
-            <div class="search-panel-heading sr-only">
-              <p class="search-panel-title">Search the catalog</p>
-              <p class="search-panel-copy">Title, creator, subject, notes, call number.</p>
+          <div class="poster-brand-column" aria-hidden="true">
+            <div>
+              <p class="poster-brand-eyebrow">Now Browsing</p>
+              <p class="muted">A rebuilt, poster-style discovery interface for your collection.</p>
             </div>
-            <div class="poster-search-stack poster-search-stack-compact">
-              <label for="keywordSearch" class="sr-only">Global keyword search</label>
-              <div class="search-input-wrap poster-search-input-wrap">
-                <input id="keywordSearch" type="search" placeholder="Search the collection…" />
-                <button id="runSearchBtn" class="button poster-search-btn" type="button">Search</button>
-                <div id="searchSuggestions" class="suggestions hidden"></div>
-              </div>
-              <div class="hero-search-actions poster-secondary-actions">
-                <button id="toggleAdvancedBtn" class="button button-secondary poster-pill header-utility" type="button" aria-expanded="false">Advanced Search</button>
-                <button id="randomItemBtn" class="button button-secondary poster-pill header-utility" type="button">Surprise Me</button>
-                <button id="adminPageBtn" class="button poster-pill poster-pill-dark" type="button">Open ILS</button>
-                <button id="adminToggleBtn" class="button hidden poster-pill poster-pill-dark" type="button">Admin Login</button>
-              </div>
-              <p id="didYouMean" class="muted did-you-mean"></p>
-            </div>
-            <div id="advancedSearch" class="advanced-grid hidden">
-              <label>Title <input id="advTitle" type="search" /></label>
-              <label>Creator / Author / Artist <input id="advCreator" type="search" /></label>
-              <label>Subject / Genre <input id="advSubject" type="search" /></label>
-              <label>Keyword <input id="advKeyword" type="search" /></label>
-              <label>Year <input id="advYear" type="number" min="0" /></label>
-              <label>Format
-                <select id="advFormat">
-                  <option value="all">All formats</option>
-                  <option value="Book">Book</option>
-                  <option value="Vinyl">Vinyl</option>
-                  <option value="Board Game">Board Game</option>
-                  <option value="CD">CD</option>
-                  <option value="Zine">Zine</option>
-                  <option value="Magazine">Magazine</option>
-                  <option value="Other">Other</option>
-                </select>
-              </label>
-            </div>
-          </section>
+          </div>
         </section>
       </div>
     </header>
 
     <main class="layout poster-layout">
       <section id="opacSection" class="card poster-card">
-
         <section id="viewSearch" class="view-panel">
           <section class="homepage-grid poster-homepage-grid">
             <aside class="poster-sidebar section-panel" aria-label="Browse sections">
-              <p class="poster-sidebar-title">Browse</p>
-              <p class="poster-sidebar-note">Jump between wireframe discovery views without the poster styling.</p>
+              <p class="poster-sidebar-title">Poster Stack</p>
+              <p class="poster-sidebar-note muted">Move through discovery modes like flipping through poster walls.</p>
               <div class="poster-nav-list">
-                <button class="nav-btn poster-nav-item" data-view="search" type="button">New Arrivals</button>
-                <button class="nav-btn poster-nav-item" data-view="recent" type="button">Staff Picks Energy</button>
-                <button class="nav-btn poster-nav-item" data-view="covers" type="button">Cover Wall</button>
-                <button class="nav-btn poster-nav-item" data-view="shelves" type="button">Curated Collections</button>
+                <button class="nav-btn poster-nav-item" data-view="search" type="button">Main Floor</button>
+                <button class="nav-btn poster-nav-item" data-view="recent" type="button">Recent Drops</button>
+                <button class="nav-btn poster-nav-item" data-view="covers" type="button">Cover Mural</button>
+                <button class="nav-btn poster-nav-item" data-view="shelves" type="button">Curated Runs</button>
               </div>
-              <div class="poster-sticker poster-sticker-red">STAFF PICKS</div>
+              <div class="poster-sticker">POSTER OPAC</div>
             </aside>
 
             <div class="poster-main-column">
               <section class="poster-callout section-panel" aria-labelledby="posterCalloutTitle">
                 <div>
                   <p class="section-kicker">Discover</p>
-                  <h2 id="posterCalloutTitle">Read. Search. Browse.</h2>
-                  <p class="muted">A stripped-back public catalog focused on search, browsing, and readable metadata.</p>
-                </div>
-                <div class="poster-mini-badges" aria-hidden="true">
-                  <span class="poster-chip poster-chip-mint">Rare Finds</span>
-                  <span class="poster-chip poster-chip-blue">Curated Collections</span>
+                  <h2 id="posterCalloutTitle">A Brand-New Poster Catalog Experience</h2>
+                  <p class="muted">Browse your personal collection in bold cards, tiled walls, and quick-scan shelves.</p>
                 </div>
               </section>
 
               <section class="arrivals shelf-showcase section-panel poster-section" aria-labelledby="arrivalsTitle">
                 <div class="arrivals-header">
                   <div>
-                    <p class="section-kicker">Browse</p>
-                    <h3 id="arrivalsTitle">New Arrivals</h3>
-                    <p class="muted">Recent additions to the catalog, arranged for quick inspection.</p>
+                    <p class="section-kicker">Latest</p>
+                    <h3 id="arrivalsTitle">Fresh in the Collection</h3>
+                    <p class="muted">Newest catalog records staged like new-release posters.</p>
                   </div>
                   <div class="arrivals-controls">
                     <button id="arrivalsPrevBtn" class="button button-secondary poster-arrow" type="button" aria-label="Scroll recently added left">←</button>
@@ -113,8 +70,8 @@
                 <div class="section-header">
                   <div>
                     <p class="section-kicker">Spotlight</p>
-                    <h3 id="popularTitle">Popular to Browse</h3>
-                    <p class="muted">Frequently represented creators and titles in the current catalog.</p>
+                    <h3 id="popularTitle">Popular Signals</h3>
+                    <p class="muted">Frequent creators, genres, and poster-ready picks.</p>
                   </div>
                 </div>
                 <div id="popularGrid" class="popular-grid"></div>
@@ -125,8 +82,8 @@
               <section class="cover-wall-panel section-panel poster-section" aria-labelledby="homeCoverWallTitle">
                 <div class="section-header module-header">
                   <div>
-                    <p class="section-kicker">Browse</p>
-                    <h3 id="homeCoverWallTitle">Cover Wall</h3>
+                    <p class="section-kicker">Wall</p>
+                    <h3 id="homeCoverWallTitle">Cover Mural</h3>
                   </div>
                 </div>
                 <div id="homeCoverWall" class="cover-wall compact-cover-wall"></div>
@@ -136,8 +93,8 @@
                 <div class="arrivals-header">
                   <div>
                     <p class="section-kicker">Shelves</p>
-                    <h3 id="curatedShelvesTitle">Curated Shelves</h3>
-                    <p class="muted">Shelf groupings drawn from recurring themes in the collection.</p>
+                    <h3 id="curatedShelvesTitle">Curated Runs</h3>
+                    <p class="muted">Themed shelf strips for quick inspiration.</p>
                   </div>
                   <div class="arrivals-controls">
                     <button id="shelvesPrevBtn" class="button button-secondary poster-arrow" type="button" aria-label="Scroll curated shelves left">←</button>
@@ -148,12 +105,81 @@
               </section>
             </div>
           </section>
+
+          <section class="search-shell section-panel" aria-label="Search and filter catalog">
+            <div class="search-column">
+              <div class="search-main poster-search-stage">
+                <label for="keywordSearch" class="sr-only">Global keyword search</label>
+                <div class="search-input-wrap poster-search-input-wrap">
+                  <input id="keywordSearch" type="search" placeholder="Search title, creator, subject, notes..." />
+                  <button id="runSearchBtn" class="button poster-search-btn" type="button">Search</button>
+                </div>
+                <div id="searchSuggestions" class="suggestions hidden"></div>
+                <p id="didYouMean" class="muted did-you-mean"></p>
+                <div class="poster-secondary-actions" style="margin-top:0.6rem;">
+                  <button id="toggleAdvancedBtn" class="button button-secondary" type="button" aria-expanded="false">Advanced Search</button>
+                  <button id="randomItemBtn" class="button button-secondary" type="button">Surprise Me</button>
+                  <button id="adminPageBtn" class="button button-secondary" type="button">Open ILS</button>
+                  <button id="adminToggleBtn" class="button hidden" type="button">Admin Login</button>
+                </div>
+                <div id="advancedSearch" class="advanced-grid hidden">
+                  <label>Title <input id="advTitle" type="search" /></label>
+                  <label>Creator / Author / Artist <input id="advCreator" type="search" /></label>
+                  <label>Subject / Genre <input id="advSubject" type="search" /></label>
+                  <label>Keyword <input id="advKeyword" type="search" /></label>
+                  <label>Year <input id="advYear" type="number" min="0" /></label>
+                  <label>Format
+                    <select id="advFormat">
+                      <option value="all">All formats</option>
+                      <option value="Book">Book</option>
+                      <option value="Vinyl">Vinyl</option>
+                      <option value="Board Game">Board Game</option>
+                      <option value="CD">CD</option>
+                      <option value="Zine">Zine</option>
+                      <option value="Magazine">Magazine</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <aside class="facets" aria-label="Filter search results">
+              <h3>Filter Posters</h3>
+              <label>Format <select id="facetFormat"><option value="all">All</option></select></label>
+              <label>Genre <select id="facetGenre"><option value="all">All</option></select></label>
+              <label>Year <select id="facetYear"><option value="all">All</option></select></label>
+              <label>Status <select id="facetStatus"><option value="all">All</option></select></label>
+              <label>Location <select id="facetLocation"><option value="all">All</option></select></label>
+              <label>Binding <select id="facetBinding"><option value="all">All</option></select></label>
+              <label>Sort
+                <select id="sortFilter">
+                  <option value="relevance">Relevance</option>
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="titleAsc">Title A-Z</option>
+                  <option value="titleDesc">Title Z-A</option>
+                  <option value="creatorAsc">Creator A-Z</option>
+                  <option value="callNumber">Call number</option>
+                </select>
+              </label>
+              <button id="clearFiltersBtn" class="button button-secondary" type="button" style="margin-top:0.6rem;">Clear Filters</button>
+            </aside>
+          </section>
+
+          <section class="search-results-shell section-panel" aria-label="Search results">
+            <p id="resultsSummary" class="muted"></p>
+            <div id="publicResults" class="results-list"></div>
+            <div class="pagination-row">
+              <button id="loadMoreBtn" class="button button-secondary" type="button">Load More</button>
+            </div>
+            <div id="emptyState" class="empty-state hidden">No matching records found. Try broadening your search.</div>
+          </section>
         </section>
-<section id="viewRecent" class="view-panel hidden"><div class="section-panel page-panel"><div class="section-header module-header"><div><p class="section-kicker">Browse</p><h3>Recently Added</h3></div></div><div id="recentBuckets"></div></div></section>
+
+        <section id="viewRecent" class="view-panel hidden"><div class="section-panel page-panel"><div class="section-header module-header"><div><p class="section-kicker">Browse</p><h3>Recently Added</h3></div></div><div id="recentBuckets"></div></div></section>
         <section id="viewCovers" class="view-panel hidden"><div class="section-panel page-panel"><div class="section-header module-header"><div><p class="section-kicker">Browse</p><h3>Cover Wall</h3></div></div><div id="coverWall" class="cover-wall"></div></div></section>
         <section id="viewShelves" class="view-panel hidden"><div class="section-panel page-panel"><div class="section-header module-header"><div><p class="section-kicker">Shelves</p><h3>Curated Shelves</h3></div></div><div id="shelfPages"></div></div></section>
       </section>
-
       <section id="adminSection" class="card hidden" aria-label="Catalog admin">
         <div class="admin-shell">
         <div class="admin-header">
