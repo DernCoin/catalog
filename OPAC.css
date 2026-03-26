@@ -257,6 +257,19 @@ button {
   padding: 0.85rem;
 }
 
+.clickable-card {
+  cursor: pointer;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+}
+
+.clickable-card:hover,
+.clickable-card:focus-visible {
+  transform: translateY(-2px);
+  border-color: #a9beef;
+  box-shadow: 0 8px 18px rgba(24, 52, 121, 0.12);
+  outline: none;
+}
+
 .card-cover {
   width: 100%;
   max-width: 180px;
@@ -281,6 +294,56 @@ button {
   border: 1px solid var(--border);
 }
 
+.record-modal-card {
+  width: min(860px, 100%);
+}
+
+.record-profile {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.detail-cover {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.detail-meta,
+.detail-line {
+  margin: 0.35rem 0;
+  color: var(--muted);
+}
+
+.record-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+.record-actions button,
+.detail-chip {
+  width: auto;
+  border-radius: 999px;
+}
+
+.detail-notice {
+  min-height: 1.3rem;
+  margin: 0.65rem 0 0;
+  color: var(--accent);
+}
+
+.detail-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
 @media (max-width: 700px) {
   .opac-header {
     flex-direction: column;
@@ -293,5 +356,13 @@ button {
   .summary-row {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .record-profile {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-cover {
+    max-width: 180px;
   }
 }
