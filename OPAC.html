@@ -10,59 +10,91 @@
     <header class="opac-header">
       <div>
         <p class="eyebrow">Online Public Access Catalog</p>
-        <h1>Library Catalog</h1>
-        <p class="subhead">Connected to your ILS record store (local storage/Firebase-backed sync through the ILS app).</p>
+        <h1>Discover Your Next Read</h1>
+        <p class="subhead">Explore recently added titles, highlighted shelves, and browseable collections from your local catalog.</p>
       </div>
-      <a class="staff-link" href="./ils.html">Open ILS Staff Workspace</a>
+
+      <form id="headerSearchForm" class="header-search" role="search" aria-label="Catalog search">
+        <label class="sr-only" for="headerKeyword">Search the catalog</label>
+        <input id="headerKeyword" type="search" placeholder="Search title, creator, subject, call number…" />
+        <button type="submit">Search</button>
+      </form>
     </header>
 
     <main class="layout">
-      <section class="search-panel">
-        <label>
-          <span>Keyword</span>
-          <input id="keyword" type="search" placeholder="Title, creator, subject, call number, or material number" />
-        </label>
-
-        <label>
-          <span>Format</span>
-          <select id="formatFilter">
-            <option value="all">All formats</option>
-          </select>
-        </label>
-
-        <label>
-          <span>Availability</span>
-          <select id="statusFilter">
-            <option value="all">Any status</option>
-            <option value="Available">Available</option>
-            <option value="Checked In">Checked In</option>
-            <option value="On Loan">On Loan</option>
-            <option value="Reference Only">Reference Only</option>
-          </select>
-        </label>
-
-        <label>
-          <span>Sort</span>
-          <select id="sortFilter">
-            <option value="relevance">Relevance</option>
-            <option value="newest">Newest year</option>
-            <option value="oldest">Oldest year</option>
-            <option value="title">Title A–Z</option>
-          </select>
-        </label>
-      </section>
-
       <section class="summary-row">
         <p id="summary">Loading records from ILS…</p>
-        <button id="refreshBtn" type="button">Refresh from ILS</button>
+        <button id="refreshBtn" type="button">Refresh catalog data</button>
       </section>
 
-      <section id="results" class="results-grid" aria-live="polite"></section>
+      <section aria-labelledby="recentlyAddedHeading" class="feature-block">
+        <div class="section-heading-row">
+          <h2 id="recentlyAddedHeading">Recently Added</h2>
+          <button id="browseAllRecent" class="ghost-link" type="button">Browse all new titles</button>
+        </div>
+        <div id="recentlyAddedScroller" class="horizontal-scroller" aria-live="polite"></div>
+      </section>
+
+      <section aria-labelledby="curatedShelvesHeading" class="feature-block">
+        <h2 id="curatedShelvesHeading">Curated Shelf Highlights</h2>
+        <div id="curatedShelves" class="shelf-grid" aria-live="polite"></div>
+      </section>
+
+      <section aria-labelledby="browseByFormatHeading" class="feature-block">
+        <h2 id="browseByFormatHeading">Browse by Format</h2>
+        <div id="formatPills" class="pill-list" aria-live="polite"></div>
+      </section>
     </main>
+
+    <div id="searchModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="searchModalHeading" hidden>
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 id="searchModalHeading">Search the Catalog</h2>
+          <button id="closeSearchModal" class="icon-btn" type="button" aria-label="Close search">✕</button>
+        </div>
+
+        <section class="search-panel">
+          <label>
+            <span>Keyword</span>
+            <input id="keyword" type="search" placeholder="Title, creator, subject, call number, or material number" />
+          </label>
+
+          <label>
+            <span>Format</span>
+            <select id="formatFilter">
+              <option value="all">All formats</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Availability</span>
+            <select id="statusFilter">
+              <option value="all">Any status</option>
+              <option value="Available">Available</option>
+              <option value="Checked In">Checked In</option>
+              <option value="On Loan">On Loan</option>
+              <option value="Reference Only">Reference Only</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Sort</span>
+            <select id="sortFilter">
+              <option value="relevance">Relevance</option>
+              <option value="newest">Newest year</option>
+              <option value="oldest">Oldest year</option>
+              <option value="title">Title A–Z</option>
+            </select>
+          </label>
+        </section>
+
+        <section id="results" class="results-grid" aria-live="polite"></section>
+      </div>
+    </div>
 
     <template id="recordTemplate">
       <article class="card">
-        <h2 class="card-title"></h2>
+        <h3 class="card-title"></h3>
         <p class="card-meta"></p>
         <p class="card-line status"></p>
         <p class="card-line location"></p>
@@ -71,11 +103,20 @@
       </article>
     </template>
 
+    <template id="discoveryCardTemplate">
+      <article class="mini-card">
+        <p class="mini-title"></p>
+        <p class="mini-meta"></p>
+      </article>
+    </template>
+
     <script>
       const STORAGE_KEY_PRIMARY = "catalogRecordsV2";
       const STORAGE_KEY_LEGACY = "catalogRecords";
 
       const els = {
+        headerSearchForm: document.getElementById("headerSearchForm"),
+        headerKeyword: document.getElementById("headerKeyword"),
         keyword: document.getElementById("keyword"),
         format: document.getElementById("formatFilter"),
         status: document.getElementById("statusFilter"),
@@ -83,7 +124,14 @@
         summary: document.getElementById("summary"),
         refreshBtn: document.getElementById("refreshBtn"),
         results: document.getElementById("results"),
-        template: document.getElementById("recordTemplate"),
+        recordTemplate: document.getElementById("recordTemplate"),
+        discoveryCardTemplate: document.getElementById("discoveryCardTemplate"),
+        modal: document.getElementById("searchModal"),
+        closeModalBtn: document.getElementById("closeSearchModal"),
+        recentlyAdded: document.getElementById("recentlyAddedScroller"),
+        curatedShelves: document.getElementById("curatedShelves"),
+        formatPills: document.getElementById("formatPills"),
+        browseAllRecent: document.getElementById("browseAllRecent"),
       };
 
       const state = { records: [] };
@@ -123,6 +171,19 @@
         };
       }
 
+      function openSearchModal(keyword = "") {
+        els.keyword.value = keyword;
+        els.modal.hidden = false;
+        document.body.classList.add("modal-open");
+        renderSearchResults();
+        els.keyword.focus();
+      }
+
+      function closeSearchModal() {
+        els.modal.hidden = true;
+        document.body.classList.remove("modal-open");
+      }
+
       function populateFormatFilter(records) {
         const formats = [...new Set(records.map((r) => r.format).filter(Boolean))].sort((a, b) => a.localeCompare(b));
         const current = els.format.value;
@@ -158,16 +219,17 @@
         return filtered;
       }
 
-      function render() {
+      function renderSearchResults() {
         const filtered = getFilteredRecords();
         els.results.innerHTML = "";
 
         if (!state.records.length) {
-          els.summary.textContent = "No records found in the ILS yet. Add records in ils.html, then refresh.";
+          const empty = document.createElement("p");
+          empty.className = "empty";
+          empty.textContent = "No records found in the ILS yet. Add records in ils.html, then refresh.";
+          els.results.append(empty);
           return;
         }
-
-        els.summary.textContent = `Showing ${filtered.length} of ${state.records.length} records from the ILS.`;
 
         if (!filtered.length) {
           const empty = document.createElement("p");
@@ -180,7 +242,7 @@
         const fragment = document.createDocumentFragment();
 
         filtered.forEach((record) => {
-          const node = els.template.content.firstElementChild.cloneNode(true);
+          const node = els.recordTemplate.content.firstElementChild.cloneNode(true);
           node.querySelector(".card-title").textContent = record.title;
           node.querySelector(".card-meta").textContent = `${record.creator} • ${record.format}${record.year ? ` • ${record.year}` : ""}`;
           node.querySelector(".status").textContent = `Status: ${record.status}`;
@@ -193,15 +255,102 @@
         els.results.append(fragment);
       }
 
+      function createMiniCard(record) {
+        const card = els.discoveryCardTemplate.content.firstElementChild.cloneNode(true);
+        card.querySelector(".mini-title").textContent = record.title;
+        card.querySelector(".mini-meta").textContent = `${record.creator} • ${record.format}${record.year ? ` • ${record.year}` : ""}`;
+        return card;
+      }
+
+      function renderDiscovery() {
+        els.recentlyAdded.innerHTML = "";
+        els.curatedShelves.innerHTML = "";
+        els.formatPills.innerHTML = "";
+
+        if (!state.records.length) {
+          els.recentlyAdded.innerHTML = '<p class="empty">No recently added titles yet.</p>';
+          els.curatedShelves.innerHTML = '<p class="empty">No shelves to highlight yet.</p>';
+          return;
+        }
+
+        const newest = [...state.records].sort((a, b) => Number(b.addedAt || 0) - Number(a.addedAt || 0)).slice(0, 12);
+        newest.forEach((record) => els.recentlyAdded.append(createMiniCard(record)));
+
+        const curatedConfigs = [
+          { title: "Fresh Fiction", match: (r) => /fiction/i.test(r.subjects) || /fiction/i.test(r.format) },
+          { title: "Research & Reference", match: (r) => /reference/i.test(r.status) || /reference/i.test(r.subjects) },
+          { title: "Available Right Now", match: (r) => /available|checked in/i.test(r.status) },
+        ];
+
+        curatedConfigs.forEach((shelf) => {
+          const records = state.records.filter(shelf.match).slice(0, 3);
+          if (!records.length) return;
+
+          const container = document.createElement("article");
+          container.className = "shelf-card";
+          container.innerHTML = `<h3>${shelf.title}</h3>`;
+          records.forEach((record) => {
+            const row = document.createElement("p");
+            row.className = "shelf-item";
+            row.textContent = `${record.title} — ${record.creator}`;
+            container.append(row);
+          });
+          els.curatedShelves.append(container);
+        });
+
+        const formatCounts = state.records.reduce((acc, record) => {
+          acc[record.format] = (acc[record.format] || 0) + 1;
+          return acc;
+        }, {});
+
+        Object.entries(formatCounts)
+          .sort((a, b) => b[1] - a[1])
+          .forEach(([format, count]) => {
+            const pill = document.createElement("button");
+            pill.type = "button";
+            pill.className = "format-pill";
+            pill.textContent = `${format} (${count})`;
+            pill.addEventListener("click", () => {
+              els.format.value = format;
+              openSearchModal();
+            });
+            els.formatPills.append(pill);
+          });
+      }
+
       function reloadFromIls() {
         state.records = loadIlsRecords();
         populateFormatFilter(state.records);
-        render();
+        renderDiscovery();
+        els.summary.textContent = state.records.length
+          ? `${state.records.length} records available in the catalog.`
+          : "No records found in the ILS yet. Add records in ils.html, then refresh.";
+        renderSearchResults();
       }
 
-      [els.keyword, els.format, els.status, els.sort].forEach((element) => element.addEventListener("input", render));
+      [els.keyword, els.format, els.status, els.sort].forEach((element) => element.addEventListener("input", renderSearchResults));
       els.refreshBtn.addEventListener("click", reloadFromIls);
+      els.closeModalBtn.addEventListener("click", closeSearchModal);
+      els.modal.addEventListener("click", (event) => {
+        if (event.target === els.modal) closeSearchModal();
+      });
+
+      els.headerSearchForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        openSearchModal(els.headerKeyword.value.trim());
+      });
+
+      els.browseAllRecent.addEventListener("click", () => {
+        els.sort.value = "newest";
+        els.status.value = "all";
+        els.format.value = "all";
+        openSearchModal();
+      });
+
       window.addEventListener("storage", reloadFromIls);
+      window.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !els.modal.hidden) closeSearchModal();
+      });
 
       reloadFromIls();
     </script>
