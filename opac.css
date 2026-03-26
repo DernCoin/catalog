@@ -5281,7 +5281,7 @@ body.opac-wireframe .poster-spacer-column {
 body.opac-wireframe .poster-hero-composition,
 body.opac-wireframe .poster-homepage-grid,
 body.opac-wireframe .poster-right-rail {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(220px, 280px) minmax(32px, 1fr) minmax(32px, 1fr) minmax(320px, 460px);
   gap: 1rem;
 }
 
@@ -5439,6 +5439,10 @@ body.opac-wireframe .did-you-mean {
 }
 
 @media (max-width: 760px) {
+  body.opac-wireframe .poster-hero-composition {
+    grid-template-columns: 1fr;
+  }
+
   body.opac-wireframe .poster-search-input-wrap {
     grid-template-columns: 1fr;
   }
