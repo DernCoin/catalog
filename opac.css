@@ -3825,7 +3825,9 @@ input, select, textarea {
   display: grid;
   align-items: start;
   padding: 0.85rem 1rem;
-  min-height: 12.5rem;
+  width: min(100%, 280px);
+  aspect-ratio: 1 / 1;
+  min-height: 0;
   background: #111;
   color: #fff;
   border: 2px solid #111;
@@ -3864,6 +3866,7 @@ input, select, textarea {
 }
 
 .poster-search-stage {
+  grid-column: 4;
   justify-self: end;
   width: min(100%, 460px);
   max-width: 460px;
