@@ -212,6 +212,10 @@ button {
   z-index: 30;
 }
 
+.modal[hidden] {
+  display: none;
+}
+
 .modal-card {
   width: min(1100px, 100%);
   max-height: 90vh;
@@ -253,10 +257,29 @@ button {
   padding: 0.85rem;
 }
 
+.card-cover {
+  width: 100%;
+  max-width: 180px;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 0.6rem;
+  border: 1px solid var(--border);
+}
+
 .card-title { margin: 0; font-size: 1.05rem; }
 .card-meta { margin: 0.35rem 0 0.5rem; color: var(--muted); }
 .card-line { margin: 0.2rem 0; font-size: 0.94rem; }
 .empty { margin: 0.4rem 0; color: var(--muted); }
+
+.mini-cover {
+  width: 72px;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 0.45rem;
+  border: 1px solid var(--border);
+}
 
 @media (max-width: 700px) {
   .opac-header {

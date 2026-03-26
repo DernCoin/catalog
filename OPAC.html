@@ -94,6 +94,7 @@
 
     <template id="recordTemplate">
       <article class="card">
+        <img class="card-cover" />
         <h3 class="card-title"></h3>
         <p class="card-meta"></p>
         <p class="card-line status"></p>
@@ -105,6 +106,7 @@
 
     <template id="discoveryCardTemplate">
       <article class="mini-card">
+        <img class="mini-cover" />
         <p class="mini-title"></p>
         <p class="mini-meta"></p>
       </article>
@@ -113,6 +115,7 @@
     <script>
       const STORAGE_KEY_PRIMARY = "catalogRecordsV2";
       const STORAGE_KEY_LEGACY = "catalogRecords";
+      const PLACEHOLDER_COVER = "https://placehold.co/180x260?text=No+Cover";
 
       const els = {
         headerSearchForm: document.getElementById("headerSearchForm"),
@@ -166,6 +169,7 @@
           location: String(record.location || "Location not specified").trim(),
           callNumber: String(record.callNumber || "").trim(),
           subjects: String(record.subjects || "").trim(),
+          coverUrl: String(record.coverUrl || "").trim(),
           materialNumbers: Array.isArray(record.materialNumbers) ? record.materialNumbers : [],
           addedAt: Number(record.addedAt || 0),
         };
@@ -243,6 +247,9 @@
 
         filtered.forEach((record) => {
           const node = els.recordTemplate.content.firstElementChild.cloneNode(true);
+          const cover = node.querySelector(".card-cover");
+          cover.src = record.coverUrl || PLACEHOLDER_COVER;
+          cover.alt = `Cover for ${record.title}`;
           node.querySelector(".card-title").textContent = record.title;
           node.querySelector(".card-meta").textContent = `${record.creator} • ${record.format}${record.year ? ` • ${record.year}` : ""}`;
           node.querySelector(".status").textContent = `Status: ${record.status}`;
@@ -257,6 +264,9 @@
 
       function createMiniCard(record) {
         const card = els.discoveryCardTemplate.content.firstElementChild.cloneNode(true);
+        const cover = card.querySelector(".mini-cover");
+        cover.src = record.coverUrl || PLACEHOLDER_COVER;
+        cover.alt = `Cover for ${record.title}`;
         card.querySelector(".mini-title").textContent = record.title;
         card.querySelector(".mini-meta").textContent = `${record.creator} • ${record.format}${record.year ? ` • ${record.year}` : ""}`;
         return card;
