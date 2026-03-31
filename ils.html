@@ -722,7 +722,7 @@
                   <div class="form-grid">
                     <label><span>Title <span class="required-indicator">*</span></span><input id="title" required /></label>
                     <label><span>Subtitle</span><input id="subtitle" /></label>
-                    <label><span>Main author / creator <span class="required-indicator">*</span></span><input id="creator" required /></label>
+                    <label><span>Main author / creator <span class="required-indicator">*</span></span><input id="creator" list="creatorAuthorityOptions" required /></label>
                     <label><span>Statement of responsibility</span><input id="statementOfResponsibility" placeholder="by, edited by, narrated by..." /></label>
                     <label class="form-grid-span"><span>Additional contributors</span><input id="contributors" placeholder="Illustrator, editor, translator, narrator..." /></label>
                     <label><span>Format <span class="required-indicator">*</span></span><select id="format" required></select></label>
@@ -736,10 +736,10 @@
                   </div>
                   <div class="form-grid">
                     <label><span>Edition</span><input id="edition" /></label>
-                    <label><span>Publisher / label</span><input id="publisher" /></label>
+                    <label><span>Publisher / label</span><input id="publisher" list="publisherAuthorityOptions" /></label>
                     <label><span>Publication place</span><input id="publicationPlace" placeholder="City, State/Country" /></label>
                     <label><span>Publication year</span><input id="year" type="number" min="0" /></label>
-                    <label><span>Language code</span><input id="languageCode" placeholder="eng" maxlength="3" /></label>
+                    <label><span>Language code</span><input id="languageCode" list="languageAuthorityOptions" placeholder="eng" maxlength="3" /></label>
                   </div>
                 </section>
 
@@ -773,7 +773,7 @@
                     <h4>5. Series</h4>
                   </div>
                   <div class="form-grid">
-                    <label><span>Series name</span><input id="seriesName" /></label>
+                    <label><span>Series name</span><input id="seriesName" list="seriesAuthorityOptions" /></label>
                     <label><span>Series number</span><input id="seriesNumber" /></label>
                   </div>
                 </section>
@@ -783,13 +783,19 @@
                     <h4>6. Subjects / Access</h4>
                   </div>
                   <div class="form-grid">
-                    <label class="form-grid-span"><span>Subjects</span><input id="subjects" placeholder="Comma-separated authorized or local headings" /></label>
+                    <label class="form-grid-span"><span>Subjects</span><input id="subjects" list="subjectsAuthorityOptions" placeholder="Comma-separated authorized or local headings" /></label>
                     <label><span>Genres</span><select id="genres" multiple size="6"></select></label>
                     <label><span>Custom genre</span><input id="genre" placeholder="Optional local genre term" /></label>
-                    <label><span>Audience</span><input id="audience" placeholder="Juvenile, Adult, Teen..." /></label>
+                    <label><span>Audience</span><input id="audience" list="audienceAuthorityOptions" placeholder="Juvenile, Adult, Teen..." /></label>
                     <label><span>Curated shelf</span><select id="curatedShelf"></select></label>
                   </div>
                 </section>
+                <datalist id="creatorAuthorityOptions"></datalist>
+                <datalist id="publisherAuthorityOptions"></datalist>
+                <datalist id="languageAuthorityOptions"></datalist>
+                <datalist id="seriesAuthorityOptions"></datalist>
+                <datalist id="subjectsAuthorityOptions"></datalist>
+                <datalist id="audienceAuthorityOptions"></datalist>
 
                 <section class="editor-panel cataloging-section">
                   <div class="cataloging-section-header">
