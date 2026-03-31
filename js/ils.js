@@ -478,6 +478,13 @@ const AUTHORITY_GROUPS = {
   admin: { label: "Administrative / Reusable Text", description: "Reusable text, presets, and supporting administrative standards." },
 };
 
+const DEFAULT_AUTHORITY_SEEDS = {
+  genres: PRELOADED_GENRES,
+  formats: FORMAT_OPTIONS,
+  bindings: BINDING_OPTIONS.filter(Boolean),
+  materialTypes: [...new Set([...FORMAT_OPTIONS, "Periodical"])],
+};
+
 
 const MISSING_REPORT_FIELDS = {
   location: "Location",
@@ -4940,10 +4947,18 @@ function getAuthorityEntries(key) {
   const store = getAuthorityStore();
   const existing = Array.isArray(store[key]) ? store[key] : [];
   const fromLegacy = Array.isArray(state.settings[config.legacyKey]) ? state.settings[config.legacyKey] : [];
+  const fromDefaults = Array.isArray(DEFAULT_AUTHORITY_SEEDS[key]) ? DEFAULT_AUTHORITY_SEEDS[key] : [];
   const fromRecords = getRecordValuesForAuthority(key);
-  const combined = [...existing];
-  const known = new Set(existing.map((entry) => String(entry.preferredLabel || "").trim().toLowerCase()));
-  [...fromLegacy, ...fromRecords].map((value) => String(value || "").trim()).filter(Boolean).forEach((value) => {
+  const normalizedExisting = existing
+    .map((entry) => {
+      if (!entry) return null;
+      if (typeof entry === "string") return createAuthorityEntry(entry);
+      return createAuthorityEntry(entry.preferredLabel || entry.label || entry.name || "", entry);
+    })
+    .filter((entry) => entry?.preferredLabel);
+  const combined = [...normalizedExisting];
+  const known = new Set(normalizedExisting.map((entry) => String(entry.preferredLabel || "").trim().toLowerCase()));
+  [...fromLegacy, ...fromDefaults, ...fromRecords].map((value) => String(value || "").trim()).filter(Boolean).forEach((value) => {
     if (known.has(value.toLowerCase())) return;
     combined.push(createAuthorityEntry(value));
     known.add(value.toLowerCase());
