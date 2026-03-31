@@ -1,4 +1,4 @@
-import { duplicateCandidates, PRELOADED_GENRES, asArray, getStats } from "./catalog.js";
+import { duplicateCandidates, PRELOADED_GENRES, FORMAT_OPTIONS, BINDING_OPTIONS, asArray, getStats } from "./catalog.js";
 import { normalizeRecord, loadRecords, saveRecords, loadSettings, saveSettings, loadRecordsFromRemote } from "./storage.js";
 import { FIREBASE_CONFIG, STORAGE_KEY } from "./config.js";
 
@@ -5095,6 +5095,27 @@ function fillIllLibraries() {
   list.innerHTML = options.map((library) => `<option value="${library}"></option>`).join("");
 }
 
+function fillAuthorityInputLists() {
+  const mappings = [
+    ["#creatorAuthorityOptions", "creators"],
+    ["#publisherAuthorityOptions", "publishers"],
+    ["#languageAuthorityOptions", "languages"],
+    ["#seriesAuthorityOptions", "series"],
+    ["#subjectsAuthorityOptions", "subjects"],
+    ["#audienceAuthorityOptions", "audience"],
+  ];
+  mappings.forEach(([selector, key]) => {
+    const list = document.querySelector(selector);
+    if (!list) return;
+    const options = getAuthorityEntries(key)
+      .filter((entry) => entry.status !== "retired")
+      .map((entry) => String(entry.preferredLabel || "").trim())
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+    list.innerHTML = options.map((label) => `<option value="${escapeHtml(label)}"></option>`).join("");
+  });
+}
+
 function renderAuthorityHome() {
   if (!els.authorityCategoryGroups) return;
   const query = state.authoritySearch.trim().toLowerCase();
@@ -5279,7 +5300,7 @@ function toggleAuthorityRetirement(key, entryId, forcedStatus = "") {
   updateAuthorityEntry(key, { ...entry, status: nextStatus, retiredAt: nextStatus === "retired" ? Date.now() : 0, updatedAt: Date.now() });
   renderAuthorityHome();
   renderAuthorityCategoryModal();
-  fillMaterialTypes(); fillGenres(); fillFormats(); fillBindings(); fillLocations(); fillCuratedShelves(); fillIllLibraries();
+  fillMaterialTypes(); fillGenres(); fillFormats(); fillBindings(); fillLocations(); fillCuratedShelves(); fillIllLibraries(); fillAuthorityInputLists();
 }
 
 function deleteAuthorityEntry(key, entryId) {
@@ -5295,6 +5316,7 @@ function deleteAuthorityEntry(key, entryId) {
   closeAuthorityModal();
   renderAuthorityHome();
   renderAuthorityCategoryModal();
+  fillAuthorityInputLists();
 }
 
 function saveAuthorityEntry(event) {
@@ -6537,6 +6559,7 @@ function render() {
     ["locations", fillLocations],
     ["curated shelves", fillCuratedShelves],
     ["ILL libraries", fillIllLibraries],
+    ["authority input lists", fillAuthorityInputLists],
     ["holdings editor", () => renderHoldingsEditor(collectDraftHoldings().length ? collectDraftHoldings() : state.draftHoldings)],
     ["records table", renderTable],
     ["patron search results", renderPatronSearchResults],
