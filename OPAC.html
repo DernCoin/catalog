@@ -24,11 +24,6 @@
     </header>
 
     <main class="page-shell homepage-sections">
-      <section class="summary-row">
-        <p id="summary">Loading records from ILS…</p>
-        <button id="refreshBtn" type="button">Refresh catalog data</button>
-      </section>
-
       <section aria-labelledby="recentlyAddedHeading" class="feature-block edge-anchor">
         <div class="section-heading-row">
           <h2 id="recentlyAddedHeading">Recently Added</h2>
@@ -53,13 +48,6 @@
         <div id="formatPills" class="pill-list" aria-live="polite"></div>
       </section>
 
-      <section aria-labelledby="savedItemsHeading" class="feature-block edge-anchor">
-        <div class="section-heading-row">
-          <h2 id="savedItemsHeading">Saved for Later</h2>
-          <button id="clearSavedBtn" class="ghost-link" type="button">Clear saved list</button>
-        </div>
-        <div id="savedItems" class="horizontal-scroller" aria-live="polite"></div>
-      </section>
     </main>
 
     <div id="searchModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="searchModalHeading" hidden>
@@ -118,6 +106,16 @@
       </div>
     </div>
 
+    <div id="shelfModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="shelfModalHeading" hidden>
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 id="shelfModalHeading">Curated Shelf</h2>
+          <button id="closeShelfModal" class="icon-btn" type="button" aria-label="Close curated shelf">✕</button>
+        </div>
+        <section id="shelfModalBody" class="results-grid"></section>
+      </div>
+    </div>
+
     <template id="recordTemplate">
       <article class="card clickable-card" tabindex="0" role="button">
         <img class="card-cover" />
@@ -141,8 +139,8 @@
     <script>
       const STORAGE_KEY_PRIMARY = "catalogRecordsV2";
       const STORAGE_KEY_LEGACY = "catalogRecords";
-      const SAVED_RECORDS_KEY = "opacSavedRecords";
       const RECENTLY_VIEWED_KEY = "opacRecentlyViewed";
+      const SETTINGS_KEY = "catalogSettingsV1";
       const PLACEHOLDER_COVER = "https://placehold.co/180x260?text=No+Cover";
 
       const els = {
@@ -152,8 +150,6 @@
         format: document.getElementById("formatFilter"),
         status: document.getElementById("statusFilter"),
         sort: document.getElementById("sortFilter"),
-        summary: document.getElementById("summary"),
-        refreshBtn: document.getElementById("refreshBtn"),
         results: document.getElementById("results"),
         recordTemplate: document.getElementById("recordTemplate"),
         discoveryCardTemplate: document.getElementById("discoveryCardTemplate"),
@@ -162,15 +158,17 @@
         recordModal: document.getElementById("recordModal"),
         closeRecordModalBtn: document.getElementById("closeRecordModal"),
         recordDetailBody: document.getElementById("recordDetailBody"),
+        shelfModal: document.getElementById("shelfModal"),
+        closeShelfModalBtn: document.getElementById("closeShelfModal"),
+        shelfModalBody: document.getElementById("shelfModalBody"),
+        shelfModalHeading: document.getElementById("shelfModalHeading"),
         recentlyAdded: document.getElementById("recentlyAddedScroller"),
         curatedShelves: document.getElementById("curatedShelves"),
         formatPills: document.getElementById("formatPills"),
         browseAllRecent: document.getElementById("browseAllRecent"),
-        savedItems: document.getElementById("savedItems"),
-        clearSavedBtn: document.getElementById("clearSavedBtn"),
       };
 
-      const state = { records: [], saved: new Set(loadSavedRecords()), recent: loadRecentRecords() };
+      const state = { records: [], recent: loadRecentRecords(), curatedShelves: [] };
 
       function loadIlsRecords() {
         const primaryRaw = localStorage.getItem(STORAGE_KEY_PRIMARY);
@@ -202,6 +200,7 @@
           location: String(record.location || "Location not specified").trim(),
           callNumber: String(record.callNumber || "").trim(),
           subjects: String(record.subjects || "").trim(),
+          curatedShelf: String(record.curatedShelf || "").trim(),
           coverUrl: String(record.coverUrl || "").trim(),
           materialNumbers: Array.isArray(record.materialNumbers) ? record.materialNumbers : [],
           addedAt: Number(record.addedAt || 0),
@@ -233,22 +232,31 @@
         syncModalBodyState();
       }
 
-      function syncModalBodyState() {
-        const anyModalOpen = !els.modal.hidden || !els.recordModal.hidden;
-        document.body.classList.toggle("modal-open", anyModalOpen);
-      }
-
-      function loadSavedRecords() {
-        try {
-          const parsed = JSON.parse(localStorage.getItem(SAVED_RECORDS_KEY) || "[]");
-          return Array.isArray(parsed) ? parsed : [];
-        } catch {
-          return [];
+      function openShelfModal(shelfName) {
+        const shelfRecords = state.records
+          .filter((record) => record.curatedShelf === shelfName)
+          .sort((a, b) => Number(b.addedAt || 0) - Number(a.addedAt || 0));
+        els.shelfModalHeading.textContent = shelfName;
+        els.shelfModalBody.innerHTML = "";
+        if (!shelfRecords.length) {
+          els.shelfModalBody.innerHTML = '<p class="empty">No records are currently assigned to this shelf.</p>';
+        } else {
+          const fragment = document.createDocumentFragment();
+          shelfRecords.forEach((record) => fragment.append(createMiniCard(record)));
+          els.shelfModalBody.append(fragment);
         }
+        els.shelfModal.hidden = false;
+        syncModalBodyState();
       }
 
-      function saveSavedRecords() {
-        localStorage.setItem(SAVED_RECORDS_KEY, JSON.stringify([...state.saved]));
+      function closeShelfModal() {
+        els.shelfModal.hidden = true;
+        syncModalBodyState();
+      }
+
+      function syncModalBodyState() {
+        const anyModalOpen = !els.modal.hidden || !els.recordModal.hidden || !els.shelfModal.hidden;
+        document.body.classList.toggle("modal-open", anyModalOpen);
       }
 
       function loadRecentRecords() {
@@ -372,7 +380,6 @@
       }
 
       function renderRecordDetails(record) {
-        const saved = state.saved.has(record.id);
         const recentMatches = state.recent
           .map((id) => state.records.find((r) => r.id === id))
           .filter(Boolean)
@@ -393,7 +400,6 @@
               <p class="detail-line"><strong>Call Number:</strong> ${record.callNumber || "Not assigned"}</p>
               <p class="detail-line"><strong>Subjects:</strong> ${record.subjects || "Not provided"}</p>
               <div class="record-actions">
-                <button id="toggleSaveBtn" type="button">${saved ? "★ Saved" : "☆ Save to list"}</button>
                 <button id="placeHoldBtn" type="button">Place Hold</button>
                 <button id="copyLinkBtn" type="button">Copy Link</button>
               </div>
@@ -414,14 +420,6 @@
         detailCover.onerror = () => {
           detailCover.src = PLACEHOLDER_COVER;
         };
-
-        els.recordDetailBody.querySelector("#toggleSaveBtn").addEventListener("click", () => {
-          if (state.saved.has(record.id)) state.saved.delete(record.id);
-          else state.saved.add(record.id);
-          saveSavedRecords();
-          renderSavedItems();
-          renderRecordDetails(record);
-        });
         els.recordDetailBody.querySelector("#placeHoldBtn").addEventListener("click", () => {
           els.recordDetailBody.querySelector("#recordActionNotice").textContent = "Hold request placed. You would receive a pickup notice in a real OPAC workflow.";
         });
@@ -441,15 +439,13 @@
           });
         });
       }
-
-      function renderSavedItems() {
-        els.savedItems.innerHTML = "";
-        const savedRecords = state.records.filter((record) => state.saved.has(record.id));
-        if (!savedRecords.length) {
-          els.savedItems.innerHTML = '<p class="empty">No saved records yet. Open a record and select “Save to list”.</p>';
-          return;
+      function loadCuratedShelfNames() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+          return Array.isArray(parsed.curatedShelves) ? parsed.curatedShelves : [];
+        } catch {
+          return [];
         }
-        savedRecords.forEach((record) => els.savedItems.append(createMiniCard(record)));
       }
 
       function renderDiscovery() {
@@ -463,27 +459,51 @@
           return;
         }
 
-        const newest = [...state.records].sort((a, b) => Number(b.addedAt || 0) - Number(a.addedAt || 0)).slice(0, 24);
+        const newest = [...state.records].sort((a, b) => Number(b.addedAt || 0) - Number(a.addedAt || 0)).slice(0, 18);
         newest.forEach((record) => els.recentlyAdded.append(createMiniCard(record)));
 
-        const curatedConfigs = [
-          { title: "Fresh Fiction", match: (r) => /fiction/i.test(r.subjects) || /fiction/i.test(r.format) },
-          { title: "Research & Reference", match: (r) => /reference/i.test(r.status) || /reference/i.test(r.subjects) },
-          { title: "Available Right Now", match: (r) => /available|checked in/i.test(r.status) },
-        ];
+        const shelfMap = state.records.reduce((acc, record) => {
+          if (!record.curatedShelf) return acc;
+          (acc[record.curatedShelf] ||= []).push(record);
+          return acc;
+        }, {});
+        const shelfNames = [...new Set([...(state.curatedShelves || []), ...Object.keys(shelfMap)])].sort((a, b) => a.localeCompare(b));
+        if (!shelfNames.length) {
+          els.curatedShelves.innerHTML = '<p class="empty">No shelves to highlight yet.</p>';
+        }
 
-        curatedConfigs.forEach((shelf) => {
-          const records = state.records.filter(shelf.match).slice(0, 3);
-          if (!records.length) return;
-
+        shelfNames.forEach((shelfName) => {
+          const records = (shelfMap[shelfName] || []).sort((a, b) => Number(b.addedAt || 0) - Number(a.addedAt || 0));
           const container = document.createElement("article");
           container.className = "shelf-card";
-          container.innerHTML = `<h3>${shelf.title}</h3>`;
-          records.forEach((record) => {
+          container.setAttribute("role", "button");
+          container.setAttribute("tabindex", "0");
+          container.innerHTML = `<h3>${shelfName}</h3>`;
+
+          records.slice(0, 3).forEach((record) => {
             const row = document.createElement("p");
             row.className = "shelf-item";
             row.textContent = `${record.title} — ${record.creator}`;
             container.append(row);
+          });
+          if (!records.length) {
+            const row = document.createElement("p");
+            row.className = "shelf-item";
+            row.textContent = "No titles assigned yet.";
+            container.append(row);
+          }
+
+          const count = document.createElement("p");
+          count.className = "shelf-count";
+          count.textContent = `${records.length} title${records.length === 1 ? "" : "s"}`;
+          container.append(count);
+
+          container.addEventListener("click", () => openShelfModal(shelfName));
+          container.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              openShelfModal(shelfName);
+            }
           });
           els.curatedShelves.append(container);
         });
@@ -523,7 +543,7 @@
 
             const styles = getComputedStyle(scroller);
             const gap = parseFloat(styles.columnGap || styles.gap || 0);
-            const scrollAmount = (firstCard.offsetWidth + gap) * 8;
+            const scrollAmount = (firstCard.offsetWidth + gap) * 6;
 
             scroller.scrollBy({
               left: scrollAmount * direction,
@@ -535,12 +555,9 @@
 
       function reloadFromIls() {
         state.records = loadIlsRecords();
+        state.curatedShelves = loadCuratedShelfNames();
         populateFormatFilter(state.records);
         renderDiscovery();
-        renderSavedItems();
-        els.summary.textContent = state.records.length
-          ? `${state.records.length} records available in the catalog.`
-          : "No records found in the ILS yet. Add records in ils.html, then refresh.";
         renderSearchResults();
         openRecordFromHash();
       }
@@ -554,14 +571,9 @@
       }
 
       [els.keyword, els.format, els.status, els.sort].forEach((element) => element.addEventListener("input", renderSearchResults));
-      els.refreshBtn.addEventListener("click", reloadFromIls);
       els.closeModalBtn.addEventListener("click", closeSearchModal);
       els.closeRecordModalBtn.addEventListener("click", closeRecordModal);
-      els.clearSavedBtn.addEventListener("click", () => {
-        state.saved.clear();
-        saveSavedRecords();
-        renderSavedItems();
-      });
+      els.closeShelfModalBtn.addEventListener("click", closeShelfModal);
 
       els.modal.addEventListener("click", (event) => {
         if (event.target === els.modal) closeSearchModal();
@@ -569,6 +581,10 @@
 
       els.recordModal.addEventListener("click", (event) => {
         if (event.target === els.recordModal) closeRecordModal();
+      });
+
+      els.shelfModal.addEventListener("click", (event) => {
+        if (event.target === els.shelfModal) closeShelfModal();
       });
 
       els.headerSearchForm.addEventListener("submit", (event) => {
@@ -589,6 +605,7 @@
       window.addEventListener("keydown", (event) => {
         if (event.key === "Escape" && !els.modal.hidden) closeSearchModal();
         if (event.key === "Escape" && !els.recordModal.hidden) closeRecordModal();
+        if (event.key === "Escape" && !els.shelfModal.hidden) closeShelfModal();
       });
 
       reloadFromIls();
