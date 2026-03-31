@@ -5051,8 +5051,21 @@ function fillCuratedShelves() {
   const managed = getManagedCuratedShelves();
   const current = els.curatedShelfSelect?.value || "";
   if (els.curatedShelfSelect) {
-    els.curatedShelfSelect.innerHTML = ['<option value="">None</option>', ...managed.map((shelf) => `<option value="${shelf}">${shelf}</option>`)].join("");
-    els.curatedShelfSelect.value = managed.includes(current) ? current : "";
+    const selectedShelf = current || String(els.curatedShelfSelect.dataset.pendingValue || "").trim();
+    const options = [...new Set([...(managed || []), ...(selectedShelf ? [selectedShelf] : [])])];
+    els.curatedShelfSelect.innerHTML = "";
+    const noneOption = document.createElement("option");
+    noneOption.value = "";
+    noneOption.textContent = "None";
+    els.curatedShelfSelect.append(noneOption);
+    options.forEach((shelf) => {
+      const option = document.createElement("option");
+      option.value = shelf;
+      option.textContent = shelf;
+      els.curatedShelfSelect.append(option);
+    });
+    els.curatedShelfSelect.value = options.includes(selectedShelf) ? selectedShelf : "";
+    delete els.curatedShelfSelect.dataset.pendingValue;
   }
 }
 
@@ -5494,6 +5507,7 @@ function renderTable() {
 function populateForm(record) {
   setRecordSaveMessage("");
   const normalizedRecord = normalizeRecord(record);
+  if (els.curatedShelfSelect) els.curatedShelfSelect.dataset.pendingValue = String(normalizedRecord.curatedShelf || "").trim();
   FORM_FIELDS.forEach((pair) => {
     const [elId, prop] = pair.includes(":") ? pair.split(":") : [pair, pair];
     const value = prop === "materialNumbers" ? (normalizedRecord.materialNumbers || []).join("\n") : (normalizedRecord[prop] || "");
