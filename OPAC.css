@@ -370,6 +370,71 @@ button {
   color: var(--muted);
 }
 
+.record-core-facts {
+  margin: 0.75rem 0 0.8rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.55rem;
+}
+
+.fact-panel {
+  border: 1px solid #c7d5f3;
+  border-radius: 10px;
+  background: #f7faff;
+  padding: 0.55rem 0.65rem;
+}
+
+.fact-label {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.72rem;
+  color: #3d5ca6;
+  font-weight: 700;
+}
+
+.fact-value {
+  margin: 0.3rem 0 0;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.fact-value.callout {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  background: #eef3ff;
+  border: 1px solid #ccdaf8;
+  border-radius: 8px;
+  padding: 0.25rem 0.45rem;
+  display: inline-block;
+}
+
+.status-pill {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.82rem;
+  border: 1px solid transparent;
+}
+
+.status-pill-available {
+  background: #e9faee;
+  color: #0f6a37;
+  border-color: #b9e6c8;
+}
+
+.status-pill-unavailable {
+  background: #fff2e8;
+  color: #985319;
+  border-color: #f0d1b4;
+}
+
+.detail-tip {
+  background: #f5f8ff;
+  border: 1px solid #d8e2fa;
+  border-radius: 10px;
+  padding: 0.5rem 0.65rem;
+}
+
 .record-actions {
   display: flex;
   flex-wrap: wrap;
