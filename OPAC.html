@@ -8,20 +8,22 @@
   </head>
   <body>
     <header class="opac-header">
-      <div>
-        <p class="eyebrow">Online Public Access Catalog</p>
-        <h1>Discover Your Next Read</h1>
-        <p class="subhead">Explore recently added titles, highlighted shelves, and browseable collections from your local catalog.</p>
-      </div>
+      <div class="page-shell opac-header-inner">
+        <div>
+          <p class="eyebrow">Online Public Access Catalog</p>
+          <h1>Discover Your Next Read</h1>
+          <p class="subhead">Explore recently added titles, highlighted shelves, and browseable collections from your local catalog.</p>
+        </div>
 
-      <form id="headerSearchForm" class="header-search" role="search" aria-label="Catalog search">
-        <label class="sr-only" for="headerKeyword">Search the catalog</label>
-        <input id="headerKeyword" type="search" placeholder="Search title, creator, subject, call number…" />
-        <button type="submit">Search</button>
-      </form>
+        <form id="headerSearchForm" class="header-search" role="search" aria-label="Catalog search">
+          <label class="sr-only" for="headerKeyword">Search the catalog</label>
+          <input id="headerKeyword" type="search" placeholder="Search title, creator, subject, call number…" />
+          <button type="submit">Search</button>
+        </form>
+      </div>
     </header>
 
-    <main class="layout">
+    <main class="page-shell homepage-sections">
       <section class="summary-row">
         <p id="summary">Loading records from ILS…</p>
         <button id="refreshBtn" type="button">Refresh catalog data</button>
@@ -30,8 +32,14 @@
       <section aria-labelledby="recentlyAddedHeading" class="feature-block edge-anchor">
         <div class="section-heading-row">
           <h2 id="recentlyAddedHeading">Recently Added</h2>
-          <button id="browseAllRecent" class="ghost-link" type="button">Browse all new titles</button>
+
+          <div class="scroller-controls">
+            <button id="browseAllRecent" class="ghost-link" type="button">Browse all new titles</button>
+            <button class="scroll-btn" data-target="recentlyAddedScroller" data-dir="left" type="button" aria-label="Scroll recently added left">←</button>
+            <button class="scroll-btn" data-target="recentlyAddedScroller" data-dir="right" type="button" aria-label="Scroll recently added right">→</button>
+          </div>
         </div>
+
         <div id="recentlyAddedScroller" class="horizontal-scroller" aria-live="polite"></div>
       </section>
 
@@ -43,6 +51,14 @@
       <section aria-labelledby="browseByFormatHeading" class="feature-block edge-anchor">
         <h2 id="browseByFormatHeading">Browse by Format</h2>
         <div id="formatPills" class="pill-list" aria-live="polite"></div>
+      </section>
+
+      <section aria-labelledby="savedItemsHeading" class="feature-block edge-anchor">
+        <div class="section-heading-row">
+          <h2 id="savedItemsHeading">Saved for Later</h2>
+          <button id="clearSavedBtn" class="ghost-link" type="button">Clear saved list</button>
+        </div>
+        <div id="savedItems" class="horizontal-scroller" aria-live="polite"></div>
       </section>
     </main>
 
@@ -101,16 +117,6 @@
         <section id="recordDetailBody" class="record-detail-body"></section>
       </div>
     </div>
-
-    <section class="layout" aria-labelledby="savedItemsHeading">
-      <div class="feature-block edge-anchor">
-        <div class="section-heading-row">
-          <h2 id="savedItemsHeading">Saved for Later</h2>
-          <button id="clearSavedBtn" class="ghost-link" type="button">Clear saved list</button>
-        </div>
-        <div id="savedItems" class="horizontal-scroller" aria-live="polite"></div>
-      </div>
-    </section>
 
     <template id="recordTemplate">
       <article class="card clickable-card" tabindex="0" role="button">
@@ -457,7 +463,7 @@
           return;
         }
 
-        const newest = [...state.records].sort((a, b) => Number(b.addedAt || 0) - Number(a.addedAt || 0)).slice(0, 12);
+        const newest = [...state.records].sort((a, b) => Number(b.addedAt || 0) - Number(a.addedAt || 0)).slice(0, 24);
         newest.forEach((record) => els.recentlyAdded.append(createMiniCard(record)));
 
         const curatedConfigs = [
@@ -500,6 +506,31 @@
             });
             els.formatPills.append(pill);
           });
+
+        setupScrollerButtons();
+      }
+
+      function setupScrollerButtons() {
+        document.querySelectorAll(".scroll-btn").forEach((btn) => {
+          btn.onclick = () => {
+            const targetId = btn.dataset.target;
+            const direction = btn.dataset.dir === "right" ? 1 : -1;
+            const scroller = document.getElementById(targetId);
+            if (!scroller) return;
+
+            const firstCard = scroller.querySelector(".mini-card");
+            if (!firstCard) return;
+
+            const styles = getComputedStyle(scroller);
+            const gap = parseFloat(styles.columnGap || styles.gap || 0);
+            const scrollAmount = (firstCard.offsetWidth + gap) * 8;
+
+            scroller.scrollBy({
+              left: scrollAmount * direction,
+              behavior: "smooth"
+            });
+          };
+        });
       }
 
       function reloadFromIls() {
@@ -531,9 +562,11 @@
         saveSavedRecords();
         renderSavedItems();
       });
+
       els.modal.addEventListener("click", (event) => {
         if (event.target === els.modal) closeSearchModal();
       });
+
       els.recordModal.addEventListener("click", (event) => {
         if (event.target === els.recordModal) closeRecordModal();
       });
@@ -543,12 +576,14 @@
         openSearchModal(els.headerKeyword.value.trim());
       });
 
-      els.browseAllRecent.addEventListener("click", () => {
-        els.sort.value = "newest";
-        els.status.value = "all";
-        els.format.value = "all";
-        openSearchModal();
-      });
+      if (els.browseAllRecent) {
+        els.browseAllRecent.addEventListener("click", () => {
+          els.sort.value = "newest";
+          els.status.value = "all";
+          els.format.value = "all";
+          openSearchModal();
+        });
+      }
 
       window.addEventListener("storage", reloadFromIls);
       window.addEventListener("keydown", (event) => {
