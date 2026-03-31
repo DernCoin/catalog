@@ -380,6 +380,12 @@
       }
 
       function renderRecordDetails(record) {
+        const isAvailable = ["available", "checked in"].includes(String(record.status || "").toLowerCase());
+        const locationLabel = record.location || "Location not specified";
+        const callNumberLabel = record.callNumber || "Not assigned";
+        const materialNumbers = Array.isArray(record.materialNumbers) && record.materialNumbers.length
+          ? record.materialNumbers.join(", ")
+          : "Not provided";
         const recentMatches = state.recent
           .map((id) => state.records.find((r) => r.id === id))
           .filter(Boolean)
@@ -395,12 +401,26 @@
             <div>
               <h3>${record.title}</h3>
               <p class="detail-meta">${record.creator} • ${record.format}${record.year ? ` • ${record.year}` : ""}</p>
-              <p class="detail-line"><strong>Status:</strong> ${record.status}</p>
-              <p class="detail-line"><strong>Location:</strong> ${record.location}</p>
-              <p class="detail-line"><strong>Call Number:</strong> ${record.callNumber || "Not assigned"}</p>
+              <section class="record-core-facts" aria-label="Item availability and location">
+                <div class="fact-panel">
+                  <p class="fact-label">Availability</p>
+                  <p class="fact-value"><span class="status-pill ${isAvailable ? "status-pill-available" : "status-pill-unavailable"}">${record.status}</span></p>
+                </div>
+                <div class="fact-panel">
+                  <p class="fact-label">Location</p>
+                  <p class="fact-value">${locationLabel}</p>
+                </div>
+                <div class="fact-panel">
+                  <p class="fact-label">Call Number</p>
+                  <p class="fact-value callout">${callNumberLabel}</p>
+                </div>
+              </section>
               <p class="detail-line"><strong>Subjects:</strong> ${record.subjects || "Not provided"}</p>
+              <p class="detail-line"><strong>Material #:</strong> ${materialNumbers}</p>
+              <p class="detail-line detail-tip"><strong>On shelf:</strong> Bring the call number to the ${locationLabel} desk for fastest pickup help.</p>
               <div class="record-actions">
                 <button id="placeHoldBtn" type="button">Place Hold</button>
+                <button id="copyCallNumberBtn" type="button">Copy Call Number</button>
                 <button id="copyLinkBtn" type="button">Copy Link</button>
               </div>
               <p id="recordActionNotice" class="detail-notice" aria-live="polite"></p>
@@ -422,6 +442,18 @@
         };
         els.recordDetailBody.querySelector("#placeHoldBtn").addEventListener("click", () => {
           els.recordDetailBody.querySelector("#recordActionNotice").textContent = "Hold request placed. You would receive a pickup notice in a real OPAC workflow.";
+        });
+        els.recordDetailBody.querySelector("#copyCallNumberBtn").addEventListener("click", async () => {
+          if (!record.callNumber) {
+            els.recordDetailBody.querySelector("#recordActionNotice").textContent = "No call number is assigned for this record yet.";
+            return;
+          }
+          try {
+            await navigator.clipboard.writeText(record.callNumber);
+            els.recordDetailBody.querySelector("#recordActionNotice").textContent = "Call number copied to clipboard.";
+          } catch {
+            els.recordDetailBody.querySelector("#recordActionNotice").textContent = "Copy failed. You can copy the call number manually.";
+          }
         });
         els.recordDetailBody.querySelector("#copyLinkBtn").addEventListener("click", async () => {
           const url = `${location.origin}${location.pathname}#record=${encodeURIComponent(record.id)}`;
