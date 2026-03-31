@@ -851,6 +851,32 @@ function populateForm(r) {
 }
 function flash(msg, isError = false) { els.adminMessage.textContent = msg; els.adminMessage.classList.toggle("error", isError); setTimeout(() => { els.adminMessage.textContent = ""; }, 2400); }
 
+function setupScrollerControls(scrollerId) {
+  const scroller = document.getElementById(scrollerId);
+  const container = scroller.closest(".feature-block");
+  const buttons = container.querySelectorAll(".scroll-btn");
+
+  buttons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const direction = btn.dataset.dir === "right" ? 1 : -1;
+
+      const card = scroller.querySelector(".mini-card");
+      if (!card) return;
+
+      const gap = 12; // ~0.75rem
+      const scrollAmount = (card.offsetWidth + gap) * 8;
+
+      scroller.scrollBy({
+        left: scrollAmount * direction,
+        behavior: "smooth"
+      });
+    });
+  });
+}
+
+setupScrollerControls("recentlyAddedScroller");
+setupScrollerControls("savedItems");
+
 
 async function hydrateRemoteRecords() {
   if (!isFirebaseConfigured()) return;
