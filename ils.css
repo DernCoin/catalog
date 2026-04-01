@@ -5976,3 +5976,185 @@ textarea {
   .ils-body .ils-app-shell { grid-template-columns: 1fr; }
   .ils-body .ils-sidebar { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--border); }
 }
+
+/* ILS redesign pass: editorial black/white/gray with tighter hierarchy */
+.ils-body {
+  --bg: #ffffff;
+  --card: #ffffff;
+  --text: #111111;
+  --muted: #404040;
+  --border: #d6d6d6;
+}
+
+.ils-body .ils-content {
+  max-width: 1080px;
+  padding: 10px 18px 28px;
+  gap: 10px;
+}
+
+.ils-body .ils-toolbar {
+  padding: 8px 14px;
+  gap: 6px;
+}
+
+.ils-body .ils-toolbar-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.ils-body .ils-module-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 54px;
+  padding: 8px 12px;
+}
+
+.ils-body .ils-module-kicker,
+.ils-body .ils-section-description,
+.ils-body .panel-header .muted,
+.ils-body .record-sticky-actions-note {
+  display: none;
+}
+
+.ils-body .ils-section-title {
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+
+.ils-body .card-like,
+.ils-body .admin-block,
+.ils-body .report-workspace-panel,
+.ils-body .summary-card,
+.ils-body .dashboard-tile {
+  border-radius: 6px;
+  border-color: var(--border);
+  padding: 10px;
+  background: #fff !important;
+}
+
+.ils-body .button,
+.ils-body .button.button-secondary {
+  border-radius: 4px;
+  min-height: 32px;
+  padding: 5px 10px;
+  font-size: 0.83rem;
+}
+
+.ils-body .button.button-secondary {
+  background: #fafafa;
+}
+
+.ils-body label > span,
+.ils-body .panel-header h4 {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.ils-body input,
+.ils-body select,
+.ils-body textarea {
+  border-radius: 4px;
+  min-height: 34px;
+  font-size: 0.88rem;
+}
+
+.ils-body .serials-table,
+.ils-body #recordsTable,
+.ils-body table {
+  border: 1px solid var(--border);
+}
+
+.ils-body th {
+  background: #f4f4f4;
+  font-size: 0.78rem;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.ils-body td {
+  font-size: 0.86rem;
+}
+
+.ils-body .dashboard-tile-grid,
+.ils-body .summary-card-grid {
+  gap: 8px;
+}
+
+.ils-body .dashboard-tile {
+  min-height: 98px;
+}
+
+.ils-body .circulation-mode-banner {
+  border-width: 1px;
+  border-radius: 4px;
+}
+
+.ils-body .circulation-mode-banner-checkout {
+  border-left: 4px solid #111;
+}
+
+.ils-body .circulation-mode-banner-checkin {
+  border-left: 4px solid #5a5a5a;
+}
+
+.ils-body .circulation-mode-banner-holds {
+  border-left: 4px solid #888;
+}
+
+.ils-body .patron-notices-filter-grid,
+.ils-body .report-filter-grid,
+.ils-body .register-toolbar,
+.ils-body .holds-filter-row {
+  border: 1px solid var(--border);
+  background: #fafafa;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.ils-body .cataloging-section {
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  background: #fff;
+}
+
+.ils-body .cataloging-section-header p {
+  display: none;
+}
+
+.ils-body .cataloging-section-header h4 {
+  font-size: 0.92rem;
+  margin: 0 0 8px;
+}
+
+.cataloging-section-tabs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.cataloging-section-tab {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: #222;
+  border-radius: 4px;
+  padding: 6px 8px;
+  text-align: left;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cataloging-section-tab.is-active {
+  border-color: #111;
+  background: #f3f3f3;
+  color: #111;
+}
+
+.cataloging-section.is-targeted {
+  border-color: #111;
+}

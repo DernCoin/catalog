@@ -419,15 +419,15 @@ const els = {
 };
 
 const ILS_SECTIONS = {
-  dashboard: { label: "Dashboard", description: "Overview of circulation, cataloging, acquisitions, and patron activity.", tabs: [{ id: "dashboard", label: "Overview" }] },
-  circulation: { label: "Circulation", description: "Check out, check in, and manage holds from one circulation workspace.", tabs: [{ id: "circulation", label: "Desk" }] },
-  cataloging: { label: "Cataloging", description: "Catalog maintenance and serials work grouped together for easier navigation.", tabs: [{ id: "records", label: "Edit Records" }, { id: "serials", label: "Serials" }] },
-  acquisitions: { label: "Acquisitions", description: "Manage orders, receive incoming materials, and move items through pending processing into the catalog.", tabs: [{ id: "acquisitions", label: "Acquisitions Workspace" }] },
-  patrons: { label: "Patrons", description: "Review patron accounts, contact data, circulation activity, and overdue notice follow-up.", tabs: [{ id: "patrons", label: "Accounts" }, { id: "patron-notices", label: "Notices" }] },
-  ill: { label: "Interlibrary Loan", description: "Manage outgoing loans, incoming patron requests, temporary ILL items, and monthly ILL activity.", tabs: [{ id: "ill-outgoing", label: "Outgoing ILL" }, { id: "ill-incoming", label: "Incoming Requests" }, { id: "ill-reports", label: "ILL Reports" }] },
-  register: { label: "Daily Register", description: "Log staff-side cash intake, service transactions, and daily drawer totals.", tabs: [{ id: "register", label: "Register" }] },
-  administration: { label: "Administration", description: "System settings, circulation rules, and authority control for staff administration.", tabs: [{ id: "circulation-rules", label: "Circulation Rules" }, { id: "receipt-settings", label: "Receipt Settings" }, { id: "utilities", label: "Authority Control" }] },
-  reports: { label: "Reports", description: "Browse report categories and open one focused reporting workspace at a time.", tabs: [{ id: "stats", label: "Reports Home" }] },
+  dashboard: { label: "Dashboard", description: "Operational overview.", tabs: [{ id: "dashboard", label: "Overview" }] },
+  circulation: { label: "Circulation", description: "Checkout, check-in, and holds.", tabs: [{ id: "circulation", label: "Desk" }] },
+  cataloging: { label: "Cataloging", description: "Record editing and serials.", tabs: [{ id: "records", label: "Edit Records" }, { id: "serials", label: "Serials" }] },
+  acquisitions: { label: "Acquisitions", description: "Orders, receiving, and pending processing.", tabs: [{ id: "acquisitions", label: "Acquisitions Workspace" }] },
+  patrons: { label: "Patrons", description: "Accounts and overdue notices.", tabs: [{ id: "patrons", label: "Accounts" }, { id: "patron-notices", label: "Notices" }] },
+  ill: { label: "Interlibrary Loan", description: "Incoming, outgoing, and ILL reports.", tabs: [{ id: "ill-outgoing", label: "Outgoing ILL" }, { id: "ill-incoming", label: "Incoming Requests" }, { id: "ill-reports", label: "ILL Reports" }] },
+  register: { label: "Daily Register", description: "Daily transaction log.", tabs: [{ id: "register", label: "Register" }] },
+  administration: { label: "Administration", description: "Rules, receipts, and authority tools.", tabs: [{ id: "circulation-rules", label: "Circulation Rules" }, { id: "receipt-settings", label: "Receipt Settings" }, { id: "utilities", label: "Authority Control" }] },
+  reports: { label: "Reports", description: "Focused report workspaces.", tabs: [{ id: "stats", label: "Reports Home" }] },
 };
 
 const REPORT_CATEGORIES = {
@@ -6549,6 +6549,42 @@ function runRenderStep(label, renderStep) {
   }
 }
 
+function initCatalogingSectionTabs() {
+  const recordEditorShell = document.querySelector(".record-editor-shell");
+  if (!recordEditorShell) return;
+  const sections = Array.from(recordEditorShell.querySelectorAll(".cataloging-section"));
+  if (!sections.length) return;
+
+  const tabBar = document.createElement("div");
+  tabBar.className = "cataloging-section-tabs";
+
+  sections.forEach((section, index) => {
+    const heading = section.querySelector("h4");
+    const label = (heading?.textContent || `Section ${index + 1}`).replace(/^\d+\.\s*/, "").trim();
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "cataloging-section-tab";
+    button.textContent = label;
+    section.id = section.id || `cataloging-section-${index + 1}`;
+    button.addEventListener("click", () => {
+      const targetSection = sections[index];
+      if (!targetSection) return;
+      targetSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      sections.forEach((entry) => entry.classList.remove("is-targeted"));
+      targetSection.classList.add("is-targeted");
+      window.setTimeout(() => targetSection.classList.remove("is-targeted"), 1200);
+      tabBar.querySelectorAll(".cataloging-section-tab").forEach((tab, tabIndex) => {
+        tab.classList.toggle("is-active", tabIndex === index);
+      });
+    });
+    tabBar.appendChild(button);
+  });
+
+  recordEditorShell.insertBefore(tabBar, sections[0]);
+  const firstTab = tabBar.querySelector(".cataloging-section-tab");
+  if (firstTab) firstTab.classList.add("is-active");
+}
+
 function render() {
   ensureNoticeTemplatesSeeded();
   [
@@ -6591,6 +6627,7 @@ function init() {
   populateStaticSelects();
   toggleDonationFields();
   bindEvents();
+  initCatalogingSectionTabs();
   state.draftHoldings = [sanitizeHolding()];
 
   switchIlsSection("dashboard");
