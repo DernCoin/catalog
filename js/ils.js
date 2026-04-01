@@ -2583,7 +2583,7 @@ function renderDashboard() {
             <p class="muted">Common actions for service desk and catalog work.</p>
           </div>
           <div class="dashboard-actions-grid">
-            ${actionPanel.slice(0, 8).map((action) => `<button class="dashboard-action-button" type="button" data-dashboard-target="${action.target}" ${action.circulationTab ? `data-dashboard-circulation="${action.circulationTab}"` : ""}>${action.label}</button>`).join("")}
+            ${actionPanel.slice(0, 8).map((action) => `<button class="dashboard-action-button dashboard-card-button" type="button" data-dashboard-target="${action.target}" ${action.circulationTab ? `data-dashboard-circulation="${action.circulationTab}"` : ""}><span>${action.label}</span></button>`).join("")}
           </div>
         </article>
 
@@ -2596,7 +2596,7 @@ function renderDashboard() {
             <p class="muted">Priority queues assembled from current system activity.</p>
           </div>
           <div class="dashboard-task-list">
-            ${todaysWork.map((item) => item.count ? `<button class="dashboard-task-row ${item.urgent ? 'is-urgent' : ''}" type="button" data-dashboard-target="${item.target}" ${item.circulationTab ? `data-dashboard-circulation="${item.circulationTab}"` : ""}><span>${item.label}</span><span class="dashboard-task-count">${item.count}</span></button>` : `<div class="dashboard-task-row is-empty"><span>${item.empty}</span></div>`).join("")}
+            ${todaysWork.map((item) => item.count ? `<button class="dashboard-task-row dashboard-card-button ${item.urgent ? 'is-urgent' : ''}" type="button" data-dashboard-target="${item.target}" ${item.circulationTab ? `data-dashboard-circulation="${item.circulationTab}"` : ""}><span>${item.label}</span><span class="dashboard-task-count">${item.count}</span></button>` : `<div class="dashboard-task-row is-empty"><span>${item.empty}</span></div>`).join("")}
           </div>
         </article>
 
@@ -2608,7 +2608,7 @@ function renderDashboard() {
             </div>
             <button class="dashboard-inline-link" type="button" data-dashboard-target="stats">Open reports</button>
           </div>
-          ${renderList(recentActivity, (entry) => `<li><button class="dashboard-activity-row" type="button" data-dashboard-target="${entry.target}" ${entry.target === 'circulation' ? 'data-dashboard-circulation="checkout"' : ''}><span class="dashboard-activity-copy"><strong>${entry.text}</strong><span class="muted">${formatRelativeTime(entry.timestamp)}</span></span></button></li>`, "No recent staff activity yet.")}
+          ${renderList(recentActivity, (entry) => `<li><button class="dashboard-activity-row dashboard-card-button" type="button" data-dashboard-target="${entry.target}" ${entry.target === 'circulation' ? 'data-dashboard-circulation="checkout"' : ''}><span class="dashboard-activity-copy"><strong>${entry.text}</strong><span class="muted">${formatRelativeTime(entry.timestamp)}</span></span></button></li>`, "No recent staff activity yet.")}
         </article>
 
         <article class="dashboard-panel card-like dashboard-preview-panel">
@@ -2622,15 +2622,15 @@ function renderDashboard() {
           <div class="dashboard-preview-stack">
             <section>
               <h5>Overdues</h5>
-              ${renderList(overduePreview, ({ record, holding, overdueDays }) => `<li><button class="dashboard-preview-row" type="button" data-dashboard-target="circulation"><strong>${record.title || 'Untitled'}</strong><span>${holding.checkedOutToName || 'Unknown patron'} · Due ${holding.dueDate || 'No due date'} · ${overdueDays} day${overdueDays === 1 ? '' : 's'} overdue</span></button></li>`, "No items are currently overdue.")}
+              ${renderList(overduePreview, ({ record, holding, overdueDays }) => `<li><button class="dashboard-preview-row dashboard-card-button" type="button" data-dashboard-target="circulation"><strong>${record.title || 'Untitled'}</strong><span>${holding.checkedOutToName || 'Unknown patron'} · Due ${holding.dueDate || 'No due date'} · ${overdueDays} day${overdueDays === 1 ? '' : 's'} overdue</span></button></li>`, "No items are currently overdue.")}
             </section>
             <section>
               <h5>Pending materials</h5>
-              ${renderList(pendingPreview, (material) => `<li><button class="dashboard-preview-row" type="button" data-dashboard-target="acquisitions"><strong>${material.title}</strong><span>${material.orderName || 'No order'} · ${material.materialNumber || 'No material #'} · ${material.status || 'Pending Material'}</span></button></li>`, "No pending materials awaiting activation.")}
+              ${renderList(pendingPreview, (material) => `<li><button class="dashboard-preview-row dashboard-card-button" type="button" data-dashboard-target="acquisitions"><strong>${material.title}</strong><span>${material.orderName || 'No order'} · ${material.materialNumber || 'No material #'} · ${material.status || 'Pending Material'}</span></button></li>`, "No pending materials awaiting activation.")}
             </section>
             <section>
               <h5>Patron alerts</h5>
-              ${renderList(todaysWork.filter((item) => item.count > 0).slice(0, 3), (item) => `<li><button class="dashboard-preview-row" type="button" data-dashboard-target="${item.target}" ${item.circulationTab ? `data-dashboard-circulation="${item.circulationTab}"` : ""}><strong>${item.label}</strong><span>${item.count} queued task${item.count === 1 ? '' : 's'}.</span></button></li>`, "No patron alerts or account issues right now.")}
+              ${renderList(todaysWork.filter((item) => item.count > 0).slice(0, 3), (item) => `<li><button class="dashboard-preview-row dashboard-card-button" type="button" data-dashboard-target="${item.target}" ${item.circulationTab ? `data-dashboard-circulation="${item.circulationTab}"` : ""}><strong>${item.label}</strong><span>${item.count} queued task${item.count === 1 ? '' : 's'}.</span></button></li>`, "No patron alerts or account issues right now.")}
             </section>
           </div>
         </article>
@@ -4816,6 +4816,7 @@ function renderCompletedStage(workflow) {
 }
 
 function renderAcquisitionsWorkspace() {
+  if (!getAcquisitionStageMeta()[state.acquisitionsStage]) state.acquisitionsStage = "orders";
   renderAcquisitionSummaryCards();
   renderAcquisitionStageNav();
   if (!els.acquisitionsStageContent) return;
@@ -6553,6 +6554,7 @@ function initCatalogingSectionTabs() {
 }
 
 function render() {
+  syncAllLegacyAuthorityLists();
   ensureNoticeTemplatesSeeded();
   [
     ["material types", fillMaterialTypes],
