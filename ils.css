@@ -6113,11 +6113,11 @@ textarea {
   border-radius: 6px;
 }
 
-.ils-body .cataloging-section {
+.ils-body .record-editor-shell.has-section-tabs .cataloging-section {
   display: none;
 }
 
-.ils-body .cataloging-section.is-active {
+.ils-body .record-editor-shell.has-section-tabs .cataloging-section.is-active {
   display: block;
 }
 
@@ -6153,4 +6153,70 @@ textarea {
   border-color: #111;
   background: #f3f3f3;
   color: #111;
+}
+
+/* Modernized ILS visual refresh */
+.ils-body {
+  --bg: #eef3fb;
+  --card: #ffffff;
+  --text: #15233b;
+  --muted: #5d6b85;
+  --border: #d7e1f0;
+  --shadow: 0 12px 30px rgba(20, 41, 74, 0.08);
+  background: radial-gradient(circle at 5% 0%, #f6f9ff 0%, #edf3ff 40%, #eaf1fb 100%);
+  color: var(--text);
+}
+
+.ils-body .ils-sidebar {
+  background: linear-gradient(180deg, #172742 0%, #111f37 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  color: #e8efff;
+}
+
+.ils-body .ils-section-btn {
+  border-radius: 12px;
+  color: #d5e1fb;
+}
+
+.ils-body .ils-section-btn.is-active {
+  background: #2f7cf7;
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(47, 124, 247, 0.35);
+}
+
+.ils-body .ils-toolbar,
+.ils-body .panel-card,
+.ils-body .card-like,
+.ils-body .admin-block,
+.ils-body .record-editor-shell,
+.ils-body .record-sticky-actions {
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  border-radius: 16px;
+}
+
+.ils-body .button {
+  background: linear-gradient(180deg, #2f7cf7 0%, #1f67de 100%);
+  color: #fff;
+  border: 1px solid #1e5fd1;
+}
+
+.ils-body .button.button-secondary {
+  background: #f6f9ff;
+  color: #16315f;
+  border-color: #c9d9f4;
+}
+
+.ils-body input,
+.ils-body select,
+.ils-body textarea {
+  border: 1px solid #ccd8ed;
+  background: #fcfdff;
+}
+
+.ils-body .record-import-bar,
+.ils-body .workspace-toolbar-row,
+.ils-body .editor-panel {
+  border: 1px solid #dbe5f4;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
 }

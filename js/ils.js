@@ -253,6 +253,7 @@ const els = {
   holdStaffNote: $("#holdStaffNote"),
   holdRequestSummary: $("#holdRequestSummary"),
   runHoldExpirationBtn: $("#runHoldExpirationBtn"),
+  recordSaveMessage: $("#recordSaveMessage"),
   holdQuickFilters: $$("[data-hold-filter]"),
   holdsPendingCount: $("#holdsPendingCount"),
   holdsReadyCount: $("#holdsReadyCount"),
@@ -5475,24 +5476,26 @@ function saveAndNewRecord() {
 function lookupWorkspaceRecord() {
   const mode = els.workspaceLookupMode?.value || "Material Number";
   const query = String(els.workspaceLookupInput?.value || "").trim().toLowerCase();
+  setRecordSaveMessage("");
   if (!query) {
-    setCirculationMessage("Enter a lookup value first.", true);
+    setRecordSaveMessage("Enter a lookup value first.", "warning");
     return;
   }
 
   const found = state.records.find((record) => {
     if (mode === "Title") return String(record.title || "").toLowerCase().includes(query);
     if (mode === "Creator") return String(record.creator || "").toLowerCase().includes(query);
-    return (record.materialNumbers || []).some((value) => String(value).toLowerCase() == query);
+    return (record.materialNumbers || []).some((value) => String(value).toLowerCase() === query);
   });
 
   if (!found) {
-    setCirculationMessage("No matching record was found.", true);
+    setRecordSaveMessage("No matching record was found.", "warning");
     return;
   }
 
+  switchIlsSection("cataloging", "records");
   populateForm(found);
-  setCirculationMessage(`Loaded ${found.title} in the workspace.`);
+  setRecordSaveMessage(`Loaded ${found.title || "Untitled record"} in the workspace.`, "success");
 }
 
 function setActiveWorkspaceRecord(recordId) {
@@ -6554,6 +6557,7 @@ function initCatalogingSectionTabs() {
   if (!recordEditorShell) return;
   const sections = Array.from(recordEditorShell.querySelectorAll(".cataloging-section"));
   if (!sections.length) return;
+  recordEditorShell.classList.add("has-section-tabs");
 
   const tabBar = document.createElement("div");
   tabBar.className = "cataloging-section-tabs";
