@@ -5805,3 +5805,174 @@ textarea {
   .acquisition-summary-grid,
   .reports-category-grid { grid-template-columns: 1fr; }
 }
+
+/* ILS workspace cleanup: restrained black/white admin layout */
+.ils-body {
+  --bg: #fff;
+  --card: #fff;
+  --text: #111;
+  --muted: #5f5f5f;
+  --border: #d9d9d9;
+  background: #fff;
+  color: #111;
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.ils-body .ils-app-shell {
+  display: grid;
+  grid-template-columns: 228px minmax(0, 1fr);
+  min-height: 100vh;
+  background: #fff;
+}
+
+.ils-body .ils-sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow: auto;
+  border-right: 1px solid var(--border);
+  padding: 12px 10px;
+  background: #fff;
+}
+
+.ils-body .ils-sidebar-brand {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.ils-body .ils-brand-title { font-size: 1rem; margin: 2px 0 0; }
+.ils-body .ils-brand-kicker { margin: 0; font-size: .67rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.ils-body .ils-brand-copy { display: none; }
+
+.ils-body .ils-sidebar-nav { display: grid; gap: 4px; }
+.ils-body .ils-nav-item { display: grid; gap: 2px; }
+.ils-body .ils-section-btn,
+.ils-body .ils-subnav-btn {
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  min-height: 34px;
+  padding: 7px 10px;
+  background: #fff;
+  color: #111;
+  font-weight: 600;
+}
+.ils-body .ils-subnav-btn { font-weight: 500; font-size: .9rem; }
+.ils-body .ils-section-btn.is-active,
+.ils-body .ils-subnav-btn.is-active {
+  border-color: #111;
+  background: #f7f7f7;
+}
+
+.ils-body .ils-main-shell { min-width: 0; display: grid; grid-template-rows: auto 1fr; }
+.ils-body .ils-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: #fff;
+}
+.ils-body .ils-toolbar-main { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.ils-body .ils-toolbar-title { font-size: 1rem; margin: 0; }
+.ils-body .ils-toolbar-label { margin: 0; font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.ils-body .ils-toolbar-utility { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.ils-body .ils-toolbar-search { position: relative; width: min(560px, 100%); flex: 1; }
+.ils-body .ils-toolbar-search input,
+.ils-body input,
+.ils-body select,
+.ils-body textarea {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  min-height: 36px;
+  padding: 7px 10px;
+  font-size: .92rem;
+  background: #fff;
+}
+
+.ils-body .button {
+  min-height: 34px;
+  border-radius: 6px;
+  border: 1px solid #111;
+  background: #111;
+  color: #fff;
+  padding: 6px 10px;
+  font-weight: 600;
+  box-shadow: none;
+  transform: none;
+}
+.ils-body .button.button-secondary { background: #fff; color: #111; border-color: var(--border); }
+
+.ils-body .header-quick-counters { display: flex; gap: 6px; }
+.ils-body .quick-counter-btn { min-height: 34px; padding: 5px 8px; display: grid; gap: 1px; border-color: var(--border); }
+.ils-body .quick-counter-total { font-size: .76rem; color: var(--muted); }
+.ils-body .quick-counter-feedback { margin: 0; min-height: 0; font-size: .8rem; color: var(--muted); }
+
+.ils-body .ils-content {
+  max-width: 1180px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 12px 16px 22px;
+  display: grid;
+  gap: 12px;
+}
+
+.ils-body .ils-module-header,
+.ils-body .card-like,
+.ils-body .admin-block,
+.ils-body .dashboard-tile,
+.ils-body .summary-card,
+.ils-body .report-workspace-panel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: none;
+}
+
+.ils-body .ils-module-header { padding: 10px 12px; }
+.ils-body .ils-section-title { margin: 0; font-size: 1.25rem; }
+.ils-body .ils-section-description { margin: 4px 0 0; color: var(--muted); font-size: .9rem; }
+
+.ils-body .admin-tab-panel { display: grid; gap: 10px; margin-top: 0; }
+.ils-body .panel-header h3,
+.ils-body .panel-header h4 { margin: 0; }
+.ils-body .muted { color: var(--muted); font-size: .88rem; }
+.ils-body .panel-header.compact { gap: 8px; }
+
+.ils-body .circulation-mode-banner {
+  border: 1px solid #111;
+  border-radius: 8px;
+  padding: 9px 10px !important;
+  background: #fff !important;
+}
+.ils-body .circulation-mode-banner-checkin { border-color: #666; }
+.ils-body .circulation-mode-banner-holds { border-color: var(--border); }
+.ils-body .circulation-mode-icon { display: none !important; }
+
+.ils-body .circulation-subtabs .button.is-active {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+
+.ils-body .table-wrap,
+.ils-body .serials-table { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; }
+.ils-body th,
+.ils-body td {
+  border-bottom: 1px solid #ececec;
+  padding: 8px;
+  font-size: .88rem;
+}
+.ils-body th { background: #fafafa; font-weight: 600; }
+
+@media (max-width: 960px) {
+  .ils-body .ils-app-shell { grid-template-columns: 1fr; }
+  .ils-body .ils-sidebar { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+}
