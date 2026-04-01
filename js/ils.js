@@ -6565,14 +6565,11 @@ function initCatalogingSectionTabs() {
     button.type = "button";
     button.className = "cataloging-section-tab";
     button.textContent = label;
-    section.id = section.id || `cataloging-section-${index + 1}`;
     button.addEventListener("click", () => {
-      const targetSection = sections[index];
-      if (!targetSection) return;
-      targetSection.scrollIntoView({ behavior: "smooth", block: "start" });
-      sections.forEach((entry) => entry.classList.remove("is-targeted"));
-      targetSection.classList.add("is-targeted");
-      window.setTimeout(() => targetSection.classList.remove("is-targeted"), 1200);
+      sections.forEach((entry, entryIndex) => {
+        const isActive = entryIndex === index;
+        entry.classList.toggle("is-active", isActive);
+      });
       tabBar.querySelectorAll(".cataloging-section-tab").forEach((tab, tabIndex) => {
         tab.classList.toggle("is-active", tabIndex === index);
       });
@@ -6582,7 +6579,7 @@ function initCatalogingSectionTabs() {
 
   recordEditorShell.insertBefore(tabBar, sections[0]);
   const firstTab = tabBar.querySelector(".cataloging-section-tab");
-  if (firstTab) firstTab.classList.add("is-active");
+  if (firstTab) firstTab.click();
 }
 
 function render() {

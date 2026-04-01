@@ -6114,11 +6114,11 @@ textarea {
 }
 
 .ils-body .cataloging-section {
+  display: none;
+}
+
+.ils-body .cataloging-section.is-active {
   display: block;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 10px;
-  background: #fff;
 }
 
 .ils-body .cataloging-section-header p {
@@ -6153,8 +6153,4 @@ textarea {
   border-color: #111;
   background: #f3f3f3;
   color: #111;
-}
-
-.cataloging-section.is-targeted {
-  border-color: #111;
 }
