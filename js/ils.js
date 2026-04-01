@@ -2501,53 +2501,32 @@ function openDashboardTarget(target = "dashboard", circulationTab = "", recordTa
 
 function renderDashboard() {
   if (!els.dashboardTileGrid) return;
+  const today = todayIso();
   const currentLoans = getCurrentLoanEntries();
   const overdueLoans = getOverdueLoans(1);
   const holds = getHolds();
   const pendingMaterials = getPendingActivationMaterials();
   const openOrders = getOpenOrders();
   const donationWorkflow = getDonationWorkflowData();
-  const problemItems = getProblemItems();
   const missingFieldRecords = getMissingFieldRecords();
   const serialPreview = getSerialsRenewalPreview();
-  const patronAlerts = getPatronAlertsList();
   const recentActivity = getRecentActivityItems(10);
   const dashboardUpdatedLabel = `Updated ${formatRelativeTime(Date.now())}`;
   if (els.dashboardDate) els.dashboardDate.textContent = dashboardUpdatedLabel;
 
   const activeIllCount = getIllTransactions("outgoing").filter((entry) => !ILL_COMPLETED_STATUSES.has(entry.status)).length + getIllTransactions("incoming").filter((entry) => !ILL_COMPLETED_STATUSES.has(entry.status)).length;
-  const todayRegisterTotal = summarizeRegisterDate(todayIso()).total;
-  const weedingPreview = getFilteredWeedingRows().rows;
-  const topAuthorMonth = (() => {
-    const start = new Date();
-    start.setDate(1);
-    const originalStart = els.authorStartDate?.value;
-    const originalEnd = els.authorEndDate?.value;
-    if (els.authorStartDate) els.authorStartDate.value = toDateInputValue(start);
-    if (els.authorEndDate) els.authorEndDate.value = todayIso();
-    const rows = getBorrowedAuthorRows();
-    if (els.authorStartDate) els.authorStartDate.value = originalStart || '';
-    if (els.authorEndDate) els.authorEndDate.value = originalEnd || '';
-    return rows[0] || null;
-  })();
-  const leastUsedSection = getSectionUsageRows().list[0] || null;
-  const outstandingFinesTotal = getFeeEntries().map(normalizeFeeEntry).reduce((sum, entry) => sum + (!['Paid', 'Waived'].includes(entry.status) ? entry.remainingAmount : 0), 0);
+  const checkoutsToday = state.records.reduce((total, record) => total + parseCirculationLines(record).filter((line) => line.isCheckout && isoDateFromTimestamp(line.timestamp) === today).length, 0);
+  const checkinsToday = state.records.reduce((total, record) => total + parseCirculationLines(record).filter((line) => line.isCheckIn && isoDateFromTimestamp(line.timestamp) === today).length, 0);
+  const acquisitionPending = pendingMaterials.length + openOrders.length + donationWorkflow.awaitingReviewCount;
   const stats = [
-    { label: "Items Out", value: currentLoans.length, copy: "Currently on loan", target: "circulation" },
-    { label: "Overdues", value: overdueLoans.length, copy: "Past due circulation items", target: "circulation" },
-    { label: "Holds / Reserves", value: holds.length, copy: "Pending patron requests", target: "circulation", circulationTab: "holds" },
-    { label: "Visitors Today", value: getDailyCounterTotal("visitor"), copy: "Building visits counted today", target: "stats" },
-    { label: "Reference Today", value: getDailyCounterTotal("reference"), copy: "Reference questions counted today", target: "stats" },
-    { label: "Active ILL", value: activeIllCount, copy: "Outgoing + incoming ILL in progress", target: "ill-outgoing" },
-    { label: "Register Today", value: formatCurrency(todayRegisterTotal), copy: "Daily register intake", target: "register" },
-    { label: "Weeding Flags", value: weedingPreview.length, copy: "Items inactive beyond current weeding threshold", target: "stats" },
-    { label: "Top Author", value: topAuthorMonth ? topAuthorMonth.author : '—', copy: topAuthorMonth ? `${topAuthorMonth.totalCheckouts} checkouts this month` : 'No author circulation this month', target: "stats" },
-    { label: "Least Used Section", value: leastUsedSection ? leastUsedSection.section : '—', copy: leastUsedSection ? `${leastUsedSection.averageCheckouts.toFixed(2)} avg circ/item` : 'No section usage data', target: "stats" },
-    { label: "Outstanding Fines", value: formatCurrency(outstandingFinesTotal), copy: "Current unpaid patron account balances", target: "stats" },
-    { label: "Pending Materials", value: pendingMaterials.length, copy: "Awaiting activation/cataloging", target: "acquisitions" },
-    { label: "Open Orders", value: openOrders.length, copy: "Active vendor orders", target: "acquisitions" },
-    { label: "Donations Awaiting Review", value: donationWorkflow.awaitingReviewCount, copy: "Donation items needing staff decision", target: "acquisitions" },
-    { label: "Missing / Problem Items", value: problemItems.length, copy: "Needs review", target: "circulation" },
+    { label: "Visitors Today", value: getDailyCounterTotal("visitor"), copy: "Building visits", target: "stats" },
+    { label: "Reference Questions Today", value: getDailyCounterTotal("reference"), copy: "Desk questions logged", target: "stats" },
+    { label: "Items Checked Out Today", value: checkoutsToday, copy: "Completed loans", target: "circulation", circulationTab: "checkout" },
+    { label: "Items Checked In Today", value: checkinsToday, copy: "Returned items processed", target: "circulation", circulationTab: "checkin" },
+    { label: "Overdue Count", value: overdueLoans.length, copy: "Loans requiring follow-up", target: "circulation" },
+    { label: "Active Holds", value: holds.length, copy: "Open hold/reserve requests", target: "circulation", circulationTab: "holds" },
+    { label: "Pending ILL", value: activeIllCount, copy: "Incoming and outgoing", target: "ill-outgoing" },
+    { label: "Acquisitions Pending", value: acquisitionPending, copy: "Orders, donations, activation", target: "acquisitions" },
   ];
 
   const todaysWork = [
@@ -2559,15 +2538,6 @@ function renderDashboard() {
     { label: `${donationWorkflow.awaitingProcessingCount} accepted donations await processing`, empty: "No accepted donation items are waiting for processing.", count: donationWorkflow.awaitingProcessingCount, target: "acquisitions" },
     { label: `${missingFieldRecords.length} missing-field records need cleanup`, empty: "No missing-field records need cleanup.", count: missingFieldRecords.length, target: "records" },
     { label: `${serialPreview.length} serial items need review`, empty: "No serial renewals or recent issues need attention.", count: serialPreview.length, target: "serials" },
-  ];
-
-  const quickActions = [
-    { label: "Add Record", target: "records" },
-    { label: "Check Out", target: "circulation", circulationTab: "checkout" },
-    { label: "Check In", target: "circulation", circulationTab: "checkin" },
-    { label: "Add Patron", target: "patrons" },
-    { label: "Create Order", target: "acquisitions" },
-    { label: "New Donation Batch", target: "acquisitions" },
   ];
 
   const actionPanel = [
@@ -2586,24 +2556,20 @@ function renderDashboard() {
 
   const overduePreview = overdueLoans.slice().sort((a, b) => b.overdueDays - a.overdueDays).slice(0, 5);
   const pendingPreview = pendingMaterials.slice().sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0)).slice(0, 5);
-  const patronPreview = patronAlerts.slice(0, 5);
-
-  const renderList = (items, renderItem, emptyText) => items.length
-    ? `<ul class="dashboard-list">${items.map(renderItem).join("")}</ul>`
-    : `<div class="empty-state dashboard-empty">${emptyText}</div>`;
+  const renderList = (items, renderItem, emptyText) => items.length ? `<ul class="dashboard-list">${items.map(renderItem).join("")}</ul>` : `<div class="empty-state dashboard-empty">${emptyText}</div>`;
 
   els.dashboardTileGrid.innerHTML = `
     <section class="dashboard-home">
-      <section class="dashboard-section">
+      <section class="dashboard-section card-like">
         <div class="dashboard-section-heading">
           <div>
             <p class="dashboard-label">Key metrics</p>
-            <h3>Operational overview</h3>
+            <h3>Service desk today</h3>
           </div>
-          <p class="dashboard-section-note">A compact summary of live service, circulation, and collection activity.</p>
+          <p class="dashboard-section-note">Operational counters for circulation, holds, ILL, and acquisitions.</p>
         </div>
         <div class="dashboard-stats-grid" aria-label="Primary dashboard stats">
-          ${stats.slice(0, 8).map((card) => `<button class="dashboard-stat-card ${card.label.includes('Overdues') || card.label.includes('Missing') ? 'is-urgent' : ''}" type="button" data-dashboard-target="${card.target}" ${card.circulationTab ? `data-dashboard-circulation="${card.circulationTab}"` : ""}><span class="dashboard-stat-label">${card.label}</span><strong class="dashboard-stat-value">${card.value}</strong><span class="dashboard-stat-copy">${card.copy}</span></button>`).join("")}
+          ${stats.map((card) => `<button class="dashboard-stat-card" type="button" data-dashboard-target="${card.target}" ${card.circulationTab ? `data-dashboard-circulation="${card.circulationTab}"` : ""}><span class="dashboard-stat-label">${card.label}</span><strong class="dashboard-stat-value">${card.value}</strong><span class="dashboard-stat-copy">${card.copy}</span></button>`).join("")}
         </div>
       </section>
 
@@ -2664,7 +2630,7 @@ function renderDashboard() {
             </section>
             <section>
               <h5>Patron alerts</h5>
-              ${renderList(patronPreview, (patron) => `<li><button class="dashboard-preview-row" type="button" data-dashboard-target="patrons"><strong>${patron.name || 'Unnamed patron'}</strong><span>${patron.cardNumber || 'No card'} · ${patron.status || 'Active'}${patron.blocks ? ` · ${patron.blocks}` : patron.alerts ? ` · ${patron.alerts}` : ''}</span></button></li>`, "No patron alerts or account issues right now.")}
+              ${renderList(todaysWork.filter((item) => item.count > 0).slice(0, 3), (item) => `<li><button class="dashboard-preview-row" type="button" data-dashboard-target="${item.target}" ${item.circulationTab ? `data-dashboard-circulation="${item.circulationTab}"` : ""}><strong>${item.label}</strong><span>${item.count} queued task${item.count === 1 ? '' : 's'}.</span></button></li>`, "No patron alerts or account issues right now.")}
             </section>
           </div>
         </article>
