@@ -6220,3 +6220,182 @@ textarea {
   border: 1px solid #dbe5f4;
   background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
 }
+
+/* === Modern ILS redesign (2026) === */
+:root {
+  --bg: #f3f6fb;
+  --card: #ffffff;
+  --text: #0f172a;
+  --muted: #475569;
+  --accent: #2563eb;
+  --accent-2: #1d4ed8;
+  --accent-3: #0ea5e9;
+  --border: #dbe4f0;
+  --danger: #b91c1c;
+  --shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+}
+
+.ils-body {
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px 600px at 90% -10%, rgba(37, 99, 235, 0.14), transparent 52%),
+    radial-gradient(900px 500px at -10% 20%, rgba(14, 165, 233, 0.1), transparent 55%),
+    var(--bg);
+  color: var(--text);
+}
+
+.ils-app-shell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 1rem;
+  min-height: 100vh;
+  padding: 1rem;
+}
+
+.ils-sidebar {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: linear-gradient(180deg, #0f172a 0%, #172554 100%);
+  color: #e2e8f0;
+  padding: 1rem;
+  box-shadow: var(--shadow);
+}
+
+.ils-brand-kicker { color: #93c5fd; margin: 0; }
+.ils-brand-title { margin: .25rem 0 1rem; color: #f8fafc; font-size: 1.35rem; }
+.ils-sidebar-nav { display: grid; gap: .42rem; }
+
+.ils-section-btn {
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.35);
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.ils-section-btn:hover { background: rgba(30, 41, 59, 0.75); }
+.ils-section-btn.is-active {
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  border-color: transparent;
+  color: #fff;
+}
+
+.ils-main-shell {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.ils-toolbar,
+.panel-card,
+.card-like,
+.admin-block,
+.summary-card,
+.dashboard-tile,
+.circulation-workflow-card,
+.circulation-receipt,
+.recent-transactions-panel,
+.patron-search-card,
+.patron-detail-card,
+.patron-notice-group,
+.patron-notice-template-card {
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(6px);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+
+.ils-toolbar {
+  padding: 1rem 1.1rem;
+  display: grid;
+  gap: .8rem;
+}
+
+.ils-toolbar-title { margin: .15rem 0 0; font-size: clamp(1.2rem, 1.8vw, 1.7rem); }
+.ils-opac-link {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: .45rem .85rem;
+  color: var(--accent-2);
+  text-decoration: none;
+  font-weight: 600;
+  background: #eff6ff;
+}
+
+.button {
+  background: linear-gradient(135deg, var(--accent), var(--accent-3));
+  color: #fff;
+  border: 0;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.24);
+}
+.button-secondary {
+  background: #fff;
+  color: #0f172a;
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+.button:hover { transform: translateY(-1px); }
+
+input, select, textarea {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  border-radius: 12px;
+}
+
+.ils-module-header {
+  padding: 1rem 1.1rem;
+  background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+}
+.ils-module-kicker { color: #0369a1; font-weight: 700; }
+.ils-section-description { color: var(--muted); }
+
+.dashboard-tile-grid { gap: 1rem; }
+.dashboard-tile {
+  min-height: 120px;
+  border: 1px solid #bfdbfe;
+  background: linear-gradient(135deg, #ffffff, #eff6ff);
+  color: #1e3a8a;
+  border-radius: 16px;
+}
+
+.quick-counter-btn {
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: #0f172a;
+}
+.quick-counter-total { color: #334155; }
+
+.search-popover,
+.patron-search-results {
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.search-result-item { background: #f8fafc; }
+.search-result-item:hover,
+.search-result-item.is-active { background: #e0f2fe; }
+
+.circulation-mode-banner {
+  border-radius: 16px;
+  border: 1px solid #bfdbfe;
+  background: linear-gradient(120deg, #eff6ff 0%, #f0f9ff 100%);
+}
+.circulation-mode-icon { font-size: 1.8rem; color: #1d4ed8; }
+
+.status-message { color: #0f766e; }
+.error { color: var(--danger); }
+
+@media (max-width: 1080px) {
+  .ils-app-shell { grid-template-columns: 1fr; }
+  .ils-sidebar {
+    position: static;
+    max-height: none;
+  }
+}
