@@ -6399,3 +6399,212 @@ input, select, textarea {
     max-height: none;
   }
 }
+
+/* --- 2026 visual overhaul: modern light-green ILS theme --- */
+:root {
+  --bg: #eef8f1;
+  --card: #ffffff;
+  --text: #153225;
+  --muted: #5c7669;
+  --accent: #2f8f60;
+  --accent-2: #4eaa78;
+  --accent-3: #256f4c;
+  --border: #cce6d6;
+  --danger: #a13b3b;
+  --shadow: 0 14px 34px rgba(34, 101, 65, 0.1);
+}
+
+.ils-body {
+  background:
+    radial-gradient(circle at 8% -10%, #d9f0df 0%, transparent 45%),
+    radial-gradient(circle at 95% 0%, #e4f8eb 0%, transparent 40%),
+    var(--bg);
+  color: var(--text);
+}
+
+.ils-app-shell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.ils-sidebar {
+  background: linear-gradient(180deg, #f6fffa 0%, #ebf8f0 100%);
+  border-right: 1px solid var(--border);
+  padding: 1.25rem 0.95rem;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.ils-sidebar-brand {
+  border: 1px solid var(--border);
+  background: #ffffffcc;
+  border-radius: 16px;
+  padding: 0.9rem;
+  margin-bottom: 0.8rem;
+}
+
+.ils-brand-kicker { color: var(--muted); letter-spacing: .08em; }
+.ils-brand-title { margin: .2rem 0 0; color: #194730; font-size: 1.35rem; }
+
+.ils-section-btn {
+  border: 1px solid transparent;
+  background: transparent;
+  color: #1f4c34;
+  border-radius: 12px;
+}
+
+.ils-section-btn:hover,
+.ils-section-btn:focus-visible {
+  background: #e5f4ea;
+  border-color: #b9dcc6;
+}
+
+.ils-section-btn.is-active {
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  color: #fff;
+  box-shadow: 0 8px 22px rgba(47, 143, 96, 0.25);
+}
+
+.ils-main-shell { min-width: 0; padding: 1rem 1.2rem 1.4rem; }
+
+.ils-toolbar,
+.panel-card,
+.card-like,
+.dashboard-panel,
+.dashboard-tile,
+.acquisition-stage-card,
+.patron-notice-group,
+.recent-transactions-list li,
+.record-import-bar,
+.record-workspace,
+.editor-panel {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.ils-toolbar {
+  margin-bottom: 1rem;
+  padding: 1rem 1.1rem;
+  background: linear-gradient(180deg, #ffffff, #f5fdf8);
+}
+
+.ils-toolbar-label,
+.ils-module-kicker,
+.dashboard-stat-label,
+.acquisition-summary-label,
+label > span,
+.status-label { color: var(--muted); }
+
+.ils-toolbar-title,
+.ils-section-title,
+h3,
+h4,
+h5 {
+  color: #173f2b;
+}
+
+.ils-opac-link {
+  border: 1px solid #b8ddc5;
+  background: #f1fbf5;
+  color: #1c593a;
+  text-decoration: none;
+  border-radius: 999px;
+  padding: .5rem .8rem;
+  font-weight: 700;
+}
+
+input, select, textarea {
+  border: 1px solid #bedfcc;
+  background: #fbfffc;
+  color: #1a3f2b;
+}
+
+.button {
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  color: #fff;
+  box-shadow: 0 10px 18px rgba(56, 136, 91, 0.22);
+}
+
+.button-secondary {
+  background: #f2fbf6;
+  border: 1px solid #b8dcc4;
+  color: #1e5639;
+  box-shadow: none;
+}
+
+.button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #6eb18b;
+  outline-offset: 1px;
+}
+
+.dashboard-tile,
+.dashboard-stat-card,
+.acquisition-summary-card,
+.dashboard-task-row,
+.dashboard-preview-row,
+.dashboard-activity-row,
+.summary-card,
+.managed-item,
+.patron-summary-chip,
+.detail-card,
+.holding-row {
+  background: linear-gradient(180deg, #ffffff 0%, #f3fbf6 100%);
+  border-color: #c9e4d3;
+}
+
+.dashboard-tile:hover,
+.dashboard-stat-card:hover,
+.acquisition-summary-card:hover,
+.dashboard-task-row:hover,
+.dashboard-preview-row:hover,
+.dashboard-activity-row:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(42, 122, 78, 0.14);
+}
+
+.checkout-patron-card {
+  background: linear-gradient(135deg, #2f8f60, #4eaa78);
+}
+
+.circulation-mode-banner-checkout,
+.circulation-mode-banner-checkin,
+.circulation-mode-banner-holds,
+.dashboard-hero,
+.acquisition-form-panel,
+.acquisition-empty-state,
+.record-sticky-actions {
+  background: linear-gradient(145deg, #f7fff9, #ebf8f0);
+  border-color: #c4e3d0;
+}
+
+.badge-status,
+.transaction-badge.is-checkout,
+.transaction-badge.is-checkin,
+.transaction-badge.is-hold {
+  background: #e8f6ee;
+  color: #245f41;
+}
+
+.search-popover,
+.patron-search-results {
+  border-color: #c8e4d3;
+  box-shadow: 0 16px 26px rgba(46, 120, 79, 0.12);
+}
+
+@media (max-width: 980px) {
+  .ils-app-shell { grid-template-columns: 1fr; }
+  .ils-sidebar {
+    position: static;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+}
