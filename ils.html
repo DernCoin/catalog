@@ -29,19 +29,16 @@
 
       <div class="ils-main-shell">
         <header class="ils-toolbar">
-          <div class="ils-toolbar-main">
-            <div class="ils-toolbar-title-group">
-              <p class="ils-toolbar-label">Workspace</p>
-              <h2 class="ils-toolbar-title">Jordan's Library ILS</h2>
-            </div>
-            <a class="ils-opac-link" href="./opac.html">Back to OPAC</a>
+          <div class="ils-toolbar-title-group">
+            <p class="ils-toolbar-label">Integrated Library System</p>
+            <h2 class="ils-toolbar-title">Staff Workspace</h2>
+          </div>
+          <div class="ils-toolbar-search">
+            <label class="sr-only" for="searchInput">Search records</label>
+            <input id="searchInput" type="search" placeholder="Global record search: title, creator, identifier, call number" autocomplete="off" />
+            <div id="searchResultsPopover" class="search-popover hidden" role="listbox" aria-label="Matching records"></div>
           </div>
           <div class="ils-toolbar-utility">
-            <div class="ils-toolbar-search">
-            <label class="sr-only" for="searchInput">Search records</label>
-            <input id="searchInput" type="search" placeholder="Search records, creators, identifiers, or call numbers" autocomplete="off" />
-            <div id="searchResultsPopover" class="search-popover hidden" role="listbox" aria-label="Matching records"></div>
-            </div>
             <div class="header-quick-counters" aria-label="Service desk counters">
               <button id="visitorCounterBtn" class="button quick-counter-btn" type="button">
                 <span>Visitors</span>
@@ -52,6 +49,7 @@
                 <span id="referenceCounterTotal" class="quick-counter-total">Today: 0</span>
               </button>
             </div>
+            <a class="ils-opac-link" href="./opac.html">OPAC</a>
           </div>
           <p id="headerCounterFeedback" class="quick-counter-feedback" aria-live="polite"></p>
         </header>
