@@ -9,10 +9,9 @@
   <body class="ils-body">
     <div class="ils-app-shell">
       <aside class="ils-sidebar" aria-label="Primary navigation">
-        <div class="ils-sidebar-brand panel-card">
+        <div class="ils-sidebar-brand">
           <p class="ils-brand-kicker">Integrated Library System</p>
           <h1 class="ils-brand-title">Staff Workspace</h1>
-          <p class="ils-brand-copy">Operational navigation for circulation, cataloging, patron accounts, acquisitions, and reporting.</p>
         </div>
 
         <nav class="ils-sidebar-nav" aria-label="Primary ILS sections">
@@ -29,32 +28,32 @@
       </aside>
 
       <div class="ils-main-shell">
-        <header class="ils-toolbar panel-card">
-          <div class="ils-toolbar-title-group">
-            <p class="ils-toolbar-label">Workspace</p>
-            <h2 class="ils-toolbar-title">Jordan's Library ILS</h2>
+        <header class="ils-toolbar">
+          <div class="ils-toolbar-main">
+            <div class="ils-toolbar-title-group">
+              <p class="ils-toolbar-label">Workspace</p>
+              <h2 class="ils-toolbar-title">Jordan's Library ILS</h2>
+            </div>
+            <a class="ils-opac-link" href="./opac.html">Back to OPAC</a>
           </div>
-
-          <div class="ils-toolbar-search ils-toolbar-search-hero">
+          <div class="ils-toolbar-utility">
+            <div class="ils-toolbar-search">
             <label class="sr-only" for="searchInput">Search records</label>
             <input id="searchInput" type="search" placeholder="Search records, creators, identifiers, or call numbers" autocomplete="off" />
             <div id="searchResultsPopover" class="search-popover hidden" role="listbox" aria-label="Matching records"></div>
-          </div>
-
-          <div class="ils-toolbar-actions">
-            <a class="ils-opac-link" href="./opac.html">Back to OPAC</a>
+            </div>
             <div class="header-quick-counters" aria-label="Service desk counters">
               <button id="visitorCounterBtn" class="button quick-counter-btn" type="button">
-                <span>Visitor Count</span>
+                <span>Visitors</span>
                 <span id="visitorCounterTotal" class="quick-counter-total">Today: 0</span>
               </button>
               <button id="referenceCounterBtn" class="button quick-counter-btn quick-counter-reference" type="button">
-                <span>Reference Questions</span>
+                <span>Reference</span>
                 <span id="referenceCounterTotal" class="quick-counter-total">Today: 0</span>
               </button>
-              <p id="headerCounterFeedback" class="quick-counter-feedback" aria-live="polite"></p>
             </div>
           </div>
+          <p id="headerCounterFeedback" class="quick-counter-feedback" aria-live="polite"></p>
         </header>
 
         <main class="ils-content">
