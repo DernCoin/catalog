@@ -420,7 +420,7 @@ const els = {
 };
 
 const ILS_SECTIONS = {
-  dashboard: { label: "Dashboard", description: "Operational overview.", tabs: [{ id: "dashboard", label: "Overview" }] },
+  dashboard: { label: "Dashboard", description: "", tabs: [{ id: "dashboard", label: "Overview" }] },
   circulation: { label: "Circulation", description: "Checkout, check-in, and holds.", tabs: [{ id: "circulation", label: "Desk" }] },
   cataloging: { label: "Cataloging", description: "Record editing and serials.", tabs: [{ id: "records", label: "Edit Records" }, { id: "serials", label: "Serials" }] },
   acquisitions: { label: "Acquisitions", description: "Orders, receiving, and pending processing.", tabs: [{ id: "acquisitions", label: "Acquisitions Workspace" }] },
@@ -2510,7 +2510,6 @@ function renderDashboard() {
   const donationWorkflow = getDonationWorkflowData();
   const missingFieldRecords = getMissingFieldRecords();
   const serialPreview = getSerialsRenewalPreview();
-  const recentActivity = getRecentActivityItems(10);
   const dashboardUpdatedLabel = `Updated ${formatRelativeTime(Date.now())}`;
   if (els.dashboardDate) els.dashboardDate.textContent = dashboardUpdatedLabel;
 
@@ -2554,10 +2553,6 @@ function renderDashboard() {
     { label: "Record Payment", target: "register" },
   ];
 
-  const overduePreview = overdueLoans.slice().sort((a, b) => b.overdueDays - a.overdueDays).slice(0, 5);
-  const pendingPreview = pendingMaterials.slice().sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0)).slice(0, 5);
-  const renderList = (items, renderItem, emptyText) => items.length ? `<ul class="dashboard-list">${items.map(renderItem).join("")}</ul>` : `<div class="empty-state dashboard-empty">${emptyText}</div>`;
-
   els.dashboardTileGrid.innerHTML = `
     <section class="dashboard-home">
       <section class="dashboard-section card-like">
@@ -2566,7 +2561,6 @@ function renderDashboard() {
             <p class="dashboard-label">Key metrics</p>
             <h3>Service desk today</h3>
           </div>
-          <p class="dashboard-section-note">Operational counters for circulation, holds, ILL, and acquisitions.</p>
         </div>
         <div class="dashboard-stats-grid" aria-label="Primary dashboard stats">
           ${stats.map((card) => `<button class="dashboard-stat-card" type="button" data-dashboard-target="${card.target}" ${card.circulationTab ? `data-dashboard-circulation="${card.circulationTab}"` : ""}><span class="dashboard-stat-label">${card.label}</span><strong class="dashboard-stat-value">${card.value}</strong><span class="dashboard-stat-copy">${card.copy}</span></button>`).join("")}
@@ -2580,7 +2574,6 @@ function renderDashboard() {
               <p class="dashboard-label">Quick actions</p>
               <h4>Start a task</h4>
             </div>
-            <p class="muted">Common actions for service desk and catalog work.</p>
           </div>
           <div class="dashboard-actions-grid">
             ${actionPanel.slice(0, 8).map((action) => `<button class="dashboard-action-button dashboard-card-button" type="button" data-dashboard-target="${action.target}" ${action.circulationTab ? `data-dashboard-circulation="${action.circulationTab}"` : ""}><span>${action.label}</span></button>`).join("")}
@@ -2593,45 +2586,9 @@ function renderDashboard() {
               <p class="dashboard-label">Task list</p>
               <h4>Needs attention</h4>
             </div>
-            <p class="muted">Priority queues assembled from current system activity.</p>
           </div>
           <div class="dashboard-task-list">
             ${todaysWork.map((item) => item.count ? `<button class="dashboard-task-row dashboard-card-button ${item.urgent ? 'is-urgent' : ''}" type="button" data-dashboard-target="${item.target}" ${item.circulationTab ? `data-dashboard-circulation="${item.circulationTab}"` : ""}><span>${item.label}</span><span class="dashboard-task-count">${item.count}</span></button>` : `<div class="dashboard-task-row is-empty"><span>${item.empty}</span></div>`).join("")}
-          </div>
-        </article>
-
-        <article class="dashboard-panel card-like dashboard-activity-panel">
-          <div class="dashboard-panel-header">
-            <div>
-              <p class="dashboard-label">Recent activity</p>
-              <h4>Latest updates</h4>
-            </div>
-            <button class="dashboard-inline-link" type="button" data-dashboard-target="stats">Open reports</button>
-          </div>
-          ${renderList(recentActivity, (entry) => `<li><button class="dashboard-activity-row dashboard-card-button" type="button" data-dashboard-target="${entry.target}" ${entry.target === 'circulation' ? 'data-dashboard-circulation="checkout"' : ''}><span class="dashboard-activity-copy"><strong>${entry.text}</strong><span class="muted">${formatRelativeTime(entry.timestamp)}</span></span></button></li>`, "No recent staff activity yet.")}
-        </article>
-
-        <article class="dashboard-panel card-like dashboard-preview-panel">
-          <div class="dashboard-panel-header">
-            <div>
-              <p class="dashboard-label">Service watch</p>
-              <h4>Follow-up preview</h4>
-            </div>
-            <p class="muted">Selected items that need quick review.</p>
-          </div>
-          <div class="dashboard-preview-stack">
-            <section>
-              <h5>Overdues</h5>
-              ${renderList(overduePreview, ({ record, holding, overdueDays }) => `<li><button class="dashboard-preview-row dashboard-card-button" type="button" data-dashboard-target="circulation"><strong>${record.title || 'Untitled'}</strong><span>${holding.checkedOutToName || 'Unknown patron'} · Due ${holding.dueDate || 'No due date'} · ${overdueDays} day${overdueDays === 1 ? '' : 's'} overdue</span></button></li>`, "No items are currently overdue.")}
-            </section>
-            <section>
-              <h5>Pending materials</h5>
-              ${renderList(pendingPreview, (material) => `<li><button class="dashboard-preview-row dashboard-card-button" type="button" data-dashboard-target="acquisitions"><strong>${material.title}</strong><span>${material.orderName || 'No order'} · ${material.materialNumber || 'No material #'} · ${material.status || 'Pending Material'}</span></button></li>`, "No pending materials awaiting activation.")}
-            </section>
-            <section>
-              <h5>Patron alerts</h5>
-              ${renderList(todaysWork.filter((item) => item.count > 0).slice(0, 3), (item) => `<li><button class="dashboard-preview-row dashboard-card-button" type="button" data-dashboard-target="${item.target}" ${item.circulationTab ? `data-dashboard-circulation="${item.circulationTab}"` : ""}><strong>${item.label}</strong><span>${item.count} queued task${item.count === 1 ? '' : 's'}.</span></button></li>`, "No patron alerts or account issues right now.")}
-            </section>
           </div>
         </article>
       </section>

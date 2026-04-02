@@ -277,6 +277,20 @@
   padding: 10px;
   text-align: left;
 }
+.ils-body .dashboard-stat-card,
+.ils-body .dashboard-action-button,
+.ils-body .dashboard-task-row {
+  min-height: 140px;
+  aspect-ratio: 1 / 1;
+}
+.ils-body .dashboard-stat-card,
+.ils-body .dashboard-action-button,
+.ils-body .dashboard-task-row,
+.ils-body .dashboard-task-row.is-empty {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
 .ils-body .dashboard-card-button {
   display: grid;
   gap: 4px;
@@ -290,6 +304,7 @@
 .ils-body .dashboard-task-list,
 .ils-body .dashboard-preview-stack,
 .ils-body .dashboard-list { display: grid; gap: 8px; list-style: none; padding: 0; margin: 0; }
+.ils-body .dashboard-task-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 .ils-body .circulation-subtabs { display: flex; gap: 8px; flex-wrap: wrap; }
 .ils-body .circulation-mode-banner {
@@ -405,6 +420,7 @@
   .ils-body .ils-toolbar { grid-template-columns: 1fr; }
   .ils-body .dashboard-layout-grid,
   .ils-body .dashboard-actions-grid,
+  .ils-body .dashboard-task-list,
   .ils-body .circulation-checkout-layout,
   .ils-body .circulation-checkin-layout,
   .ils-body .circulation-holds-layout,
